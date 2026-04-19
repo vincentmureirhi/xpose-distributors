@@ -7,5 +7,3 @@ export const apiClient = axios.create({
   timeout: 15000,
   headers: { "Content-Type": "application/json" },
 });
-
-export const USE_MOCK = !import.meta.env.VITE_API_URL;

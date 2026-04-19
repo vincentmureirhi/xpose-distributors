@@ -80,7 +80,11 @@ export default function ProductDetails() {
             {product.image_url ? (
               <img src={product.image_url} alt={product.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
             ) : (
-              <div className="h-full w-full grid place-items-center text-muted-foreground"><ShoppingBag className="h-12 w-12" /></div>
+              <div className="h-full w-full grid place-items-center bg-gradient-to-br from-accent/20 via-primary/10 to-accent-glow/20">
+                <span className="font-display font-bold text-8xl text-primary/40 select-none">
+                  {product.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
             )}
             {product.is_flash && (
               <span className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-bold uppercase tracking-wider shadow-glow">Flash sale</span>
