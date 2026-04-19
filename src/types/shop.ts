@@ -15,6 +15,10 @@ export interface Product {
   is_flash?: boolean;
   is_sponsored?: boolean;
   price_tiers?: PriceTier[];
+  // Flash sale fields from API
+  discounted_price?: number;
+  flash_sale_id?: number;
+  flash_sale_name?: string;
 }
 
 export interface PriceTier {
