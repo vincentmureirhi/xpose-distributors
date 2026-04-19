@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Menu, Search, ShoppingBag, User, X } from "lucide-react";
+import { Menu, Search, ShoppingBag, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/context/CartContext";
@@ -87,11 +87,6 @@ export default function Header() {
           <Button variant="ghost" size="icon" onClick={() => setSearchOpen((v) => !v)} aria-label="Search">
             <Search className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon" asChild className="hidden sm:inline-flex">
-            <Link to="/login" aria-label="Account">
-              <User className="h-5 w-5" />
-            </Link>
-          </Button>
           <Button variant="ghost" size="icon" onClick={openCart} aria-label="Cart" className="relative">
             <ShoppingBag className="h-5 w-5" />
             {itemCount > 0 && (
@@ -159,9 +154,6 @@ export default function Header() {
                   {l.label}
                 </NavLink>
               ))}
-              <NavLink to="/login" onClick={() => setMobileOpen(false)} className="px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-secondary">
-                Account
-              </NavLink>
             </div>
           </motion.div>
         )}

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ShoppingBag, Star } from "lucide-react";
+import { ShoppingBag, Star, Flame } from "lucide-react";
 import type { Product } from "@/types/shop";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,10 @@ export default function ProductCard({ product, index = 0 }: Props) {
     ? Math.round(((piece.price - lowestPerPiece) / piece.price) * 100)
     : null;
 
+  const hasFlashDeal = !!(product.discounted_price && product.discounted_price < (product.retail_price || product.price || Infinity));
+  const displayPrice = hasFlashDeal ? product.discounted_price! : (piece?.price ?? 0);
+  const originalPrice = hasFlashDeal ? (piece?.price ?? product.retail_price ?? 0) : null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -45,10 +49,12 @@ export default function ProductCard({ product, index = 0 }: Props) {
             <div className="absolute inset-0 grid place-items-center text-muted-foreground"><ShoppingBag className="h-10 w-10" /></div>
           )}
           <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-            {product.is_flash && (
-              <span className="px-2.5 py-1 rounded-full bg-accent text-accent-foreground text-[10px] font-bold uppercase tracking-wider shadow-glow">Flash</span>
+            {(product.is_flash || hasFlashDeal) && (
+              <span className="px-2.5 py-1 rounded-full bg-accent text-accent-foreground text-[10px] font-bold uppercase tracking-wider shadow-glow flex items-center gap-1">
+                <Flame className="h-3 w-3" /> Flash
+              </span>
             )}
-            {savePct && savePct > 0 && (
+            {savePct && savePct > 0 && !hasFlashDeal && (
               <span className="px-2.5 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">Save {savePct}% in bulk</span>
             )}
             {product.is_sponsored && (
@@ -72,20 +78,34 @@ export default function ProductCard({ product, index = 0 }: Props) {
           </Link>
 
           <div className="pt-1 space-y-1">
-            {piece && (
+            {hasFlashDeal ? (
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground">1 piece</span>
-                <span className="font-display font-bold text-base leading-none">{formatPrice(piece.price)}</span>
+                <span className="text-[11px] uppercase tracking-wider text-accent font-semibold">Flash price</span>
+                <div className="text-right">
+                  {originalPrice && (
+                    <span className="text-[11px] text-muted-foreground line-through mr-1">{formatPrice(originalPrice)}</span>
+                  )}
+                  <span className="font-display font-bold text-base leading-none text-accent">{formatPrice(displayPrice)}</span>
+                </div>
               </div>
+            ) : (
+              <>
+                {piece && (
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground">1 piece</span>
+                    <span className="font-display font-bold text-base leading-none">{formatPrice(piece.price)}</span>
+                  </div>
+                )}
+                {bulkTiers.slice(0, 2).map((t) => (
+                  <div key={t.unit} className="flex items-baseline justify-between gap-2">
+                    <span className="text-[11px] uppercase tracking-wider text-accent font-semibold">
+                      1 {t.unit}{t.qty_per_unit ? ` · ${t.qty_per_unit}pc` : ""}
+                    </span>
+                    <span className="font-display font-semibold text-sm leading-none">{formatPrice(t.price)}</span>
+                  </div>
+                ))}
+              </>
             )}
-            {bulkTiers.slice(0, 2).map((t) => (
-              <div key={t.unit} className="flex items-baseline justify-between gap-2">
-                <span className="text-[11px] uppercase tracking-wider text-accent font-semibold">
-                  1 {t.unit}{t.qty_per_unit ? ` · ${t.qty_per_unit}pc` : ""}
-                </span>
-                <span className="font-display font-semibold text-sm leading-none">{formatPrice(t.price)}</span>
-              </div>
-            ))}
           </div>
 
           <div className="flex items-center justify-end pt-2">

@@ -5,23 +5,48 @@ import { Flame } from "lucide-react";
 import type { Product } from "@/types/shop";
 import ProductCard from "@/components/products/ProductCard";
 
-interface Props { products: Product[] }
+interface Props {
+  products: Product[];
+  endDate?: string;
+}
 
-export default function FlashSale({ products }: Props) {
-  const [t, setT] = useState({ h: 2, m: 14, s: 39 });
+function useCountdown(endDate?: string) {
+  const getRemaining = (ed?: string) => {
+    if (!ed) return { h: 2, m: 14, s: 39 };
+    const diff = Math.max(0, new Date(ed).getTime() - Date.now());
+    const totalSeconds = Math.floor(diff / 1000);
+    return {
+      h: Math.floor(totalSeconds / 3600),
+      m: Math.floor((totalSeconds % 3600) / 60),
+      s: totalSeconds % 60,
+    };
+  };
+
+  const [t, setT] = useState(() => getRemaining(endDate));
+
   useEffect(() => {
     const id = setInterval(() => {
-      setT((p) => {
-        let { h, m, s } = p;
-        if (s > 0) s--;
-        else if (m > 0) { m--; s = 59; }
-        else if (h > 0) { h--; m = 59; s = 59; }
-        else { h = 2; m = 14; s = 39; }
-        return { h, m, s };
-      });
+      if (endDate) {
+        setT(getRemaining(endDate));
+      } else {
+        setT((p) => {
+          let { h, m, s } = p;
+          if (s > 0) s--;
+          else if (m > 0) { m--; s = 59; }
+          else if (h > 0) { h--; m = 59; s = 59; }
+          else { h = 2; m = 14; s = 39; }
+          return { h, m, s };
+        });
+      }
     }, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [endDate]);
+
+  return t;
+}
+
+export default function FlashSale({ products, endDate }: Props) {
+  const t = useCountdown(endDate);
 
   return (
     <section className="container py-16 md:py-24">

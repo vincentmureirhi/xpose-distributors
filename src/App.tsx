@@ -13,8 +13,6 @@ import ProductDetails from "./pages/ProductDetails";
 import Categories from "./pages/Categories";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
 import TrackOrder from "./pages/TrackOrder";
 import NotFound from "./pages/NotFound";
 
@@ -37,8 +35,6 @@ const App = () => (
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
                 <Route path="/track-order" element={<TrackOrder />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
