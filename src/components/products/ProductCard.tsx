@@ -46,7 +46,11 @@ export default function ProductCard({ product, index = 0 }: Props) {
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
             />
           ) : (
-            <div className="absolute inset-0 grid place-items-center text-muted-foreground"><ShoppingBag className="h-10 w-10" /></div>
+            <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-accent/20 via-primary/10 to-accent-glow/20">
+              <span className="font-display font-bold text-5xl text-primary/40 select-none">
+                {product.name.charAt(0).toUpperCase()}
+              </span>
+            </div>
           )}
           <div className="absolute top-3 left-3 flex flex-col gap-1.5">
             {(product.is_flash || hasFlashDeal) && (

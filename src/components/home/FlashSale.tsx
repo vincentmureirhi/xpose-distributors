@@ -7,46 +7,43 @@ import ProductCard from "@/components/products/ProductCard";
 
 interface Props {
   products: Product[];
-  endDate?: string;
+  endDate: string;
+  saleName?: string;
 }
 
-function useCountdown(endDate?: string) {
-  const getRemaining = (ed?: string) => {
-    if (!ed) return { h: 2, m: 14, s: 39 };
-    const diff = Math.max(0, new Date(ed).getTime() - Date.now());
+function useCountdown(endDate: string) {
+  const [t, setT] = useState(() => {
+    const diff = Math.max(0, new Date(endDate).getTime() - Date.now());
     const totalSeconds = Math.floor(diff / 1000);
     return {
       h: Math.floor(totalSeconds / 3600),
       m: Math.floor((totalSeconds % 3600) / 60),
       s: totalSeconds % 60,
     };
-  };
-
-  const [t, setT] = useState(() => getRemaining(endDate));
+  });
 
   useEffect(() => {
-    const id = setInterval(() => {
-      if (endDate) {
-        setT(getRemaining(endDate));
-      } else {
-        setT((p) => {
-          let { h, m, s } = p;
-          if (s > 0) s--;
-          else if (m > 0) { m--; s = 59; }
-          else if (h > 0) { h--; m = 59; s = 59; }
-          else { h = 2; m = 14; s = 39; }
-          return { h, m, s };
-        });
-      }
-    }, 1000);
+    const calc = () => {
+      const diff = Math.max(0, new Date(endDate).getTime() - Date.now());
+      const totalSeconds = Math.floor(diff / 1000);
+      return {
+        h: Math.floor(totalSeconds / 3600),
+        m: Math.floor((totalSeconds % 3600) / 60),
+        s: totalSeconds % 60,
+      };
+    };
+    setT(calc());
+    const id = setInterval(() => setT(calc()), 1000);
     return () => clearInterval(id);
   }, [endDate]);
 
   return t;
 }
 
-export default function FlashSale({ products, endDate }: Props) {
+export default function FlashSale({ products, endDate, saleName }: Props) {
   const t = useCountdown(endDate);
+
+  if (!products.length) return null;
 
   return (
     <section className="container py-16 md:py-24">
@@ -55,7 +52,9 @@ export default function FlashSale({ products, endDate }: Props) {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-bold uppercase tracking-wider mb-3">
             <Flame className="h-3.5 w-3.5" /> Flash Sale
           </div>
-          <h2 className="font-display font-bold text-3xl md:text-5xl tracking-tight">Ends soon.</h2>
+          <h2 className="font-display font-bold text-3xl md:text-5xl tracking-tight">
+            {saleName || "Ends soon."}
+          </h2>
         </motion.div>
 
         <div className="flex items-center gap-3">
