@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Minus, Plus, Share2, ShoppingBag, Star, Truck, RotateCcw, ShieldCheck, ChevronRight, Check } from "lucide-react";
+import { Heart, Minus, Plus, Share2, ShoppingBag, Truck, ShieldCheck, ChevronRight } from "lucide-react";
 import { getProductById, listProducts } from "@/lib/api/products";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
@@ -96,16 +96,6 @@ export default function ProductDetails() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
             <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{product.category_name}</p>
             <h1 className="font-display font-bold text-3xl md:text-5xl tracking-tight leading-tight">{product.name}</h1>
-            {product.rating && (
-              <div className="flex items-center gap-2 mt-3">
-                <div className="flex">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className={`h-4 w-4 ${i < Math.round(product.rating!) ? "fill-accent text-accent" : "text-muted-foreground/30"}`} />
-                  ))}
-                </div>
-                <span className="text-sm text-muted-foreground">{product.rating.toFixed(1)} ({product.reviews_count} reviews)</span>
-              </div>
-            )}
           </motion.div>
 
           {(() => {
@@ -217,11 +207,10 @@ export default function ProductDetails() {
             );
           })()}
 
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="grid grid-cols-3 gap-3 pt-4 border-t border-border">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="grid grid-cols-2 gap-3 pt-4 border-t border-border">
             {[
-              { icon: Truck, t: "Free shipping" },
-              { icon: RotateCcw, t: "30-day returns" },
-              { icon: ShieldCheck, t: "Authentic" },
+              { icon: Truck, t: "Free Shipping over KES 75,000" },
+              { icon: ShieldCheck, t: "Authentic Products" },
             ].map((it) => (
               <div key={it.t} className="text-center">
                 <it.icon className="h-5 w-5 mx-auto text-accent mb-1" />

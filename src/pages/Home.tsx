@@ -5,6 +5,7 @@ import ValueProps from "@/components/home/ValueProps";
 import FlashSale from "@/components/home/FlashSale";
 import CategoryRail from "@/components/home/CategoryRail";
 import FeaturedGrid from "@/components/home/FeaturedGrid";
+import BlogPreview from "@/components/home/BlogPreview";
 import { listProducts } from "@/lib/api/products";
 import { listCategories } from "@/lib/api/categories";
 import { getActiveFlashSales, type FlashSaleData } from "@/lib/api/flash-sales";
@@ -17,7 +18,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "XPOSE — Modern marketplace for everything you love";
+    document.title = "XPOSE — A Hybrid Company. Everyday Feels Like BLACK FRIDAY";
     Promise.all([listProducts(), listCategories(), getActiveFlashSales()])
       .then(([p, c, flashSales]) => {
         setCategories(c);
@@ -76,6 +77,7 @@ export default function Home() {
           <FeaturedGrid products={products.slice(0, 8)} />
         </>
       )}
+      <BlogPreview />
     </>
   );
 }
