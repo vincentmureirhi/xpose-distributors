@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Package, Truck, CheckCircle2 } from "lucide-react";
 
+const CONFETTI_COLORS = ["hsl(14 100% 57%)", "hsl(28 100% 60%)", "hsl(142 71% 45%)", "hsl(222 47% 18%)", "hsl(40 33% 88%)", "#FFD700", "#FF69B4"];
+
 interface Props {
   show: boolean;
   orderId: string;
@@ -15,13 +17,12 @@ export default function OrderSuccessOverlay({ show, orderId, onDone }: Props) {
 
   useEffect(() => {
     if (!show) return;
-    const colors = ["hsl(14 100% 57%)", "hsl(28 100% 60%)", "hsl(142 71% 45%)", "hsl(222 47% 18%)", "hsl(40 33% 88%)", "#FFD700", "#FF69B4"];
     setConfetti(
       Array.from({ length: 80 }).map(() => ({
         x: Math.random() * 100,
         r: Math.random() * 360,
         d: 0.8 + Math.random() * 1.8,
-        c: colors[Math.floor(Math.random() * colors.length)],
+        c: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
       }))
     );
     setCountdown(5);

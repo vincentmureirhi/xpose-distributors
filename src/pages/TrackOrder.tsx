@@ -106,8 +106,8 @@ export default function TrackOrder() {
   // Poll every 30 seconds when order is loaded and not delivered
   useEffect(() => {
     if (!order) return;
-    const resolvedKey = resolveStageKey((order as any).order_status || order.status || "");
-    if (resolvedKey === "delivered") return;
+    const stageKey = resolveStageKey(order.order_status || order.status || "");
+    if (stageKey === "delivered") return;
     const interval = setInterval(() => {
       trackOrder(orderId, phone).then((o) => {
         if (o) { setOrder(o); setLastRefresh(new Date()); }
@@ -116,7 +116,7 @@ export default function TrackOrder() {
     return () => clearInterval(interval);
   }, [order, orderId, phone]);
 
-  const rawStatus = (order as any)?.order_status || order?.status || "";
+  const rawStatus = order?.order_status || order?.status || "";
   const resolvedKey = resolveStageKey(rawStatus);
   const currentIndex = stages.findIndex((s) => s.key === resolvedKey);
   const progressPct = currentIndex >= 0 ? (currentIndex / (stages.length - 1)) * 100 : 0;

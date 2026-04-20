@@ -92,7 +92,11 @@ export default function MueniChatbot() {
         />
         {open ? <X className="h-6 w-6 relative z-10" /> : <Sparkles className="h-6 w-6 relative z-10" />}
         {!open && (
-          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-accent text-[9px] font-bold text-accent-foreground flex items-center justify-center">
+          <span
+            className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-accent text-[9px] font-bold text-accent-foreground flex items-center justify-center"
+            aria-label="AI-powered chatbot"
+            title="AI-powered chatbot"
+          >
             AI
           </span>
         )}

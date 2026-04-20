@@ -47,6 +47,7 @@ export interface CartItem {
 export interface Order {
   id: string;
   status: string;
+  order_status?: string;
   total: number;
   items: CartItem[];
   created_at: string;
