@@ -1,10 +1,14 @@
 const items = [
-  "Free shipping over KES 5,000",
-  "30-day easy returns",
-  "Manual Till payment available — 711714",
-  "Track every order in real time",
-  "Wholesale & retail pricing",
-  "Curated by humans, delivered fast",
+  "🔥 Deals Available — Don't Miss Out!",
+  "🚚 Free Shipping for Orders Over KES 75,000",
+  "💰 Wholesale & Retail Pricing",
+  "⚡ Flash Sales Live Now",
+  "🇰🇪 Delivering Across Kenya",
+  "🏷️ Best Prices Guaranteed",
+  "📦 Same-Day Dispatch Available",
+  "💳 Manual Till Payment — 711714",
+  "🛍️ Hybrid Company — BLACK FRIDAY Every Day",
+  "⭐ Quality You Can Trust",
 ];
 
 export default function Marquee() {

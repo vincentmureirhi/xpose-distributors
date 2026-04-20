@@ -1,11 +1,11 @@
 import { motion } from "framer-motion";
-import { Truck, ShieldCheck, Headphones, RotateCcw } from "lucide-react";
+import { Truck, ShieldCheck, Headphones, Globe } from "lucide-react";
 
 const items = [
-  { icon: Truck, title: "Free shipping", text: "On orders over KES 5,000" },
-  { icon: ShieldCheck, title: "Secure checkout", text: "Encrypted & verified" },
-  { icon: Headphones, title: "24/7 support", text: "Real humans, fast replies" },
-  { icon: RotateCcw, title: "Easy returns", text: "30 days, no questions" },
+  { icon: Truck, title: "Free Shipping", text: "On orders over KES 75,000" },
+  { icon: ShieldCheck, title: "Secure Checkout", text: "Encrypted & verified" },
+  { icon: Headphones, title: "24 Hrs Customer Care", text: "Real humans, fast replies" },
+  { icon: Globe, title: "Kenya-Wide Delivery", text: "We deliver everywhere" },
 ];
 
 export default function ValueProps() {

@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useEffect, useState } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { listProducts } from "@/lib/api/products";
 
 export default function Hero() {
   const ref = useRef<HTMLDivElement>(null);
@@ -10,6 +11,17 @@ export default function Hero() {
   const y1 = useTransform(scrollYProgress, [0, 1], [0, 100]);
   const y2 = useTransform(scrollYProgress, [0, 1], [0, -80]);
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  const [productCount, setProductCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    listProducts().then((p) => setProductCount(p.length)).catch(() => {});
+  }, []);
+
+  const stats = [
+    { v: productCount !== null ? `${productCount}+` : "…", l: "Products" },
+    { v: "24 Hrs", l: "Customer Care" },
+    { v: "Kenya-Wide", l: "Delivery" },
+  ];
 
   return (
     <section ref={ref} className="relative overflow-hidden bg-primary text-primary-foreground">
@@ -45,7 +57,17 @@ export default function Hero() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="mt-6 text-lg md:text-xl text-primary-foreground/70 max-w-xl leading-relaxed"
           >
-            A curated marketplace of products that look, feel, and perform like a million bucks. Fast checkout, real tracking, zero friction.
+            A Hybrid Company — Everyday Feels Like{" "}
+            <span className="font-bold text-accent-glow">BLACK FRIDAY</span>
+          </motion.p>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="mt-2 text-sm md:text-base text-primary-foreground/50 max-w-lg leading-relaxed italic"
+          >
+            Where Wholesale Meets Retail, Quality Meets Affordability
           </motion.p>
 
           <motion.div
@@ -71,11 +93,7 @@ export default function Hero() {
             transition={{ duration: 0.6, delay: 0.7 }}
             className="mt-14 grid grid-cols-3 gap-6 max-w-lg"
           >
-            {[
-              { v: "10k+", l: "Products" },
-              { v: "4.9★", l: "Rated" },
-              { v: "24h", l: "Delivery" },
-            ].map((s) => (
+            {stats.map((s) => (
               <div key={s.l}>
                 <p className="font-display font-bold text-3xl">{s.v}</p>
                 <p className="text-xs text-primary-foreground/60 uppercase tracking-wider mt-1">{s.l}</p>

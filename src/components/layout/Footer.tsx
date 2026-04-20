@@ -11,7 +11,7 @@ export default function Footer() {
             <Wordmark size="md" />
           </Link>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            A modern marketplace built for speed, clarity, and a buying experience that feels effortless.
+            A Hybrid Company — Everyday Feels Like BLACK FRIDAY. Where Wholesale Meets Retail.
           </p>
           <div className="flex gap-2 mt-5">
             {[Instagram, Twitter, Facebook].map((Icon, i) => (
@@ -26,31 +26,33 @@ export default function Footer() {
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link to="/products" className="hover:text-foreground">All products</Link></li>
             <li><Link to="/categories" className="hover:text-foreground">Categories</Link></li>
-            <li><Link to="/products?sort=rating" className="hover:text-foreground">Top rated</Link></li>
+            <li><Link to="/products?flash=1" className="hover:text-foreground">Flash Sales</Link></li>
           </ul>
         </div>
         <div>
           <h4 className="font-display font-semibold mb-4 text-sm">Support</h4>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link to="/track-order" className="hover:text-foreground">Track order</Link></li>
-            <li><a href="#" className="hover:text-foreground">Shipping</a></li>
-            <li><a href="#" className="hover:text-foreground">Returns</a></li>
-            <li><a href="#" className="hover:text-foreground">Contact</a></li>
+            <li><Link to="/blog" className="hover:text-foreground">Blog</Link></li>
+            <li><Link to="/terms" className="hover:text-foreground">Terms &amp; Conditions</Link></li>
+            <li><a href="https://wa.me/254701377869" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">Contact via WhatsApp</a></li>
           </ul>
         </div>
         <div>
-          <h4 className="font-display font-semibold mb-4 text-sm">Newsletter</h4>
-          <p className="text-sm text-muted-foreground mb-3">Drops, deals, and early access.</p>
-          <form className="flex gap-2">
-            <input type="email" placeholder="you@email.com" className="flex-1 h-10 px-3 rounded-md border border-input bg-background text-sm" />
-            <button className="h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">Join</button>
-          </form>
+          <h4 className="font-display font-semibold mb-4 text-sm">Latest Blog</h4>
+          <p className="text-sm text-muted-foreground mb-3">Product guides, tips, and deals.</p>
+          <Link
+            to="/blog"
+            className="inline-flex h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 items-center"
+          >
+            Read Blog →
+          </Link>
         </div>
       </div>
       <div className="border-t border-border">
         <div className="container py-5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <p>© {new Date().getFullYear()} XPOSE Distributors. All rights reserved.</p>
-          <p>Manual Till payment available on 711714.</p>
+          <p>Manual Till payment available on 711714. Free Shipping for Orders Over KES 75,000.</p>
         </div>
       </div>
     </footer>

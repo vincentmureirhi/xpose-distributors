@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ShoppingBag, Star, Flame } from "lucide-react";
+import { ShoppingBag, Flame } from "lucide-react";
 import type { Product } from "@/types/shop";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
@@ -70,12 +70,6 @@ export default function ProductCard({ product, index = 0 }: Props) {
         <div className="p-4 space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span className="truncate">{product.category_name}</span>
-            {product.rating ? (
-              <span className="flex items-center gap-1">
-                <Star className="h-3 w-3 fill-accent text-accent" />
-                {product.rating.toFixed(1)}
-              </span>
-            ) : null}
           </div>
           <Link to={`/products/${product.id}`}>
             <h3 className="font-medium text-sm leading-snug line-clamp-2 hover:text-accent transition-colors min-h-[2.5rem]">{product.name}</h3>

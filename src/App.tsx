@@ -7,6 +7,8 @@ import { CartProvider } from "@/context/CartContext";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import CartDrawer from "@/components/cart/CartDrawer";
+import WhatsAppButton from "@/components/WhatsAppButton";
+import MueniChatbot from "@/components/MueniChatbot";
 import Home from "./pages/Home";
 import Products from "./pages/Products";
 import ProductDetails from "./pages/ProductDetails";
@@ -14,6 +16,9 @@ import Categories from "./pages/Categories";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import TrackOrder from "./pages/TrackOrder";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
+import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,11 +41,16 @@ const App = () => (
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/track-order" element={<TrackOrder />} />
+                <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:id" element={<BlogPost />} />
+                <Route path="/terms" element={<Terms />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
             <Footer />
             <CartDrawer />
+            <WhatsAppButton />
+            <MueniChatbot />
           </div>
         </CartProvider>
       </BrowserRouter>

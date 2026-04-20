@@ -1,7 +1,10 @@
-import { useState, type FormEvent, useEffect } from "react";
+import { useState, type FormEvent, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Package, Truck, Home, MapPin, Loader2 } from "lucide-react";
+import {
+  ShoppingBag, Clock, CheckCircle2, ClipboardCheck,
+  Package, Truck, Home, Loader2, MapPin
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,11 +13,71 @@ import type { Order } from "@/types/shop";
 import { cn } from "@/lib/utils";
 
 const stages = [
-  { key: "pending", icon: Package, label: "Order placed", desc: "We received your order" },
-  { key: "processing", icon: Package, label: "Processing", desc: "Packing your items" },
-  { key: "in_transit", icon: Truck, label: "In transit", desc: "On the way to you" },
-  { key: "delivered", icon: Home, label: "Delivered", desc: "Enjoy your purchase" },
+  {
+    key: "pending",
+    icon: ShoppingBag,
+    label: "Order Placed",
+    desc: "Your order has been received",
+  },
+  {
+    key: "payment_pending",
+    icon: Clock,
+    label: "Payment Pending",
+    desc: "Awaiting payment confirmation",
+  },
+  {
+    key: "payment_confirmed",
+    icon: CheckCircle2,
+    label: "Payment Confirmed",
+    desc: "Payment verified successfully",
+  },
+  {
+    key: "order_issued",
+    icon: ClipboardCheck,
+    label: "Order Issued",
+    desc: "Your order has been approved and issued",
+  },
+  {
+    key: "processing",
+    icon: Package,
+    label: "Processing",
+    desc: "Your items are being prepared",
+  },
+  {
+    key: "in_transit",
+    icon: Truck,
+    label: "In Transit",
+    desc: "Your order is on the way",
+  },
+  {
+    key: "delivered",
+    icon: Home,
+    label: "Delivered",
+    desc: "Your order has been delivered",
+  },
 ];
+
+// Map backend status values to our stage keys
+function resolveStageKey(status: string): string {
+  const map: Record<string, string> = {
+    pending: "pending",
+    payment_pending: "payment_pending",
+    awaiting_payment: "payment_pending",
+    payment_confirmed: "payment_confirmed",
+    paid: "payment_confirmed",
+    order_issued: "order_issued",
+    issued: "order_issued",
+    processing: "processing",
+    packing: "processing",
+    packed: "processing",
+    in_transit: "in_transit",
+    shipped: "in_transit",
+    out_for_delivery: "in_transit",
+    delivered: "delivered",
+    completed: "delivered",
+  };
+  return map[status?.toLowerCase()] || "pending";
+}
 
 export default function TrackOrder() {
   const [params] = useSearchParams();
@@ -22,23 +85,40 @@ export default function TrackOrder() {
   const [phone, setPhone] = useState("");
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  const lookup = async (e?: FormEvent) => {
+  const lookup = useCallback(async (e?: FormEvent) => {
     e?.preventDefault();
     if (!orderId) return;
     setLoading(true);
-    setOrder(null);
     const o = await trackOrder(orderId, phone);
     setOrder(o);
+    setLastRefresh(new Date());
     setLoading(false);
-  };
+  }, [orderId, phone]);
 
+  // Auto-load when id is in URL
   useEffect(() => {
     if (params.get("id")) lookup();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const currentIndex = order ? stages.findIndex((s) => s.key === order.status) : -1;
+  // Poll every 30 seconds when order is loaded and not delivered
+  useEffect(() => {
+    if (!order) return;
+    const stageKey = resolveStageKey(order.order_status || order.status || "");
+    if (stageKey === "delivered") return;
+    const interval = setInterval(() => {
+      trackOrder(orderId, phone).then((o) => {
+        if (o) { setOrder(o); setLastRefresh(new Date()); }
+      });
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [order, orderId, phone]);
+
+  const rawStatus = order?.order_status || order?.status || "";
+  const resolvedKey = resolveStageKey(rawStatus);
+  const currentIndex = stages.findIndex((s) => s.key === resolvedKey);
   const progressPct = currentIndex >= 0 ? (currentIndex / (stages.length - 1)) * 100 : 0;
 
   return (
@@ -57,7 +137,7 @@ export default function TrackOrder() {
           transition={{ delay: 0.1 }}
           className="text-muted-foreground mb-8"
         >
-          Enter your order number and phone to see real-time status.
+          Enter your order number to see real-time status updates.
         </motion.p>
 
         <motion.form
@@ -72,7 +152,7 @@ export default function TrackOrder() {
             <Input id="order" value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="ORD-XXXXXX" />
           </div>
           <div>
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">Phone (optional)</Label>
             <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" />
           </div>
           <Button type="submit" disabled={loading} className="bg-foreground text-background h-10 min-w-[110px]">
@@ -110,7 +190,7 @@ export default function TrackOrder() {
               transition={{ duration: 0.4 }}
               className="mt-8 rounded-2xl border border-border bg-card p-6 md:p-8 shadow-card overflow-hidden"
             >
-              <div className="flex items-baseline justify-between mb-8 flex-wrap gap-3">
+              <div className="flex items-baseline justify-between mb-6 flex-wrap gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-wider text-muted-foreground">Order</p>
                   <p className="font-display font-bold text-2xl">{order.id}</p>
@@ -119,13 +199,13 @@ export default function TrackOrder() {
                   initial={{ scale: 0.6, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 220, damping: 16, delay: 0.2 }}
-                  className="px-3 py-1.5 rounded-full bg-success/10 text-success text-xs font-semibold uppercase tracking-wider"
+                  className="px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-semibold uppercase tracking-wider"
                 >
-                  {order.status.replace("_", " ")}
+                  {resolvedKey.replace(/_/g, " ")}
                 </motion.span>
               </div>
 
-              {/* Horizontal progress track with truck */}
+              {/* Progress bar */}
               <div className="hidden md:block mb-10">
                 <div className="relative h-1.5 rounded-full bg-secondary overflow-hidden">
                   <motion.div
@@ -135,22 +215,16 @@ export default function TrackOrder() {
                     className="absolute inset-y-0 left-0 bg-gradient-accent rounded-full"
                   />
                 </div>
-                <motion.div
-                  initial={{ left: 0, opacity: 0 }}
-                  animate={{ left: `${progressPct}%`, opacity: 1 }}
-                  transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
-                  className="relative -mt-7"
-                  style={{ position: "relative" }}
-                >
-                  <motion.div
-                    animate={{ y: [0, -2, 0] }}
-                    transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute -translate-x-1/2 grid place-items-center h-10 w-10 rounded-full bg-background border-2 border-accent shadow-glow"
-                    style={{ left: `${progressPct}%` }}
-                  >
-                    <Truck className="h-4 w-4 text-accent" />
-                  </motion.div>
-                </motion.div>
+                <div className="relative mt-3 flex justify-between">
+                  {stages.map((s, i) => (
+                    <div key={s.key} className="flex flex-col items-center" style={{ width: `${100 / stages.length}%` }}>
+                      <div className={cn(
+                        "h-2 w-2 rounded-full mb-1",
+                        i <= currentIndex ? "bg-accent" : "bg-secondary border border-border"
+                      )} />
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Stage list */}
@@ -158,7 +232,7 @@ export default function TrackOrder() {
                 <div className="absolute left-5 top-6 bottom-6 w-px bg-border" />
                 <motion.div
                   initial={{ height: 0 }}
-                  animate={{ height: `${(currentIndex / (stages.length - 1)) * 100}%` }}
+                  animate={{ height: currentIndex > 0 ? `${(currentIndex / (stages.length - 1)) * 100}%` : 0 }}
                   transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
                   className="absolute left-5 top-6 w-px bg-gradient-to-b from-success to-accent"
                 />
@@ -171,10 +245,10 @@ export default function TrackOrder() {
                       key={s.key}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.4 + i * 0.12 }}
+                      transition={{ delay: 0.4 + i * 0.1 }}
                       className="flex items-start gap-4 relative py-3"
                     >
-                      <div className="relative z-10">
+                      <div className="relative z-10 flex-shrink-0">
                         {active && (
                           <motion.span
                             animate={{ scale: [1, 1.6], opacity: [0.5, 0] }}
@@ -191,7 +265,7 @@ export default function TrackOrder() {
                           )}
                         >
                           {done ? (
-                            <Check className="h-4 w-4" />
+                            <CheckCircle2 className="h-5 w-5" />
                           ) : active ? (
                             <MapPin className="h-4 w-4" />
                           ) : (
@@ -214,15 +288,46 @@ export default function TrackOrder() {
                         <motion.span
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          className="text-xs font-semibold uppercase tracking-wider text-accent self-center"
+                          className="text-xs font-semibold uppercase tracking-wider text-accent self-center flex-shrink-0"
                         >
-                          Now
+                          Current
                         </motion.span>
+                      )}
+                      {done && (
+                        <span className="text-xs font-semibold uppercase tracking-wider text-success self-center flex-shrink-0">
+                          Done ✓
+                        </span>
                       )}
                     </motion.li>
                   );
                 })}
               </ul>
+
+              {lastRefresh && (
+                <p className="text-xs text-muted-foreground mt-6 text-right">
+                  Last updated: {lastRefresh.toLocaleTimeString()} · Auto-refreshes every 30s
+                </p>
+              )}
+            </motion.div>
+          )}
+
+          {!loading && !order && orderId && (
+            <motion.div
+              key="not-found"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="mt-8 rounded-2xl border border-border bg-card p-10 text-center"
+            >
+              <Package className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
+              <h3 className="font-display font-bold text-xl mb-2">Order not found</h3>
+              <p className="text-muted-foreground text-sm">
+                Check your order number and try again, or contact us via{" "}
+                <a href="https://wa.me/254701377869" target="_blank" rel="noopener noreferrer" className="text-accent underline">
+                  WhatsApp
+                </a>
+                .
+              </p>
             </motion.div>
           )}
         </AnimatePresence>
