@@ -191,7 +191,7 @@ export default function ProductDetails() {
                   <Button
                     size="lg"
                     className="h-12 flex-1 bg-gradient-accent text-accent-foreground border-0 shadow-glow hover:opacity-95"
-                    onClick={() => addToCart({ ...product, retail_price: unitPrice, name: `${product.name} (1 ${selectedTier?.unit || "piece"})` } as Product, qty)}
+                    onClick={() => addToCart({ ...product, name: `${product.name} (1 ${selectedTier?.unit || "piece"})` } as Product, qty, unitPrice)}
                   >
                     <ShoppingBag className="h-4 w-4 mr-2" />
                     <AnimatePresence mode="wait">
