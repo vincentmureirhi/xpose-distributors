@@ -53,7 +53,7 @@ export interface CartItem {
   quantity: number;
   // Pricing rule context carried from product
   pricing_rule_id?: string | number;
-  pricing_rule_type?: string;
+  pricing_rule_type?: PricingRuleType;
   pricing_rule_name?: string;
   wholesale_threshold_qty?: number;
 }
