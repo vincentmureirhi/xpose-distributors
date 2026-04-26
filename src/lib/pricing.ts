@@ -17,7 +17,17 @@ export function getPriceTiers(product: Product): PriceTier[] {
 export const unitLabel = (t: PriceTier) =>
   t.label || `1 ${t.unit}${t.qty_per_unit && t.qty_per_unit > 1 ? ` (${t.qty_per_unit} pcs)` : ""}`;
 
-/** Maps a backend pricing_rule_type to a customer-friendly display label. */
+/**
+ * Maps a backend `pricing_rule_type` value to a short customer-facing display
+ * label. Returns an empty string for unknown or absent rule types so callers
+ * can hide the element gracefully.
+ *
+ * Supported values:
+ *   FIXED_PRICE      → "Retail"
+ *   BULK_DISCOUNT    → "Bulk Discount"
+ *   GROUP_WHOLESALE  → "Group Wholesale"
+ *   TIERED           → "Volume Pricing"
+ */
 export function pricingTypeLabel(ruleType?: string | null): string {
   switch (ruleType) {
     case "FIXED_PRICE": return "Retail";

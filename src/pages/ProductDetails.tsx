@@ -164,9 +164,12 @@ export default function ProductDetails() {
                         className="block font-display font-bold text-4xl md:text-5xl tracking-tight leading-none tabular-nums"
                       />
                       <p className="text-xs text-muted-foreground mt-2">
-                        {selectedTier?.qty_per_unit && selectedTier.qty_per_unit > 1
-                          ? `per 1 ${selectedTier.unit} · ${formatPrice(Math.round(perPiece))}/piece`
-                          : (selectedTier?.label || `per 1 ${selectedTier?.unit || "item"}`)}
+                        {(() => {
+                          if (selectedTier?.qty_per_unit && selectedTier.qty_per_unit > 1) {
+                            return `per 1 ${selectedTier.unit} · ${formatPrice(Math.round(perPiece))}/piece`;
+                          }
+                          return selectedTier?.label || `per 1 ${selectedTier?.unit || "item"}`;
+                        })()}
                       </p>
                     </div>
                     {savePct ? (
