@@ -79,16 +79,21 @@ export default function TrackOrder() {
   const [phone, setPhone] = useState("");
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   const lookup = useCallback(async (e?: FormEvent) => {
     e?.preventDefault();
     if (!orderId) return;
     setLoading(true);
-    const o = await trackOrder(orderId, phone);
-    setOrder(o);
-    setLastRefresh(new Date());
-    setLoading(false);
+    setSearched(true);
+    try {
+      const o = await trackOrder(orderId, phone);
+      setOrder(o);
+      setLastRefresh(o ? new Date() : null);
+    } finally {
+      setLoading(false);
+    }
   }, [orderId, phone]);
 
   // Auto-load when id is in URL
@@ -105,7 +110,7 @@ export default function TrackOrder() {
     const interval = setInterval(() => {
       trackOrder(orderId, phone).then((o) => {
         if (o) { setOrder(o); setLastRefresh(new Date()); }
-      });
+      }).catch(() => {});
     }, 30000);
     return () => clearInterval(interval);
   }, [order, orderId, phone]);
@@ -401,7 +406,7 @@ export default function TrackOrder() {
             </motion.div>
           )}
 
-          {!loading && !order && orderId && (
+          {!loading && !order && searched && (
             <motion.div
               key="not-found"
               initial={{ opacity: 0, y: 20 }}
