@@ -7,7 +7,7 @@ import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import ProductCard from "@/components/products/ProductCard";
 import type { Product } from "@/types/shop";
-import { getPriceTiers } from "@/lib/pricing";
+import { getPriceTiers, pricingTypeLabel } from "@/lib/pricing";
 import AnimatedPrice from "@/components/AnimatedPrice";
 
 export default function ProductDetails() {
@@ -107,44 +107,54 @@ export default function ProductDetails() {
               ? Math.round(((piecePrice - perPiece) / piecePrice) * 100)
               : null;
             const activeIndex = Math.max(0, tiersList.findIndex((t) => t.unit === selectedUnit));
+            const ruleLabel = pricingTypeLabel(product.pricing_rule_type);
+            const tierDisplayName = (t: typeof tiersList[0]) => t.label || t.unit;
             return (
               <>
-                {/* Apple-style segmented pill switcher */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.12 }} className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">Pack size</p>
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Live pricing</span>
-                  </div>
+                  {/* Segmented pack-size switcher — only shown when multiple tiers are available */}
+                  {tiersList.length > 1 && (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
+                          {tiersList.some((t) => t.qty_per_unit && t.qty_per_unit > 1) ? "Pack size" : "Pricing"}
+                        </p>
+                        {ruleLabel && (
+                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{ruleLabel}</span>
+                        )}
+                      </div>
 
-                  <div
-                    className="relative inline-flex w-full p-1 rounded-full bg-secondary border border-border"
-                    style={{ ['--seg-count' as any]: tiersList.length, ['--seg-index' as any]: activeIndex }}
-                  >
-                    <motion.span
-                      layout
-                      transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                      className="absolute top-1 bottom-1 rounded-full bg-background shadow-soft border border-border"
-                      style={{
-                        width: `calc((100% - 0.5rem) / ${tiersList.length})`,
-                        left: `calc(0.25rem + ((100% - 0.5rem) / ${tiersList.length}) * ${activeIndex})`,
-                      }}
-                    />
-                    {tiersList.map((t) => {
-                      const active = t.unit === selectedUnit;
-                      return (
-                        <button
-                          key={t.unit}
-                          onClick={() => setSelectedUnit(t.unit)}
-                          className={`relative z-10 flex-1 px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors ${active ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                        >
-                          {t.unit}
-                          {t.qty_per_unit && t.qty_per_unit > 1 ? (
-                            <span className="ml-1 normal-case tracking-normal text-[10px] opacity-70">·{t.qty_per_unit}pc</span>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
+                      <div
+                        className="relative inline-flex w-full p-1 rounded-full bg-secondary border border-border"
+                        style={{ ['--seg-count' as any]: tiersList.length, ['--seg-index' as any]: activeIndex }}
+                      >
+                        <motion.span
+                          layout
+                          transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                          className="absolute top-1 bottom-1 rounded-full bg-background shadow-soft border border-border"
+                          style={{
+                            width: `calc((100% - 0.5rem) / ${tiersList.length})`,
+                            left: `calc(0.25rem + ((100% - 0.5rem) / ${tiersList.length}) * ${activeIndex})`,
+                          }}
+                        />
+                        {tiersList.map((t) => {
+                          const active = t.unit === selectedUnit;
+                          return (
+                            <button
+                              key={t.unit}
+                              onClick={() => setSelectedUnit(t.unit)}
+                              className={`relative z-10 flex-1 px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors ${active ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                            >
+                              {tierDisplayName(t)}
+                              {!t.label && t.qty_per_unit && t.qty_per_unit > 1 ? (
+                                <span className="ml-1 normal-case tracking-normal text-[10px] opacity-70">·{t.qty_per_unit}pc</span>
+                              ) : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
 
                   {/* One big animated price */}
                   <div className="flex items-end justify-between gap-4 pt-1">
@@ -154,10 +164,9 @@ export default function ProductDetails() {
                         className="block font-display font-bold text-4xl md:text-5xl tracking-tight leading-none tabular-nums"
                       />
                       <p className="text-xs text-muted-foreground mt-2">
-                        per 1 {selectedTier?.unit}
                         {selectedTier?.qty_per_unit && selectedTier.qty_per_unit > 1
-                          ? ` · ${formatPrice(Math.round(perPiece))}/piece`
-                          : ""}
+                          ? `per 1 ${selectedTier.unit} · ${formatPrice(Math.round(perPiece))}/piece`
+                          : (selectedTier?.label || `per 1 ${selectedTier?.unit || "item"}`)}
                       </p>
                     </div>
                     {savePct ? (
@@ -168,7 +177,7 @@ export default function ProductDetails() {
                         transition={{ type: "spring", stiffness: 400, damping: 22 }}
                         className="shrink-0 px-3 py-1.5 rounded-full bg-accent/15 text-accent text-[11px] font-bold uppercase tracking-wider"
                       >
-                        Save {savePct}%/pc
+                        Save {savePct}% per piece
                       </motion.span>
                     ) : null}
                   </div>

@@ -82,6 +82,7 @@ export default function Cart() {
               <Link to="/checkout">Proceed to checkout</Link>
             </Button>
             <Button asChild variant="outline" className="w-full"><Link to="/products">Continue shopping</Link></Button>
+            <p className="text-xs text-muted-foreground text-center">Pricing is confirmed when your order is placed.</p>
           </div>
         </aside>
       </div>

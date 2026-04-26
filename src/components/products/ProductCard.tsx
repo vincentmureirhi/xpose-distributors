@@ -59,7 +59,7 @@ export default function ProductCard({ product, index = 0 }: Props) {
               </span>
             )}
             {savePct && savePct > 0 && !hasFlashDeal && (
-              <span className="px-2.5 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">Save {savePct}% in bulk</span>
+              <span className="px-2.5 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">Save up to {savePct}%</span>
             )}
             {product.is_sponsored && (
               <span className="px-2.5 py-1 rounded-full bg-background/90 backdrop-blur text-foreground text-[10px] font-semibold uppercase tracking-wider">Sponsored</span>

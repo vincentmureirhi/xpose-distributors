@@ -12,7 +12,7 @@ const FAQ: Record<string, string> = {
   shipping: "🚚 We offer free shipping for orders over KES 75,000. We deliver across Kenya!",
   payment: "💳 We accept M-Pesa (Till: 711714), bank transfer, and cash on delivery.",
   returns: "We operate a quality-first policy. If you receive a defective item, contact us within 48 hours via WhatsApp.",
-  wholesale: "📦 We offer wholesale & retail pricing. Buy in bulk to get the best price per piece!",
+  pricing: "💰 We offer flexible pricing — retail, bulk discount, and volume options. Your pricing is applied automatically based on your selection.",
   contact: "📞 Call/WhatsApp us at 0701377869 for direct support.",
   track: "🔍 You can track your order on our Track Order page using your order number.",
 };
@@ -22,10 +22,10 @@ function getBotResponse(input: string): string {
   if (lower.includes("ship") || lower.includes("deliver") || lower.includes("delivery")) return FAQ.shipping;
   if (lower.includes("pay") || lower.includes("mpesa") || lower.includes("till")) return FAQ.payment;
   if (lower.includes("return") || lower.includes("refund")) return FAQ.returns;
-  if (lower.includes("wholesale") || lower.includes("bulk") || lower.includes("retail")) return FAQ.wholesale;
+  if (lower.includes("wholesale") || lower.includes("bulk") || lower.includes("retail") || lower.includes("pric")) return FAQ.pricing;
   if (lower.includes("contact") || lower.includes("human") || lower.includes("support")) return FAQ.contact;
   if (lower.includes("track") || lower.includes("order")) return FAQ.track;
-  return "I'm not sure about that 🤔 — try asking about shipping, payment, wholesale pricing, or contact us directly on WhatsApp!";
+  return "I'm not sure about that 🤔 — try asking about shipping, payment, pricing, or contact us directly on WhatsApp!";
 }
 
 const quickActions = [

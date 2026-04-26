@@ -15,6 +15,8 @@ export interface Product {
   is_flash?: boolean;
   is_sponsored?: boolean;
   price_tiers?: PriceTier[];
+  // Pricing rule assigned by the backend (e.g. FIXED_PRICE, BULK_DISCOUNT, GROUP_WHOLESALE, TIERED)
+  pricing_rule_type?: string | null;
   // Flash sale fields from API
   discounted_price?: number;
   flash_sale_id?: number;
