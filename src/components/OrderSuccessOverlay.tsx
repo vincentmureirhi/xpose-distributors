@@ -1,9 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Package, Truck, CheckCircle2 } from "lucide-react";
+import { Package, Truck, CheckCircle2, CreditCard } from "lucide-react";
 
 const CONFETTI_COLORS = ["hsl(14 100% 57%)", "hsl(28 100% 60%)", "hsl(142 71% 45%)", "hsl(222 47% 18%)", "hsl(40 33% 88%)", "#FFD700", "#FF69B4"];
+const TILL_NUMBER = "711714";
 
 interface Props {
   show: boolean;
@@ -13,7 +14,7 @@ interface Props {
 
 export default function OrderSuccessOverlay({ show, orderId, onDone }: Props) {
   const [confetti, setConfetti] = useState<{ x: number; r: number; d: number; c: string }[]>([]);
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(7);
 
   useEffect(() => {
     if (!show) return;
@@ -25,9 +26,9 @@ export default function OrderSuccessOverlay({ show, orderId, onDone }: Props) {
         c: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
       }))
     );
-    setCountdown(5);
+    setCountdown(7);
     const cd = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
-    const t = setTimeout(() => { clearInterval(cd); onDone?.(); }, 5000);
+    const t = setTimeout(() => { clearInterval(cd); onDone?.(); }, 7000);
     return () => { clearTimeout(t); clearInterval(cd); };
   }, [show, onDone]);
 
@@ -55,10 +56,10 @@ export default function OrderSuccessOverlay({ show, orderId, onDone }: Props) {
           </div>
 
           {/* Animation sequence */}
-          <div className="relative z-10 flex flex-col items-center text-center max-w-md px-6">
+          <div className="relative z-10 flex flex-col items-center text-center max-w-md px-6 w-full">
 
             {/* Truck animation */}
-            <div className="relative h-32 w-full mb-8 overflow-hidden">
+            <div className="relative h-28 w-full mb-6 overflow-hidden">
               {/* Road */}
               <div className="absolute bottom-4 left-0 right-0 h-0.5 bg-border" />
 
@@ -114,9 +115,10 @@ export default function OrderSuccessOverlay({ show, orderId, onDone }: Props) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
+              className="w-full"
             >
-              <div className="text-6xl mb-4">🎉</div>
-              <h2 className="font-display font-bold text-4xl tracking-tight mb-2">
+              <div className="text-5xl mb-3">🎉</div>
+              <h2 className="font-display font-bold text-3xl tracking-tight mb-1">
                 Order Placed Successfully!
               </h2>
               {orderId && (
@@ -125,9 +127,30 @@ export default function OrderSuccessOverlay({ show, orderId, onDone }: Props) {
                   <span className="font-bold text-foreground">{orderId}</span>
                 </p>
               )}
-              <p className="text-muted-foreground text-sm mb-6">
-                We've received your order and it's being processed. 🚀
+              <p className="text-muted-foreground text-sm mb-4">
+                Your order is confirmed. Please complete your M-Pesa payment to get it processed.
               </p>
+            </motion.div>
+
+            {/* Payment instructions */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+              className="w-full rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/10 p-4 mb-4 text-left"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                <p className="font-semibold text-amber-800 dark:text-amber-300 text-sm">Pay via M-Pesa to confirm your order</p>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <span className="text-muted-foreground">Till Number</span>
+                <span className="font-bold text-foreground tracking-widest">{TILL_NUMBER}</span>
+                <span className="text-muted-foreground">Business</span>
+                <span className="font-semibold">XPOSE</span>
+                <span className="text-muted-foreground">Reference</span>
+                <span className="font-semibold">{orderId || "Your order number"}</span>
+              </div>
             </motion.div>
 
             {/* Track button */}
@@ -135,14 +158,14 @@ export default function OrderSuccessOverlay({ show, orderId, onDone }: Props) {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1 }}
-              className="flex flex-col items-center gap-3 w-full"
+              className="flex flex-col items-center gap-2 w-full"
             >
               <Link
                 to={orderId ? `/track-order?id=${orderId}` : "/track-order"}
-                className="inline-flex items-center gap-2 h-12 px-8 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-2 h-11 px-8 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-sm hover:opacity-90 transition-opacity w-full justify-center"
               >
                 <Truck className="h-4 w-4" />
-                Track Your Order
+                Track Your Order &amp; Pay
               </Link>
               <p className="text-xs text-muted-foreground">
                 Redirecting in {countdown}s…

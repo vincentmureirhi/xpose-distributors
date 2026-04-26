@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, FileText, Loader2, MapPin, Phone, User, Truck, X } from "lucide-react";
+import { ArrowLeft, CreditCard, FileText, Loader2, MapPin, Phone, User, Truck, X } from "lucide-react";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -400,6 +400,31 @@ export default function Checkout() {
                 <span>Total</span>
                 <span>{formatPrice(totalAmount)}</span>
               </div>
+            </div>
+
+            {/* Payment info */}
+            <div className="mt-4 pt-4 border-t border-border">
+              <div className="flex items-center gap-2 mb-2">
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment</p>
+              </div>
+              <div className="rounded-lg bg-secondary/60 p-3 text-xs space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Method</span>
+                  <span className="font-semibold">M-Pesa Buy Goods</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Till Number</span>
+                  <span className="font-bold tracking-widest">711714</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Business</span>
+                  <span className="font-semibold">XPOSE</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Payment instructions will be shown after placing your order.
+              </p>
             </div>
           </motion.div>
         </aside>

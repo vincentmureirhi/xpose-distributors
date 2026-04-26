@@ -48,7 +48,12 @@ export interface Order {
   id: string;
   status: string;
   order_status?: string;
+  payment_status?: string;
   total: number;
+  total_amount?: number;
   items: CartItem[];
   created_at: string;
+  status_changed_at?: string;
+  customer_name?: string;
+  delivery_address?: string;
 }
