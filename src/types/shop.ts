@@ -1,3 +1,5 @@
+export type PricingRuleType = "CONSTANT" | "SKU_THRESHOLD" | "GROUP_THRESHOLD" | "TIERED";
+
 export interface Product {
   id: string | number;
   name: string;
@@ -19,6 +21,13 @@ export interface Product {
   discounted_price?: number;
   flash_sale_id?: number;
   flash_sale_name?: string;
+  // Pricing rule context (from backend, PR 3)
+  pricing_rule_id?: string | number;
+  pricing_rule_type?: PricingRuleType;
+  pricing_rule_name?: string;
+  wholesale_threshold_qty?: number;
+  min_qty_wholesale?: number;
+  price_source?: string;
 }
 
 export interface PriceTier {
@@ -42,6 +51,11 @@ export interface CartItem {
   price: number;
   image_url: string;
   quantity: number;
+  // Pricing rule context carried from product
+  pricing_rule_id?: string | number;
+  pricing_rule_type?: PricingRuleType;
+  pricing_rule_name?: string;
+  wholesale_threshold_qty?: number;
 }
 
 export interface Order {

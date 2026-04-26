@@ -14,6 +14,13 @@ const getStored = (): CartItem[] => {
 
 const normalizePrice = (p: Product) => Number(p.retail_price || p.price || 0);
 
+export interface GroupThresholdInfo {
+  ruleName: string;
+  threshold: number;
+  cartQty: number;
+  met: boolean;
+}
+
 interface CartCtx {
   cartItems: CartItem[];
   itemCount: number;
@@ -25,6 +32,8 @@ interface CartCtx {
   updateQuantity: (id: string | number, quantity: number) => void;
   removeFromCart: (id: string | number) => void;
   clearCart: () => void;
+  /** Progress for each GROUP_THRESHOLD rule currently in the cart, keyed by pricing_rule_id */
+  groupThresholdProgress: Record<string, GroupThresholdInfo>;
 }
 
 const CartContext = createContext<CartCtx | null>(null);
@@ -46,16 +55,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (existing) {
         return prev.map((i) => (i.id === product.id ? { ...i, quantity: i.quantity + quantity } : i));
       }
-      return [
-        ...prev,
-        {
-          id: product.id,
-          name: product.name,
-          price: normalizePrice(product),
-          image_url: product.image_url || "",
-          quantity,
-        },
-      ];
+      const item: CartItem = {
+        id: product.id,
+        name: product.name,
+        price: normalizePrice(product),
+        image_url: product.image_url || "",
+        quantity,
+        pricing_rule_id: product.pricing_rule_id,
+        pricing_rule_type: product.pricing_rule_type,
+        pricing_rule_name: product.pricing_rule_name,
+        wholesale_threshold_qty: product.wholesale_threshold_qty ?? product.min_qty_wholesale,
+      };
+      return [...prev, item];
     });
     setIsOpen(true);
   }, []);
@@ -80,9 +91,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [cartItems]
   );
 
+  /** Aggregate cart quantities for each GROUP_THRESHOLD pricing rule */
+  const groupThresholdProgress = useMemo<Record<string, GroupThresholdInfo>>(() => {
+    const map: Record<string, GroupThresholdInfo> = {};
+    for (const item of cartItems) {
+      if (item.pricing_rule_type === "GROUP_THRESHOLD" && item.pricing_rule_id != null) {
+        const key = String(item.pricing_rule_id);
+        const threshold = item.wholesale_threshold_qty ?? 0;
+        if (!map[key]) {
+          map[key] = {
+            ruleName: item.pricing_rule_name || "this group",
+            threshold,
+            cartQty: 0,
+            met: false,
+          };
+        }
+        map[key].cartQty += item.quantity;
+      }
+    }
+    for (const key of Object.keys(map)) {
+      map[key].met = map[key].threshold > 0 && map[key].cartQty >= map[key].threshold;
+    }
+    return map;
+  }, [cartItems]);
+
   return (
     <CartContext.Provider
-      value={{ cartItems, itemCount, totalAmount, isOpen, openCart, closeCart, addToCart, updateQuantity, removeFromCart, clearCart }}
+      value={{ cartItems, itemCount, totalAmount, isOpen, openCart, closeCart, addToCart, updateQuantity, removeFromCart, clearCart, groupThresholdProgress }}
     >
       {children}
     </CartContext.Provider>
