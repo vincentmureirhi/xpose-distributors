@@ -165,7 +165,7 @@ export default function OrderSuccessOverlay({ show, orderId, onDone }: Props) {
                 className="inline-flex items-center gap-2 h-11 px-8 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold text-sm hover:opacity-90 transition-opacity w-full justify-center"
               >
                 <Truck className="h-4 w-4" />
-                Track Your Order &amp; Pay
+                Track Your Order & Pay
               </Link>
               <p className="text-xs text-muted-foreground">
                 Redirecting in {countdown}s…
