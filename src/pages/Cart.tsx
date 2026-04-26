@@ -1,12 +1,49 @@
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { CheckCircle2, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
+import type { CartItem } from "@/types/shop";
+
+function ThresholdBadge({ item, groupThresholdProgress }: { item: CartItem; groupThresholdProgress: ReturnType<typeof useCart>["groupThresholdProgress"] }) {
+  if (item.pricing_rule_type === "GROUP_THRESHOLD" && item.pricing_rule_id != null) {
+    const key = String(item.pricing_rule_id);
+    const info = groupThresholdProgress[key];
+    if (!info || info.threshold === 0) return null;
+    const remaining = info.threshold - info.cartQty;
+    return (
+      <p className={`text-xs mt-1.5 flex items-center gap-1 ${info.met ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>
+        {info.met ? (
+          <><CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />{info.cartQty} of {info.threshold} items in group — wholesale pricing unlocked</>
+        ) : (
+          <>{info.cartQty} of {info.threshold} items in group — add {remaining} more to unlock wholesale pricing</>
+        )}
+      </p>
+    );
+  }
+
+  if (item.pricing_rule_type === "SKU_THRESHOLD") {
+    const threshold = item.wholesale_threshold_qty ?? 0;
+    if (threshold === 0) return null;
+    const met = item.quantity >= threshold;
+    const remaining = threshold - item.quantity;
+    return (
+      <p className={`text-xs mt-1.5 flex items-center gap-1 ${met ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>
+        {met ? (
+          <><CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />Bulk pricing applied — buy {threshold}+ of this item</>
+        ) : (
+          <>Buy {threshold}+ of this item for bulk pricing — add {remaining} more</>
+        )}
+      </p>
+    );
+  }
+
+  return null;
+}
 
 export default function Cart() {
-  const { cartItems, updateQuantity, removeFromCart, totalAmount, clearCart } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, totalAmount, clearCart, groupThresholdProgress } = useCart();
   useEffect(() => { document.title = "Cart — XPOSE"; }, []);
 
   if (cartItems.length === 0) {
@@ -51,6 +88,7 @@ export default function Cart() {
                     </button>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">{formatPrice(item.price)} each</p>
+                  <ThresholdBadge item={item} groupThresholdProgress={groupThresholdProgress} />
                   <div className="mt-3 flex items-center justify-between">
                     <div className="flex items-center gap-1 bg-secondary rounded-full p-0.5">
                       <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="h-8 w-8 rounded-full grid place-items-center hover:bg-background transition-colors"><Minus className="h-3.5 w-3.5" /></button>

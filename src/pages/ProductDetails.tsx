@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Minus, Plus, Share2, ShoppingBag, Truck, ShieldCheck, ChevronRight } from "lucide-react";
+import { Heart, Info, Minus, Plus, Share2, ShoppingBag, Truck, ShieldCheck, ChevronRight } from "lucide-react";
 import { getProductById, listProducts } from "@/lib/api/products";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,50 @@ import ProductCard from "@/components/products/ProductCard";
 import type { Product } from "@/types/shop";
 import { getPriceTiers } from "@/lib/pricing";
 import AnimatedPrice from "@/components/AnimatedPrice";
+
+function PricingRuleExplanation({ product }: { product: Product }) {
+  const ruleType = product.pricing_rule_type;
+  const ruleName = product.pricing_rule_name;
+  const threshold = product.wholesale_threshold_qty ?? product.min_qty_wholesale ?? 0;
+
+  if (ruleType === "GROUP_THRESHOLD" && threshold > 0) {
+    return (
+      <div className="flex items-start gap-2 rounded-xl bg-secondary/60 px-4 py-3 text-sm">
+        <Info className="h-4 w-4 mt-0.5 flex-shrink-0 text-accent" />
+        <span>
+          Buy any <strong>{threshold} items</strong> from{" "}
+          <strong>{ruleName || "this group"}</strong> for wholesale pricing.
+          Items in the same group count together.
+        </span>
+      </div>
+    );
+  }
+
+  if (ruleType === "SKU_THRESHOLD" && threshold > 0) {
+    return (
+      <div className="flex items-start gap-2 rounded-xl bg-secondary/60 px-4 py-3 text-sm">
+        <Info className="h-4 w-4 mt-0.5 flex-shrink-0 text-accent" />
+        <span>
+          Buy <strong>{threshold}+</strong> of this item for bulk pricing.
+        </span>
+      </div>
+    );
+  }
+
+  if (ruleType === "TIERED") {
+    return (
+      <div className="flex items-start gap-2 rounded-xl bg-secondary/60 px-4 py-3 text-sm">
+        <Info className="h-4 w-4 mt-0.5 flex-shrink-0 text-accent" />
+        <span>
+          Volume pricing applies — select a pack size above to see tiered prices.
+        </span>
+      </div>
+    );
+  }
+
+  // No pricing rule or CONSTANT — show nothing extra
+  return null;
+}
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -177,6 +221,12 @@ export default function ProductDetails() {
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-muted-foreground leading-relaxed">
                   {product.description || "A beautifully crafted product, made with care."}
                 </motion.p>
+
+                {product.pricing_rule_type && (
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
+                    <PricingRuleExplanation product={product} />
+                  </motion.div>
+                )}
 
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="flex flex-wrap items-center gap-3 pt-2">
                   <div className="flex items-center gap-1 bg-secondary rounded-full p-1">

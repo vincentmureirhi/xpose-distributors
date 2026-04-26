@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, CreditCard, FileText, Loader2, MapPin, Phone, User, Truck, X } from "lucide-react";
+import { ArrowLeft, CreditCard, FileText, Info, Loader2, MapPin, Phone, User, Truck, X } from "lucide-react";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,29 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { searchLocations } from "@/lib/kenya-locations";
 import OrderSuccessOverlay from "@/components/OrderSuccessOverlay";
+import type { CartItem } from "@/types/shop";
+
+/** Derive a human-readable price source label from the cart item's pricing rule context. */
+function getPriceSourceLabel(item: CartItem, groupThresholdProgress: ReturnType<typeof useCart>["groupThresholdProgress"]): string {
+  const ruleType = item.pricing_rule_type;
+  if (!ruleType || ruleType === "CONSTANT") return "Retail";
+
+  if (ruleType === "TIERED") return "Volume Pricing";
+
+  if (ruleType === "SKU_THRESHOLD") {
+    const threshold = item.wholesale_threshold_qty ?? 0;
+    if (threshold > 0 && item.quantity >= threshold) return "Bulk Discount";
+    return "Retail";
+  }
+
+  if (ruleType === "GROUP_THRESHOLD" && item.pricing_rule_id != null) {
+    const info = groupThresholdProgress[String(item.pricing_rule_id)];
+    if (info && info.met) return "Group Wholesale";
+    return "Retail";
+  }
+
+  return "Retail";
+}
 
 const TRANSPORT_COMPANIES = [
   "NAEKANA Sacco",
@@ -69,7 +92,7 @@ const fieldVariants = {
 };
 
 export default function Checkout() {
-  const { cartItems, totalAmount, clearCart } = useCart();
+  const { cartItems, totalAmount, clearCart, groupThresholdProgress } = useCart();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<{ id: string } | null>(null);
@@ -367,23 +390,29 @@ export default function Checkout() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cartItems.map((i) => (
-                    <tr key={i.id} className="border-b border-border/50">
-                      <td className="py-2.5 pr-2">
-                        <div className="flex items-center gap-2">
-                          {i.image_url && (
-                            <div className="h-8 w-8 rounded-md bg-secondary overflow-hidden flex-shrink-0">
-                              <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" />
+                  {cartItems.map((i) => {
+                    const priceLabel = getPriceSourceLabel(i, groupThresholdProgress);
+                    return (
+                      <tr key={i.id} className="border-b border-border/50">
+                        <td className="py-2.5 pr-2">
+                          <div className="flex items-center gap-2">
+                            {i.image_url && (
+                              <div className="h-8 w-8 rounded-md bg-secondary overflow-hidden flex-shrink-0">
+                                <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <span className="line-clamp-2 leading-snug">{i.name}</span>
+                              <span className="block text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5">{priceLabel}</span>
                             </div>
-                          )}
-                          <span className="line-clamp-2 leading-snug">{i.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-2.5 text-center text-muted-foreground">{i.quantity}</td>
-                      <td className="py-2.5 text-right whitespace-nowrap">{formatPrice(i.price)}</td>
-                      <td className="py-2.5 text-right whitespace-nowrap font-semibold">{formatPrice(i.price * i.quantity)}</td>
-                    </tr>
-                  ))}
+                          </div>
+                        </td>
+                        <td className="py-2.5 text-center text-muted-foreground">{i.quantity}</td>
+                        <td className="py-2.5 text-right whitespace-nowrap">{formatPrice(i.price)}</td>
+                        <td className="py-2.5 text-right whitespace-nowrap font-semibold">{formatPrice(i.price * i.quantity)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -400,6 +429,12 @@ export default function Checkout() {
                 <span>Total</span>
                 <span>{formatPrice(totalAmount)}</span>
               </div>
+            </div>
+
+            {/* Backend-confirmed pricing note */}
+            <div className="mt-3 flex items-start gap-2 rounded-lg bg-secondary/60 px-3 py-2.5 text-xs text-muted-foreground">
+              <Info className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-accent" />
+              <span>Shown prices are estimates. Final pricing is confirmed by our team when your order is processed.</span>
             </div>
 
             {/* Payment info */}
