@@ -31,9 +31,11 @@ export async function createOrder(payload: {
   return data?.data || data;
 }
 
-export async function trackOrder(orderId: string, phone: string): Promise<Order | null> {
+export async function trackOrder(orderNumber: string, customerPhone: string): Promise<Order | null> {
   try {
-    const { data } = await apiClient.get(`/orders/track/${orderId}`, { params: { phone } });
+    const { data } = await apiClient.get("/orders/track", {
+      params: { order_number: orderNumber, customer_phone: customerPhone },
+    });
     return data?.data || data;
   } catch {
     return null;

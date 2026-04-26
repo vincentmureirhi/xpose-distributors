@@ -81,14 +81,27 @@ export default function TrackOrder() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const lookup = useCallback(async (e?: FormEvent) => {
     e?.preventDefault();
-    if (!orderId) return;
+    setValidationError(null);
+    if (!orderId.trim() && !phone.trim()) {
+      setValidationError("Please enter your order number and phone number.");
+      return;
+    }
+    if (!orderId.trim()) {
+      setValidationError("Please enter your order number.");
+      return;
+    }
+    if (!phone.trim()) {
+      setValidationError("Please enter your phone number.");
+      return;
+    }
     setLoading(true);
     setSearched(true);
     try {
-      const o = await trackOrder(orderId, phone);
+      const o = await trackOrder(orderId.trim(), phone.trim());
       setOrder(o);
       setLastRefresh(o ? new Date() : null);
     } finally {
@@ -139,7 +152,7 @@ export default function TrackOrder() {
           transition={{ delay: 0.1 }}
           className="text-muted-foreground mb-8"
         >
-          Enter your order number to see real-time status updates.
+          Enter your order number and phone number to see real-time status updates.
         </motion.p>
 
         <motion.form
@@ -154,13 +167,17 @@ export default function TrackOrder() {
             <Input id="order" value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="ORD-XXXXXX" />
           </div>
           <div>
-            <Label htmlFor="phone">Phone (optional)</Label>
+            <Label htmlFor="phone">Phone number</Label>
             <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" />
           </div>
           <Button type="submit" disabled={loading} className="bg-foreground text-background h-10 min-w-[110px]">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Track"}
           </Button>
         </motion.form>
+
+        {validationError && (
+          <p className="mt-3 text-sm text-destructive">{validationError}</p>
+        )}
 
         <AnimatePresence mode="wait">
           {loading && (
