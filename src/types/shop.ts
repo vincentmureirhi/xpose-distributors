@@ -4,6 +4,7 @@ export interface Product {
   description?: string;
   retail_price?: number;
   wholesale_price?: number;
+  min_qty_wholesale?: number;
   price?: number;
   image_url?: string;
   images?: string[];

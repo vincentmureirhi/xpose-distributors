@@ -126,7 +126,7 @@ export default function Checkout() {
         customer_phone: values.customer_phone,
         delivery_address: `${values.delivery_location} — ${values.transport_company}`,
         notes: values.notes || undefined,
-        items: cartItems.map((i) => ({ product_id: i.id, quantity: i.quantity })),
+        items: cartItems.map((i) => ({ product_id: i.id, quantity: i.quantity, unit_price: i.price })),
       });
       clearCart();
       const orderId = result.order_number || result.id;

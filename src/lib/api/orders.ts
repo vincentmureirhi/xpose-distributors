@@ -7,7 +7,7 @@ export interface GuestCheckoutPayload {
   customer_email?: string;
   delivery_address: string;
   notes?: string;
-  items: { product_id: string | number; quantity: number }[];
+  items: { product_id: string | number; quantity: number; unit_price?: number }[];
 }
 
 export interface GuestCheckoutResult {

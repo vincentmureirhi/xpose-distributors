@@ -7,7 +7,8 @@ export function getPriceTiers(product: Product): PriceTier[] {
   const wholesale = Number(product.wholesale_price || 0);
   const list: PriceTier[] = [{ unit: "piece", qty_per_unit: 1, price: retail }];
   if (wholesale > 0 && wholesale < retail) {
-    list.push({ unit: "wholesale", qty_per_unit: 1, price: wholesale, min_qty: 10 });
+    const minQty = product.min_qty_wholesale ? Number(product.min_qty_wholesale) : undefined;
+    list.push({ unit: "wholesale", qty_per_unit: 1, price: wholesale, ...(minQty ? { min_qty: minQty } : {}) });
   }
   return list;
 }

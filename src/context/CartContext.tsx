@@ -12,7 +12,8 @@ const getStored = (): CartItem[] => {
   }
 };
 
-const normalizePrice = (p: Product) => Number(p.retail_price || p.price || 0);
+const normalizePrice = (p: Product) =>
+  Number(p.retail_price || p.price || p.wholesale_price || 0);
 
 interface CartCtx {
   cartItems: CartItem[];
@@ -21,7 +22,7 @@ interface CartCtx {
   isOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
-  addToCart: (product: Product, quantity?: number) => void;
+  addToCart: (product: Product, quantity?: number, unitPrice?: number) => void;
   updateQuantity: (id: string | number, quantity: number) => void;
   removeFromCart: (id: string | number) => void;
   clearCart: () => void;
@@ -40,18 +41,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const openCart = useCallback(() => setIsOpen(true), []);
   const closeCart = useCallback(() => setIsOpen(false), []);
 
-  const addToCart = useCallback((product: Product, quantity = 1) => {
+  const addToCart = useCallback((product: Product, quantity = 1, unitPrice?: number) => {
     setCartItems((prev) => {
       const existing = prev.find((i) => i.id === product.id);
       if (existing) {
-        return prev.map((i) => (i.id === product.id ? { ...i, quantity: i.quantity + quantity } : i));
+        return prev.map((i) =>
+          i.id === product.id
+            ? {
+                ...i,
+                quantity: i.quantity + quantity,
+                ...(unitPrice !== undefined ? { price: unitPrice } : {}),
+              }
+            : i
+        );
       }
+      const price = unitPrice !== undefined ? unitPrice : normalizePrice(product);
       return [
         ...prev,
         {
           id: product.id,
           name: product.name,
-          price: normalizePrice(product),
+          price,
           image_url: product.image_url || "",
           quantity,
         },
