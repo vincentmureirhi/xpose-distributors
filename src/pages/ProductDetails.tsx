@@ -24,6 +24,15 @@ export default function ProductDetails() {
     if (tiersList.length) setSelectedUnit(tiersList[0].unit);
   }, [tiersList]);
 
+  // Auto-switch away from a locked tier when qty drops below its threshold
+  useEffect(() => {
+    const currentTier = tiersList.find((t) => t.unit === selectedUnit);
+    if (currentTier?.min_qty && qty < currentTier.min_qty) {
+      const fallback = tiersList.find((t) => !t.min_qty || qty >= t.min_qty);
+      if (fallback) setSelectedUnit(fallback.unit);
+    }
+  }, [qty, tiersList, selectedUnit]);
+
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -131,15 +140,23 @@ export default function ProductDetails() {
                     />
                     {tiersList.map((t) => {
                       const active = t.unit === selectedUnit;
+                      const meetsThreshold = !t.min_qty || qty >= t.min_qty;
+                      const needMore = t.min_qty && qty < t.min_qty ? t.min_qty - qty : 0;
                       return (
                         <button
                           key={t.unit}
-                          onClick={() => setSelectedUnit(t.unit)}
-                          className={`relative z-10 flex-1 px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors ${active ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                          onClick={() => meetsThreshold && setSelectedUnit(t.unit)}
+                          disabled={!meetsThreshold}
+                          aria-disabled={!meetsThreshold}
+                          title={needMore ? `Add ${needMore} more to unlock ${t.unit} pricing` : undefined}
+                          className={`relative z-10 flex-1 px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors ${active ? "text-foreground" : "text-muted-foreground hover:text-foreground"} ${!meetsThreshold ? "opacity-40 cursor-not-allowed" : ""}`}
                         >
                           {t.unit}
                           {t.qty_per_unit && t.qty_per_unit > 1 ? (
                             <span className="ml-1 normal-case tracking-normal text-[10px] opacity-70">·{t.qty_per_unit}pc</span>
+                          ) : null}
+                          {needMore ? (
+                            <span className="block normal-case tracking-normal text-[9px] opacity-60 font-normal">need {t.min_qty}+</span>
                           ) : null}
                         </button>
                       );
@@ -172,6 +189,36 @@ export default function ProductDetails() {
                       </motion.span>
                     ) : null}
                   </div>
+
+                  {/* Threshold progress messaging */}
+                  {(() => {
+                    const wholesaleTier = tiersList.find((t) => t.min_qty && t.min_qty > 1);
+                    if (!wholesaleTier || !wholesaleTier.min_qty) return null;
+                    const threshold = wholesaleTier.min_qty;
+                    if (qty >= threshold) {
+                      return (
+                        <motion.p
+                          key="unlocked"
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-xs font-medium text-accent flex items-center gap-1"
+                        >
+                          <span>✓</span> Wholesale pricing unlocked — select the {wholesaleTier.unit} tier above
+                        </motion.p>
+                      );
+                    }
+                    const needed = threshold - qty;
+                    return (
+                      <motion.p
+                        key="locked"
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-xs text-muted-foreground"
+                      >
+                        Add <span className="font-semibold text-foreground">{needed}</span> more to unlock wholesale pricing at {formatPrice(wholesaleTier.price)}/{wholesaleTier.unit}
+                      </motion.p>
+                    );
+                  })()}
                 </motion.div>
 
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-muted-foreground leading-relaxed">

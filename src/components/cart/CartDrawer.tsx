@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function CartDrawer() {
-  const { isOpen, closeCart, cartItems, updateQuantity, removeFromCart, totalAmount, itemCount } = useCart();
+  const { isOpen, closeCart, cartItems, updateQuantity, removeFromCart, totalAmount, itemCount, evaluations, pricingLoading } = useCart();
 
   return (
     <Sheet open={isOpen} onOpenChange={(o) => (o ? null : closeCart())}>
@@ -60,7 +60,17 @@ export default function CartDrawer() {
                           <X className="h-4 w-4" />
                         </button>
                       </div>
-                      <p className="text-sm font-semibold mt-1">{formatPrice(item.price)}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-sm font-semibold">{formatPrice(evaluations[item.id]?.unit_price ?? item.price)}</p>
+                        {evaluations[item.id]?.pricing_label && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${evaluations[item.id]?.wholesale_eligible ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>
+                            {evaluations[item.id]?.pricing_label}
+                          </span>
+                        )}
+                        {pricingLoading && !evaluations[item.id] && (
+                          <span className="text-[10px] text-muted-foreground animate-pulse">…</span>
+                        )}
+                      </div>
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex items-center gap-1 bg-background border border-border rounded-full p-0.5">
                           <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="h-7 w-7 rounded-full grid place-items-center hover:bg-secondary transition-colors" aria-label="Decrease">
@@ -73,7 +83,7 @@ export default function CartDrawer() {
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
-                        <span className="text-sm font-semibold">{formatPrice(item.price * item.quantity)}</span>
+                        <span className="text-sm font-semibold">{formatPrice((evaluations[item.id]?.unit_price ?? item.price) * item.quantity)}</span>
                       </div>
                     </div>
                   </motion.li>

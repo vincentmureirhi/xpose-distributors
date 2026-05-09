@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { CartItem, Product } from "@/types/shop";
+import type { CartItem, PricingEvaluation, Product } from "@/types/shop";
+import { evaluatePricing } from "@/lib/api/pricing";
 
 const CART_KEY = "customerCart";
 
@@ -20,6 +21,8 @@ interface CartCtx {
   itemCount: number;
   totalAmount: number;
   isOpen: boolean;
+  pricingLoading: boolean;
+  evaluations: Record<string | number, PricingEvaluation>;
   openCart: () => void;
   closeCart: () => void;
   addToCart: (product: Product, quantity?: number, unitPrice?: number) => void;
@@ -33,10 +36,48 @@ const CartContext = createContext<CartCtx | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>(() => getStored());
   const [isOpen, setIsOpen] = useState(false);
+  const [evaluations, setEvaluations] = useState<Record<string | number, PricingEvaluation>>({});
+  const [pricingLoading, setPricingLoading] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(CART_KEY, JSON.stringify(cartItems));
   }, [cartItems]);
+
+  // Stable key based on ids+quantities only — re-evaluate backend pricing when this changes
+  const qtySignature = useMemo(
+    () => cartItems.map((i) => `${i.id}:${i.quantity}`).join("|"),
+    [cartItems]
+  );
+
+  useEffect(() => {
+    if (!qtySignature) {
+      setEvaluations({});
+      return;
+    }
+
+    let cancelled = false;
+    setPricingLoading(true);
+
+    evaluatePricing(cartItems.map((i) => ({ product_id: i.id, quantity: i.quantity })))
+      .then((results) => {
+        if (cancelled) return;
+        const map: Record<string | number, PricingEvaluation> = {};
+        results.forEach((r) => {
+          map[r.product_id] = r;
+        });
+        setEvaluations(map);
+      })
+      .catch(() => {
+        // Backend unavailable — keep existing evaluations, fall back to local prices
+      })
+      .finally(() => {
+        if (!cancelled) setPricingLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [qtySignature]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openCart = useCallback(() => setIsOpen(true), []);
   const closeCart = useCallback(() => setIsOpen(false), []);
@@ -82,17 +123,40 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCartItems((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
-  const clearCart = useCallback(() => setCartItems([]), []);
+  const clearCart = useCallback(() => {
+    setCartItems([]);
+    setEvaluations({});
+  }, []);
 
   const itemCount = useMemo(() => cartItems.reduce((s, i) => s + i.quantity, 0), [cartItems]);
+
+  // totalAmount uses backend-evaluated unit prices when available, falls back to item.price
   const totalAmount = useMemo(
-    () => cartItems.reduce((s, i) => s + Number(i.price || 0) * i.quantity, 0),
-    [cartItems]
+    () =>
+      cartItems.reduce((s, i) => {
+        const ev = evaluations[i.id];
+        const unitPrice = ev ? ev.unit_price : Number(i.price || 0);
+        return s + unitPrice * i.quantity;
+      }, 0),
+    [cartItems, evaluations]
   );
 
   return (
     <CartContext.Provider
-      value={{ cartItems, itemCount, totalAmount, isOpen, openCart, closeCart, addToCart, updateQuantity, removeFromCart, clearCart }}
+      value={{
+        cartItems,
+        itemCount,
+        totalAmount,
+        isOpen,
+        pricingLoading,
+        evaluations,
+        openCart,
+        closeCart,
+        addToCart,
+        updateQuantity,
+        removeFromCart,
+        clearCart,
+      }}
     >
       {children}
     </CartContext.Provider>
