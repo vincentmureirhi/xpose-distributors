@@ -192,7 +192,8 @@ export default function ProductDetails() {
 
                   {/* Threshold progress messaging */}
                   {(() => {
-                    const wholesaleTier = tiersList.find((t) => t.min_qty && t.min_qty > 1);
+                    // Find the first tier that requires purchasing more than 1 unit to qualify
+                    const wholesaleTier = tiersList.find((t) => t.min_qty != null && t.min_qty > 1);
                     if (!wholesaleTier || !wholesaleTier.min_qty) return null;
                     const threshold = wholesaleTier.min_qty;
                     if (qty >= threshold) {

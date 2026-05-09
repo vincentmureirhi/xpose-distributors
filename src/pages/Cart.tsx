@@ -38,12 +38,16 @@ export default function Cart() {
               const thresholdQty = ev?.threshold_quantity;
               const ruleType = ev?.rule_type;
 
-              // Threshold progress for SKU_THRESHOLD or GROUP_THRESHOLD items
-              const showThresholdMsg =
+              // Threshold progress flags — separate by rule type for clarity
+              const isSkuThreshold =
                 !wholesaleEligible &&
                 thresholdQty != null &&
-                (ruleType === "SKU_THRESHOLD" || ruleType === "GROUP_THRESHOLD");
-              const needed = showThresholdMsg && thresholdQty != null ? thresholdQty - item.quantity : 0;
+                ruleType === "SKU_THRESHOLD";
+              const isGroupThreshold =
+                !wholesaleEligible &&
+                thresholdQty != null &&
+                ruleType === "GROUP_THRESHOLD";
+              const needed = isSkuThreshold && thresholdQty != null ? thresholdQty - item.quantity : 0;
 
               return (
                 <motion.li
@@ -77,12 +81,12 @@ export default function Cart() {
                         <span className="text-[10px] text-muted-foreground animate-pulse">evaluating…</span>
                       )}
                     </div>
-                    {showThresholdMsg && needed > 0 && ruleType === "SKU_THRESHOLD" && (
+                    {isSkuThreshold && needed > 0 && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Add <span className="font-semibold text-foreground">{needed}</span> more to unlock wholesale pricing
                       </p>
                     )}
-                    {showThresholdMsg && ruleType === "GROUP_THRESHOLD" && (
+                    {isGroupThreshold && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Group threshold not yet reached — add more qualifying items
                       </p>

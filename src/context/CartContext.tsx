@@ -55,10 +55,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Derive the API payload from the signature so we don't need cartItems in the dep array
+    const items = qtySignature.split("|").map((seg) => {
+      const [id, qty] = seg.split(":");
+      return { product_id: id, quantity: Number(qty) };
+    });
+
     let cancelled = false;
     setPricingLoading(true);
 
-    evaluatePricing(cartItems.map((i) => ({ product_id: i.id, quantity: i.quantity })))
+    evaluatePricing(items)
       .then((results) => {
         if (cancelled) return;
         const map: Record<string | number, PricingEvaluation> = {};
@@ -77,7 +83,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [qtySignature]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [qtySignature]);
 
   const openCart = useCallback(() => setIsOpen(true), []);
   const closeCart = useCallback(() => setIsOpen(false), []);
