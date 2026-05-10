@@ -128,7 +128,7 @@ export default function OrderSuccessOverlay({ show, orderId, onDone }: Props) {
                 </p>
               )}
               <p className="text-muted-foreground text-sm mb-4">
-                Status: Order received. Complete your M-Pesa payment and we will start preparing your order.
+                Your order has been received. Complete your M-Pesa payment and we will start preparing your order.
               </p>
             </motion.div>
 

@@ -114,7 +114,7 @@ export default function TrackOrder() {
           transition={{ delay: 0.1 }}
           className="text-muted-foreground mb-8"
         >
-          Enter your order number and phone number to see your latest order status.
+          Enter your order number and phone number to see the latest status of your order.
         </motion.p>
 
         <motion.form
@@ -265,7 +265,7 @@ export default function TrackOrder() {
                         )}
                       </div>
                       <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
-                        Use your order number as the payment reference. Once payment is confirmed, your status will move to {preparingOrderLabel}.
+                        Use your order number as the payment reference. Once payment is confirmed, your order will move to {preparingOrderLabel}.
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         <a
