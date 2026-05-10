@@ -203,9 +203,8 @@ export default function TrackOrder() {
                       : "border-border bg-secondary/30"
                 )}
               >
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Current Status</p>
-                <p className={cn("font-semibold mt-1", isCancelled && "text-destructive")}>{currentStatus.label}</p>
-                <p className="text-sm text-muted-foreground mt-1">{currentStatus.description}</p>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">What this means</p>
+                <p className={cn("text-sm mt-1", isCancelled && "text-destructive/90")}>{currentStatus.description}</p>
               </div>
 
               {/* Cancelled state */}
