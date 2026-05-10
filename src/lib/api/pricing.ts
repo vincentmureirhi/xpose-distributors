@@ -9,8 +9,7 @@ export async function evaluatePricing(
   return Array.isArray(rows)
     ? rows.map((row) => ({
         ...row,
-        wholesale_eligible:
-          row.wholesale_eligible ?? row.is_wholesale_eligible ?? undefined,
+        wholesale_eligible: row.wholesale_eligible ?? row.is_wholesale_eligible,
       }))
     : [];
 }
