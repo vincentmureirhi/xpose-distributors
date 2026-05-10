@@ -69,7 +69,10 @@ export function mergeRouteCustomers(primary: RouteCustomer[], fallback: RouteCus
 
   for (const customer of [...primary, ...fallback]) {
     const backendId = getRouteCustomerBackendId(customer);
-    const identityKey = `${customer.phone.toLowerCase()}|${customer.name.toLowerCase()}|${customer.location.toLowerCase()}`;
+    const phone = (customer.phone || "").toLowerCase();
+    const name = (customer.name || "").toLowerCase();
+    const location = (customer.location || "").toLowerCase();
+    const identityKey = `${phone}|${name}|${location}`;
     const keys = backendId ? [backendId, identityKey] : [identityKey];
     if (keys.some((key) => seen.has(key))) continue;
     keys.forEach((key) => seen.add(key));

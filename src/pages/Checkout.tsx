@@ -310,7 +310,7 @@ export default function Checkout() {
             sales_rep_id: salesRepId,
             customer_id: getRouteCustomerBackendId(selectedRouteCustomer),
             customer_location_id: selectedRouteCustomer.customer_location_id,
-            route_area: selectedRouteCustomer.route_area || selectedRouteCustomer.location || repArea || undefined,
+            route_area: selectedRouteCustomer.route_area || selectedRouteCustomer.location || repArea,
             route_notes: selectedRouteCustomer.notes || undefined,
           }),
         items: cartItems.map((i) => {
