@@ -1,0 +1,86 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Loader2, MapPin, ShieldAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useSalesRepSession } from "@/context/SalesRepSessionContext";
+
+export default function SalesRepLocationAccess() {
+  const navigate = useNavigate();
+  const {
+    status,
+    isSalesRepAuthenticated,
+    locationPermission,
+    requestLocationPermission,
+    salesRep,
+    logout,
+  } = useSalesRepSession();
+  const [requesting, setRequesting] = useState(false);
+
+  useEffect(() => {
+    if (status === "restoring") return;
+    if (!isSalesRepAuthenticated) {
+      navigate("/sales-rep/login", { replace: true });
+      return;
+    }
+    if (locationPermission === "granted") {
+      navigate("/checkout", { replace: true });
+    }
+  }, [isSalesRepAuthenticated, locationPermission, navigate, status]);
+
+  const enableLocation = async () => {
+    setRequesting(true);
+    try {
+      await requestLocationPermission();
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const denied = locationPermission === "denied";
+
+  return (
+    <div className="container py-16 md:py-24">
+      <div className="max-w-2xl mx-auto rounded-2xl border border-border bg-card p-6 md:p-8 space-y-5">
+        <h1 className="font-display font-bold text-3xl tracking-tight">Location access required</h1>
+        <p className="text-muted-foreground">
+          {salesRep?.full_name || "Sales reps"} need device location enabled for route customer operations and rep-linked order
+          accountability.
+        </p>
+
+        <div className="rounded-xl border border-border bg-secondary/40 p-4 text-sm space-y-2">
+          <p className="font-semibold flex items-center gap-2"><MapPin className="h-4 w-4" /> Why this is needed</p>
+          <ul className="list-disc ml-5 text-muted-foreground space-y-1">
+            <li>Attach order capture activity to active field location.</li>
+            <li>Support route operations visibility and accountability.</li>
+            <li>Enable authenticated rep operational workflows at checkout.</li>
+          </ul>
+        </div>
+
+        {denied && (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm">
+            <p className="font-semibold flex items-center gap-2 text-destructive"><ShieldAlert className="h-4 w-4" /> Location access is currently denied</p>
+            <p className="text-muted-foreground mt-1">
+              Rep order capture remains blocked until location permission is enabled. Retry below or enable location in browser settings.
+            </p>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={enableLocation} disabled={requesting} className="bg-gradient-accent text-accent-foreground border-0 shadow-glow">
+            {requesting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Requesting location...
+              </>
+            ) : (
+              "Enable location"
+            )}
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/products">Continue browsing products</Link>
+          </Button>
+          <Button variant="ghost" onClick={logout}>Logout</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
