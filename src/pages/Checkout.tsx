@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, CreditCard, FileText, Loader2, MapPin, Phone, Search, User, Truck, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, CreditCard, FileText, Loader2, MapPin, Phone, User, Truck, X } from "lucide-react";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,15 +83,20 @@ const fieldVariants = {
 export default function Checkout() {
   const { cartItems, totalAmount, clearCart, evaluations } = useCart();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<{ id: string } | null>(null);
-  const [workflow, setWorkflow] = useState<CheckoutWorkflow>(
-    searchParams.get("workflow") === "sales-rep" ? "sales_rep" : "self_service"
-  );
+
+  const salesRepId = searchParams.get("sales_rep_id") || searchParams.get("salesRepId") || undefined;
+  // Sales-rep checkout is only active when a valid salesRepId is present in the URL.
+  // Normal customers cannot activate this mode via URL alone.
+  const isRepMode = !!salesRepId;
+  const workflow: CheckoutWorkflow = isRepMode ? "sales_rep" : "self_service";
+
   const [routeCustomers, setRouteCustomers] = useState<RouteCustomer[]>([]);
   const [loadingRouteCustomers, setLoadingRouteCustomers] = useState(false);
   const [selectedRouteCustomerId, setSelectedRouteCustomerId] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
   const [repName, setRepName] = useState("");
   const [repPhone, setRepPhone] = useState("");
   const [repArea, setRepArea] = useState("");
@@ -117,14 +122,13 @@ export default function Checkout() {
     resolver: zodResolver(schema),
   });
 
-  const salesRepId = searchParams.get("sales_rep_id") || searchParams.get("salesRepId") || undefined;
-
   useEffect(() => {
     document.title = "Checkout — XPOSE";
     if (cartItems.length === 0) navigate("/cart", { replace: true });
   }, [cartItems.length, navigate]);
 
   useEffect(() => {
+    if (!isRepMode) return;
     const stored = getStoredRouteCustomers();
     setRouteCustomers(stored);
 
@@ -152,7 +156,7 @@ export default function Checkout() {
     return () => {
       active = false;
     };
-  }, [salesRepId]);
+  }, [isRepMode, salesRepId]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -188,22 +192,18 @@ export default function Checkout() {
     }
   };
 
-  const changeWorkflow = (next: CheckoutWorkflow) => {
-    setWorkflow(next);
-    const nextParams = new URLSearchParams(searchParams);
-    if (next === "sales_rep") {
-      nextParams.set("workflow", "sales-rep");
-      if (!selectedRouteCustomerId && routeCustomers[0]) {
-        applyRouteCustomer(routeCustomers[0]);
-      }
-    } else {
-      nextParams.delete("workflow");
-      setSelectedRouteCustomerId("");
-    }
-    setSearchParams(nextParams, { replace: true });
-  };
-
   const selectedRouteCustomer = routeCustomers.find((c) => c.id === selectedRouteCustomerId);
+
+  const filteredRouteCustomers = customerSearch.trim()
+    ? routeCustomers.filter((c) => {
+        const q = customerSearch.toLowerCase();
+        return (
+          c.name.toLowerCase().includes(q) ||
+          c.phone.toLowerCase().includes(q) ||
+          (c.location || "").toLowerCase().includes(q)
+        );
+      })
+    : routeCustomers;
 
   const addRouteCustomerInline = async () => {
     const name = newRouteCustomer.name.trim();
@@ -376,29 +376,7 @@ export default function Checkout() {
               </p>
             </div>
 
-            <div className="rounded-xl border border-border bg-secondary/40 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Checkout workflow</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant={workflow === "self_service" ? "default" : "outline"}
-                  className="h-10"
-                  onClick={() => changeWorkflow("self_service")}
-                >
-                  Customer self-service
-                </Button>
-                <Button
-                  type="button"
-                  variant={workflow === "sales_rep" ? "default" : "outline"}
-                  className="h-10"
-                  onClick={() => changeWorkflow("sales_rep")}
-                >
-                  Sales rep order capture
-                </Button>
-              </div>
-            </div>
-
-            {workflow === "sales_rep" && (
+            {isRepMode && (
               <>
                 <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-3">
                   <p className="text-sm font-semibold">Sales rep details</p>
@@ -429,6 +407,15 @@ export default function Checkout() {
                   {loadingRouteCustomers && (
                     <p className="text-xs text-muted-foreground">Syncing route customers from backend…</p>
                   )}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      placeholder="Search by name, phone, or location…"
+                      className="h-11 pl-9"
+                    />
+                  </div>
                   <div className="grid md:grid-cols-[1fr_auto] gap-3">
                     <select
                       value={selectedRouteCustomerId}
@@ -440,7 +427,7 @@ export default function Checkout() {
                       className="w-full h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                     >
                       <option value="">Select existing route customer…</option>
-                      {routeCustomers.map((customer) => (
+                      {filteredRouteCustomers.map((customer) => (
                         <option key={customer.id} value={customer.id}>
                           {customer.name} — {customer.location}
                         </option>
