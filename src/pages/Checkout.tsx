@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, CreditCard, FileText, Loader2, MapPin, Phone, Search, User, Truck, X } from "lucide-react";
+import { ArrowLeft, CreditCard, FileText, Loader2, MapPin, Phone, Search, Truck, User, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -88,8 +88,9 @@ export default function Checkout() {
   const [success, setSuccess] = useState<{ id: string } | null>(null);
 
   const salesRepId = searchParams.get("sales_rep_id") || searchParams.get("salesRepId") || undefined;
-  // Sales-rep checkout is only active when a valid salesRepId is present in the URL.
-  // Normal customers cannot activate this mode via URL alone.
+  // Sales-rep checkout is only active when a salesRepId is present in the URL.
+  // The backend is responsible for validating the rep's identity; the storefront
+  // uses the presence of salesRepId as the signal to show rep-only controls.
   const isRepMode = !!salesRepId;
   const workflow: CheckoutWorkflow = isRepMode ? "sales_rep" : "self_service";
 
@@ -194,16 +195,16 @@ export default function Checkout() {
 
   const selectedRouteCustomer = routeCustomers.find((c) => c.id === selectedRouteCustomerId);
 
-  const filteredRouteCustomers = customerSearch.trim()
-    ? routeCustomers.filter((c) => {
-        const q = customerSearch.toLowerCase();
-        return (
-          c.name.toLowerCase().includes(q) ||
-          c.phone.toLowerCase().includes(q) ||
-          (c.location || "").toLowerCase().includes(q)
-        );
-      })
-    : routeCustomers;
+  const filteredRouteCustomers = (() => {
+    const q = customerSearch.trim().toLowerCase();
+    if (!q) return routeCustomers;
+    return routeCustomers.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.phone.toLowerCase().includes(q) ||
+        (c.location || "").toLowerCase().includes(q)
+    );
+  })();
 
   const addRouteCustomerInline = async () => {
     const name = newRouteCustomer.name.trim();
