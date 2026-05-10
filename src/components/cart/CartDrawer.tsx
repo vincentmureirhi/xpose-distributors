@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { getCartPricingMessage } from "@/lib/pricingMessaging";
+import { getCartPricingMessage, isWholesaleEligible } from "@/lib/pricingMessaging";
 
 export default function CartDrawer() {
   const { isOpen, closeCart, cartItems, updateQuantity, removeFromCart, totalAmount, itemCount, evaluations, pricingLoading } = useCart();
@@ -40,7 +40,7 @@ export default function CartDrawer() {
                 {cartItems.map((item) => {
                   const ev = evaluations[item.id];
                   const pricingMessage = getCartPricingMessage(ev, item.quantity);
-                  const wholesaleEligible = Boolean(ev?.wholesale_eligible ?? ev?.is_wholesale_eligible);
+                  const wholesaleEligible = isWholesaleEligible(ev);
                   return (
                   <motion.li
                     key={item.id}

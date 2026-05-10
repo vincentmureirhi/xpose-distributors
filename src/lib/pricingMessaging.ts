@@ -1,7 +1,7 @@
 import { formatPrice } from "@/context/CartContext";
 import type { PricingEvaluation, PricingRuleType, Product } from "@/types/shop";
 
-const isRule = (ruleType?: PricingRuleType, expected?: PricingRuleType) =>
+export const isRuleType = (ruleType?: PricingRuleType, expected?: PricingRuleType) =>
   String(ruleType || "").toUpperCase() === String(expected || "").toUpperCase();
 
 export const isRuleDrivenType = (ruleType?: PricingRuleType) => {
@@ -15,7 +15,7 @@ export const isRuleDrivenType = (ruleType?: PricingRuleType) => {
   );
 };
 
-const isWholesaleEligible = (ev?: PricingEvaluation) =>
+export const isWholesaleEligible = (ev?: Pick<PricingEvaluation, "is_wholesale_eligible" | "wholesale_eligible">) =>
   Boolean(ev?.is_wholesale_eligible ?? ev?.wholesale_eligible);
 
 export function getProductPricingMessages(product: Product) {
@@ -26,7 +26,7 @@ export function getProductPricingMessages(product: Product) {
   const ruleType = product.pricing_rule_type;
   const groupName = product.pricing_group_name;
 
-  if (isRule(ruleType, "SKU_THRESHOLD")) {
+  if (isRuleType(ruleType, "SKU_THRESHOLD")) {
     return {
       primary:
         wholesale > 0 && threshold > 0
@@ -39,7 +39,7 @@ export function getProductPricingMessages(product: Product) {
     };
   }
 
-  if (isRule(ruleType, "GROUP_THRESHOLD")) {
+  if (isRuleType(ruleType, "GROUP_THRESHOLD")) {
     return {
       primary:
         wholesale > 0 && threshold > 0
@@ -52,14 +52,14 @@ export function getProductPricingMessages(product: Product) {
     };
   }
 
-  if (isRule(ruleType, "SKU_TIERED") || isRule(ruleType, "TIERED")) {
+  if (isRuleType(ruleType, "SKU_TIERED") || isRuleType(ruleType, "TIERED")) {
     return {
       primary: `Retail from ${formatPrice(retail)}`,
       secondary: tiers.length > 1 ? "Price depends on quantity band" : "Quantity pricing applies",
     };
   }
 
-  if (isRule(ruleType, "GROUP_TIERED")) {
+  if (isRuleType(ruleType, "GROUP_TIERED")) {
     return {
       primary: `Retail from ${formatPrice(retail)}`,
       secondary: `Tiered group pricing applies when combined quantity${groupName ? ` in ${groupName}` : ""} increases`,

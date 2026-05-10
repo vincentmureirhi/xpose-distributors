@@ -10,7 +10,6 @@ export async function evaluatePricing(
     ? rows.map((row) => ({
         ...row,
         wholesale_eligible: Boolean(row.wholesale_eligible ?? row.is_wholesale_eligible),
-        is_wholesale_eligible: Boolean(row.is_wholesale_eligible ?? row.wholesale_eligible),
       }))
     : [];
 }

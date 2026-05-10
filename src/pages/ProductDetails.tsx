@@ -260,11 +260,7 @@ export default function ProductDetails() {
                     size="lg"
                     className="h-12 flex-1 bg-gradient-accent text-accent-foreground border-0 shadow-glow hover:opacity-95"
                     onClick={() =>
-                      addToCart(
-                        isRuleDriven ? product : ({ ...product, name: `${product.name} (1 ${selectedTier?.unit || "piece"})` } as Product),
-                        qty,
-                        isRuleDriven ? undefined : unitPrice
-                      )
+                      addToCart(product, qty, isRuleDriven ? undefined : unitPrice)
                     }
                   >
                     <ShoppingBag className="h-4 w-4 mr-2" />

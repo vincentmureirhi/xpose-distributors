@@ -5,6 +5,7 @@ export type PricingRuleType =
   | "GROUP_THRESHOLD"
   | "SKU_TIERED"
   | "GROUP_TIERED"
+  // Legacy backend value still used by older rules
   | "TIERED";
 
 export interface PricingEvaluation {

@@ -4,7 +4,7 @@ import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
-import { getCartPricingMessage } from "@/lib/pricingMessaging";
+import { getCartPricingMessage, isRuleType, isWholesaleEligible } from "@/lib/pricingMessaging";
 
 export default function Cart() {
   const { cartItems, updateQuantity, removeFromCart, totalAmount, clearCart, evaluations, pricingLoading } = useCart();
@@ -35,14 +35,14 @@ export default function Cart() {
               const unitPrice = ev ? ev.unit_price : item.price;
               const lineTotal = ev ? ev.line_total : item.price * item.quantity;
               const pricingLabel = ev?.pricing_label;
-              const wholesaleEligible = Boolean(ev?.wholesale_eligible ?? ev?.is_wholesale_eligible);
+              const wholesaleEligible = isWholesaleEligible(ev);
               const thresholdQty = ev?.threshold_quantity;
               const ruleType = ev?.rule_type;
               const pricingMessage = getCartPricingMessage(ev, item.quantity);
               const isGroupThreshold =
                 !wholesaleEligible &&
                 thresholdQty != null &&
-                String(ruleType || "").toUpperCase() === "GROUP_THRESHOLD";
+                isRuleType(ruleType, "GROUP_THRESHOLD");
 
               return (
                 <motion.li

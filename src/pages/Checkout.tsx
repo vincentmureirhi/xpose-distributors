@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { searchLocations } from "@/lib/kenya-locations";
 import OrderSuccessOverlay from "@/components/OrderSuccessOverlay";
-import { getCartPricingMessage } from "@/lib/pricingMessaging";
+import { getCartPricingMessage, isWholesaleEligible } from "@/lib/pricingMessaging";
 
 const TRANSPORT_COMPANIES = [
   "NAEKANA Sacco",
@@ -377,7 +377,7 @@ export default function Checkout() {
                     const lineTotal = ev ? ev.line_total : i.price * i.quantity;
                     const pricingLabel = ev?.pricing_label;
                     const pricingMessage = getCartPricingMessage(ev, i.quantity);
-                    const wholesaleEligible = Boolean(ev?.wholesale_eligible ?? ev?.is_wholesale_eligible);
+                    const wholesaleEligible = isWholesaleEligible(ev);
                     return (
                     <tr key={i.id} className="border-b border-border/50">
                       <td className="py-2.5 pr-2">
