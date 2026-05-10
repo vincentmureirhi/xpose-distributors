@@ -41,12 +41,13 @@ export function saveRouteCustomers(customers: RouteCustomer[], storage: Storage 
 
 export function createRouteCustomer(input: RouteCustomerInput, now = new Date()): RouteCustomer {
   const ts = now.getTime();
+  const trimmedNotes = input.notes?.trim();
   return {
     id: `route-${ts}-${Math.random().toString(36).slice(2, 8)}`,
     name: input.name.trim(),
     phone: input.phone.trim(),
     location: input.location.trim(),
-    notes: input.notes?.trim() || undefined,
+    notes: trimmedNotes ? trimmedNotes : undefined,
     created_at: now.toISOString(),
   };
 }

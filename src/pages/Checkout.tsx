@@ -184,7 +184,7 @@ export default function Checkout() {
       return;
     }
 
-    const customer = createRouteCustomer(newRouteCustomer);
+    const customer = createRouteCustomer(newRouteCustomer, new Date());
     const updated = [customer, ...routeCustomers];
     setRouteCustomers(updated);
     saveRouteCustomers(updated);
@@ -199,6 +199,22 @@ export default function Checkout() {
     setSelectedRouteCustomerId("");
     setValue("customer_name", "", { shouldValidate: true });
     setValue("customer_phone", "", { shouldValidate: true });
+  };
+
+  const resolveCheckoutCustomerData = (values: FormValues) => {
+    if (workflow === "sales_rep" && selectedRouteCustomer) {
+      return {
+        customerName: selectedRouteCustomer.name,
+        customerPhone: selectedRouteCustomer.phone,
+        deliveryLocation: selectedRouteCustomer.location || values.delivery_location,
+      };
+    }
+
+    return {
+      customerName: values.customer_name,
+      customerPhone: values.customer_phone,
+      deliveryLocation: values.delivery_location,
+    };
   };
 
   const onSubmit = async (values: FormValues) => {
@@ -230,15 +246,7 @@ export default function Checkout() {
             })
           : values.notes || undefined;
 
-      const customerName = workflow === "sales_rep" && selectedRouteCustomer
-        ? selectedRouteCustomer.name
-        : values.customer_name;
-      const customerPhone = workflow === "sales_rep" && selectedRouteCustomer
-        ? selectedRouteCustomer.phone
-        : values.customer_phone;
-      const deliveryLocation = workflow === "sales_rep" && selectedRouteCustomer
-        ? selectedRouteCustomer.location || values.delivery_location
-        : values.delivery_location;
+      const { customerName, customerPhone, deliveryLocation } = resolveCheckoutCustomerData(values);
 
       const result = await guestCheckout({
         customer_name: customerName,
