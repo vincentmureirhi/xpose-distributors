@@ -90,6 +90,7 @@ export default function TrackOrder() {
   const rawStatus = order?.order_status || order?.status || "";
   const resolvedKey = resolveCustomerOrderStage(rawStatus);
   const currentStatus = getCustomerOrderStatusInfo(rawStatus);
+  const preparingOrderLabel = getCustomerOrderStatusInfo("processing").label;
   const isCancelled = resolvedKey === "cancelled";
   const isPending = resolvedKey === "pending";
   const currentIndex = isCancelled ? -1 : stages.findIndex((s) => s.key === resolvedKey);
@@ -202,7 +203,7 @@ export default function TrackOrder() {
                       : "border-border bg-secondary/30"
                 )}
               >
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Current status</p>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Current Status</p>
                 <p className={cn("font-semibold mt-1", isCancelled && "text-destructive")}>{currentStatus.label}</p>
                 <p className="text-sm text-muted-foreground mt-1">{currentStatus.description}</p>
               </div>
@@ -264,7 +265,7 @@ export default function TrackOrder() {
                         )}
                       </div>
                       <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
-                        Use your order number as the payment reference. Once payment is confirmed, your status will move to Preparing order.
+                        Use your order number as the payment reference. Once payment is confirmed, your status will move to {preparingOrderLabel}.
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         <a
