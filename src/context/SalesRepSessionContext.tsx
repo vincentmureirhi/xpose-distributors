@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   changeSalesRepPassword,
   extractApiErrorMessage,
@@ -12,6 +12,7 @@ import { resolveSessionActor, type SessionActor } from "@/lib/salesRepSession";
 
 const SALES_REP_TOKEN_KEY = "salesRepAuthToken";
 const LOCATION_UPDATE_INTERVAL_MS = 5 * 60 * 1000;
+const GEOLOCATION_PERMISSION_DENIED = 1;
 
 type SessionStatus = "restoring" | "ready";
 type LocationPermissionState = "unknown" | "prompt" | "granted" | "denied";
@@ -75,6 +76,7 @@ function getCurrentPosition(): Promise<GeolocationPosition> {
 }
 
 export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
+  const restoredOnceRef = useRef(false);
   const [status, setStatus] = useState<SessionStatus>("restoring");
   const [token, setToken] = useState<string | null>(null);
   const [salesRep, setSalesRep] = useState<SalesRepProfile | null>(null);
@@ -93,7 +95,7 @@ export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshSession = useCallback(async () => {
-    const currentToken = token || readStoredToken();
+    const currentToken = readStoredToken();
     if (!currentToken) {
       logout();
       setStatus("ready");
@@ -109,9 +111,11 @@ export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
       logout();
       setStatus("ready");
     }
-  }, [logout, token]);
+  }, [logout]);
 
   useEffect(() => {
+    if (restoredOnceRef.current) return;
+    restoredOnceRef.current = true;
     refreshSession();
   }, [refreshSession]);
 
@@ -140,7 +144,7 @@ export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
       longitude: position.coords.longitude,
       accuracy_meters: Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : undefined,
       source: "storefront",
-      recorded_at: new Date(position.timestamp || Date.now()).toISOString(),
+      recorded_at: new Date(position.timestamp).toISOString(),
     });
   }, [salesRep]);
 
@@ -151,7 +155,7 @@ export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
       return true;
     } catch (error) {
       const geolocationError = error as GeolocationPositionError;
-      if (geolocationError?.code === 1) {
+      if (geolocationError?.code === GEOLOCATION_PERMISSION_DENIED) {
         setLocationPermission("denied");
       } else {
         setLocationPermission(await readLocationPermissionState());

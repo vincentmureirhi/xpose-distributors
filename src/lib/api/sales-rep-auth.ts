@@ -2,7 +2,7 @@ import { apiClient } from "./client";
 
 export interface SalesRepProfile {
   id: string;
-  full_name: string;
+  full_name: string | null;
   phone: string | null;
   email: string | null;
   username: string | null;
@@ -36,8 +36,14 @@ function unwrapResponseData<T>(payload: unknown): T {
 }
 
 export function extractApiErrorMessage(error: unknown, fallback: string): string {
-  const response = (error as { response?: { data?: ApiErrorShape } })?.response?.data;
-  return response?.error || response?.message || (error as { message?: string })?.message || fallback;
+  const responseData = (error as { response?: { data?: ApiErrorShape } })?.response?.data;
+  if (responseData?.error) return responseData.error;
+  if (responseData?.message) return responseData.message;
+
+  const genericMessage = (error as { message?: string })?.message;
+  if (genericMessage) return genericMessage;
+
+  return fallback;
 }
 
 export async function loginSalesRep(identifier: string, password: string): Promise<SalesRepLoginResponse> {

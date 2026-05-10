@@ -9,7 +9,6 @@ export default function SalesRepLocationAccess() {
   const {
     status,
     isSalesRepAuthenticated,
-    mustChangePassword,
     locationPermission,
     requestLocationPermission,
     salesRep,
@@ -23,14 +22,10 @@ export default function SalesRepLocationAccess() {
       navigate("/sales-rep/login", { replace: true });
       return;
     }
-    if (mustChangePassword) {
-      navigate("/sales-rep/change-password", { replace: true });
-      return;
-    }
     if (locationPermission === "granted") {
       navigate("/checkout", { replace: true });
     }
-  }, [isSalesRepAuthenticated, locationPermission, mustChangePassword, navigate, status]);
+  }, [isSalesRepAuthenticated, locationPermission, navigate, status]);
 
   const enableLocation = async () => {
     setRequesting(true);

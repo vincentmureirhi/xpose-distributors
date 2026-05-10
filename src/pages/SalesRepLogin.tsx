@@ -6,6 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useSalesRepSession } from "@/context/SalesRepSessionContext";
+import { getSalesRepDisplayName } from "@/lib/salesRepSession";
+
+function getPostLoginPath(mustChangePassword: boolean) {
+  return mustChangePassword ? "/sales-rep/change-password" : "/sales-rep/location-access";
+}
 
 export default function SalesRepLogin() {
   const navigate = useNavigate();
@@ -17,7 +22,7 @@ export default function SalesRepLogin() {
   useEffect(() => {
     if (status === "restoring") return;
     if (!isSalesRepAuthenticated) return;
-    navigate(mustChangePassword ? "/sales-rep/change-password" : "/sales-rep/location-access", { replace: true });
+    navigate(getPostLoginPath(mustChangePassword), { replace: true });
   }, [isSalesRepAuthenticated, mustChangePassword, navigate, status]);
 
   const submit = async (e: FormEvent) => {
@@ -25,8 +30,11 @@ export default function SalesRepLogin() {
     setSubmitting(true);
     try {
       const rep = await login(identifier, password);
-      toast.success("Sales rep login successful", { description: `Welcome ${rep.full_name || rep.username || "back"}.` });
-      navigate(rep.must_change_password ? "/sales-rep/change-password" : "/sales-rep/location-access", { replace: true });
+      const welcomeName = rep.full_name || rep.username;
+      toast.success("Sales rep login successful", {
+        description: welcomeName ? `Welcome ${welcomeName}.` : "Welcome back!",
+      });
+      navigate(getPostLoginPath(rep.must_change_password), { replace: true });
     } catch (error) {
       toast.error("Login failed", {
         description: getErrorMessage(error, "Check your identifier and password and try again."),

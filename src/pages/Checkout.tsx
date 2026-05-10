@@ -27,6 +27,7 @@ import {
   saveRouteCustomers,
   type RouteCustomer,
 } from "@/lib/routeCustomerWorkflow";
+import { getSalesRepDisplayName } from "@/lib/salesRepSession";
 
 const TRANSPORT_COMPANIES = [
   "NAEKANA Sacco",
@@ -72,6 +73,18 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 type CheckoutWorkflow = "self_service" | "sales_rep";
 
+function resolveRepOperationBlockReason(params: {
+  isSalesRepAuthenticated: boolean;
+  mustChangePassword: boolean;
+  locationPermission: "unknown" | "prompt" | "granted" | "denied";
+}) {
+  if (!params.isSalesRepAuthenticated) return null;
+  if (params.mustChangePassword) return "Password change is required before rep operational checkout.";
+  if (params.locationPermission === "granted") return null;
+  if (params.locationPermission === "denied") return "Location access is denied. Enable location to capture route orders.";
+  return "Location permission is required to continue with rep route operations.";
+}
+
 const fieldVariants = {
   hidden: { opacity: 0, y: 16 },
   visible: (i: number) => ({
@@ -97,7 +110,7 @@ export default function Checkout() {
   const [routeCustomers, setRouteCustomers] = useState<RouteCustomer[]>([]);
   const [loadingRouteCustomers, setLoadingRouteCustomers] = useState(false);
   const [selectedRouteCustomerId, setSelectedRouteCustomerId] = useState("");
-  const repName = salesRep?.full_name || salesRep?.username || "Sales rep";
+  const repDisplayName = getSalesRepDisplayName(salesRep);
   const [repPhone, setRepPhone] = useState("");
   const [repArea, setRepArea] = useState("");
   const [newRouteCustomer, setNewRouteCustomer] = useState({
@@ -123,15 +136,11 @@ export default function Checkout() {
   });
 
   const salesRepId = salesRep?.id;
-  const repOperationsBlockedReason = !isSalesRepAuthenticated
-    ? null
-    : mustChangePassword
-      ? "Password change is required before rep operational checkout."
-      : locationPermission === "granted"
-        ? null
-        : locationPermission === "denied"
-          ? "Location access is denied. Enable location to capture route orders."
-          : "Location permission is required to continue with rep route operations.";
+  const repOperationsBlockedReason = resolveRepOperationBlockReason({
+    isSalesRepAuthenticated,
+    mustChangePassword,
+    locationPermission,
+  });
   const repOperationsBlocked = workflow === "sales_rep" && !!repOperationsBlockedReason;
 
   useEffect(() => {
@@ -219,7 +228,16 @@ export default function Checkout() {
 
   useEffect(() => {
     if (workflow !== "sales_rep") return;
-    if (selectedRouteCustomerId || routeCustomers.length === 0) return;
+    if (routeCustomers.length === 0) {
+      if (selectedRouteCustomerId) {
+        setSelectedRouteCustomerId("");
+        setValue("customer_name", "", { shouldValidate: true });
+        setValue("customer_phone", "", { shouldValidate: true });
+      }
+      return;
+    }
+    const selectedExists = routeCustomers.some((customer) => customer.id === selectedRouteCustomerId);
+    if (selectedExists) return;
     const firstCustomer = routeCustomers[0];
     setSelectedRouteCustomerId(firstCustomer.id);
     setValue("customer_name", firstCustomer.name, { shouldValidate: true });
@@ -228,7 +246,7 @@ export default function Checkout() {
       setLocationQuery(firstCustomer.location);
       setValue("delivery_location", firstCustomer.location, { shouldValidate: true });
     }
-  }, [routeCustomers, selectedRouteCustomerId, setValue, workflow]);
+  }, [routeCustomers, selectedRouteCustomerId, setLocationQuery, setValue, workflow]);
 
   const addRouteCustomerInline = async () => {
     if (repOperationsBlocked) {
@@ -339,7 +357,7 @@ export default function Checkout() {
       const orderNotes =
         workflow === "sales_rep" && selectedRouteCustomer
           ? buildRouteOrderNotes({
-              rep_name: repName,
+              rep_name: repDisplayName,
               rep_phone: repPhone || undefined,
               rep_area: repArea || undefined,
               route_customer: selectedRouteCustomer,
@@ -425,7 +443,7 @@ export default function Checkout() {
               {workflow === "sales_rep" ? (
                 <p>
                   Authenticated sales rep checkout is active for{" "}
-                  <span className="font-semibold">{repName}</span>.
+                  <span className="font-semibold">{repDisplayName}</span>.
                 </p>
               ) : (
                 <p>Customer self-service checkout is active.</p>
@@ -438,8 +456,9 @@ export default function Checkout() {
                   <p className="text-sm font-semibold">Sales rep details</p>
                   <div className="grid md:grid-cols-3 gap-3">
                     <Input
-                      value={repName}
+                      value={repDisplayName}
                       readOnly
+                      aria-label="Sales rep name"
                       className="h-11"
                     />
                     <Input
@@ -467,7 +486,13 @@ export default function Checkout() {
                           <Link to="/sales-rep/change-password">Change password</Link>
                         </Button>
                       ) : (
-                        <Button type="button" size="sm" onClick={() => void requestLocationPermission()}>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => {
+                            requestLocationPermission().catch(() => undefined);
+                          }}
+                        >
                           Enable location
                         </Button>
                       )}

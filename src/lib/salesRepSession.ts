@@ -6,3 +6,7 @@ export function resolveSessionActor(salesRep: SalesRepProfile | null, pathname =
   if (salesRep) return "sales_rep";
   return pathname.startsWith("/checkout") ? "normal_customer" : "unauthenticated_visitor";
 }
+
+export function getSalesRepDisplayName(salesRep: SalesRepProfile | null) {
+  return salesRep?.full_name || salesRep?.username || "Sales rep";
+}

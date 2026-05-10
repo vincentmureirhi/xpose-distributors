@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/context/CartContext";
 import { useSalesRepSession } from "@/context/SalesRepSessionContext";
+import { getSalesRepDisplayName } from "@/lib/salesRepSession";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ const navLinks = [
 export default function Header() {
   const { itemCount, openCart } = useCart();
   const { isSalesRepAuthenticated, salesRep, logout } = useSalesRepSession();
+  const repDisplayName = getSalesRepDisplayName(salesRep);
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -88,7 +90,7 @@ export default function Header() {
         <div className="flex items-center gap-1">
           {isSalesRepAuthenticated ? (
             <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={logout}>
-              {salesRep?.full_name || "Sales rep"} • Logout
+              {repDisplayName} • Logout
             </Button>
           ) : (
             <Button variant="ghost" size="sm" className="hidden md:inline-flex" asChild>
@@ -174,7 +176,7 @@ export default function Header() {
                   }}
                   className="px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-secondary text-left"
                 >
-                  {salesRep?.full_name || "Sales rep"} • Logout
+                  {repDisplayName} • Logout
                 </button>
               ) : (
                 <NavLink
