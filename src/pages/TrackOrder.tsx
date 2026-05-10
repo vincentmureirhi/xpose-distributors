@@ -9,69 +9,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trackOrder } from "@/lib/api/orders";
+import {
+  CUSTOMER_ORDER_PROGRESS_STAGES,
+  getCustomerOrderStatusInfo,
+  resolveCustomerOrderStage,
+} from "@/lib/orderTrackingStatus";
 import type { Order } from "@/types/shop";
 import { cn } from "@/lib/utils";
 
 const TILL_NUMBER = "711714";
 const WHATSAPP_LINK = "https://wa.me/254701377869";
 
-const stages = [
-  {
-    key: "pending",
-    icon: ShoppingBag,
-    label: "Order Received",
-    desc: "We've received your order and it's awaiting payment",
-  },
-  {
-    key: "processing",
-    icon: Package,
-    label: "Processing",
-    desc: "Payment confirmed — your items are being prepared",
-  },
-  {
-    key: "dispatched",
-    icon: Truck,
-    label: "Dispatched",
-    desc: "Your order is on its way to you",
-  },
-  {
-    key: "completed",
-    icon: Home,
-    label: "Completed",
-    desc: "Your order has been delivered successfully",
-  },
-];
+const STAGE_ICONS = {
+  pending: ShoppingBag,
+  processing: Package,
+  dispatched: Truck,
+  completed: Home,
+} as const;
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Order Received",
-  processing: "Processing",
-  dispatched: "Dispatched",
-  completed: "Completed",
-  cancelled: "Cancelled",
-};
-
-// Map backend status values to our stage keys
-function resolveStageKey(status: string): string {
-  const s = status?.toLowerCase() ?? "";
-  if (s === "cancelled" || s === "canceled") return "cancelled";
-  const map: Record<string, string> = {
-    pending: "pending",
-    payment_pending: "pending",
-    awaiting_payment: "pending",
-    payment_confirmed: "processing",
-    paid: "processing",
-    processing: "processing",
-    packing: "processing",
-    packed: "processing",
-    dispatched: "dispatched",
-    in_transit: "dispatched",
-    shipped: "dispatched",
-    out_for_delivery: "dispatched",
-    delivered: "completed",
-    completed: "completed",
-  };
-  return map[s] || "pending";
-}
+const stages = CUSTOMER_ORDER_PROGRESS_STAGES.map((key) => ({
+  ...getCustomerOrderStatusInfo(key),
+  icon: STAGE_ICONS[key],
+}));
 
 export default function TrackOrder() {
   const [params] = useSearchParams();
@@ -118,7 +77,7 @@ export default function TrackOrder() {
   // Poll every 30 seconds when order is loaded and not in a terminal state
   useEffect(() => {
     if (!order) return;
-    const stageKey = resolveStageKey(order.order_status || order.status || "");
+    const stageKey = resolveCustomerOrderStage(order.order_status || order.status || "");
     if (stageKey === "completed" || stageKey === "cancelled") return;
     const interval = setInterval(() => {
       trackOrder(orderId, phone).then((o) => {
@@ -129,7 +88,8 @@ export default function TrackOrder() {
   }, [order, orderId, phone]);
 
   const rawStatus = order?.order_status || order?.status || "";
-  const resolvedKey = resolveStageKey(rawStatus);
+  const resolvedKey = resolveCustomerOrderStage(rawStatus);
+  const currentStatus = getCustomerOrderStatusInfo(rawStatus);
   const isCancelled = resolvedKey === "cancelled";
   const isPending = resolvedKey === "pending";
   const currentIndex = isCancelled ? -1 : stages.findIndex((s) => s.key === resolvedKey);
@@ -152,7 +112,7 @@ export default function TrackOrder() {
           transition={{ delay: 0.1 }}
           className="text-muted-foreground mb-8"
         >
-          Enter your order number and phone number to see real-time status updates.
+          Enter your order number and phone number to see your latest order status.
         </motion.p>
 
         <motion.form
@@ -220,7 +180,7 @@ export default function TrackOrder() {
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 220, damping: 16, delay: 0.2 }}
                   className={cn(
-                    "px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider",
+                    "px-3 py-1.5 rounded-full text-sm font-semibold",
                     isCancelled
                       ? "bg-destructive/10 text-destructive"
                       : resolvedKey === "completed"
@@ -228,8 +188,23 @@ export default function TrackOrder() {
                         : "bg-accent/10 text-accent"
                   )}
                 >
-                  {STATUS_LABELS[resolvedKey] ?? resolvedKey.replace(/_/g, " ")}
+                  {currentStatus.label}
                 </motion.span>
+              </div>
+
+              <div
+                className={cn(
+                  "mb-6 rounded-xl border p-4",
+                  isCancelled
+                    ? "border-destructive/20 bg-destructive/5"
+                    : resolvedKey === "completed"
+                      ? "border-success/20 bg-success/5"
+                      : "border-border bg-secondary/30"
+                )}
+              >
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Current status</p>
+                <p className={cn("font-semibold mt-1", isCancelled && "text-destructive")}>{currentStatus.label}</p>
+                <p className="text-sm text-muted-foreground mt-1">{currentStatus.description}</p>
               </div>
 
               {/* Cancelled state */}
@@ -241,7 +216,7 @@ export default function TrackOrder() {
                 >
                   <XCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-destructive mb-1">This order has been cancelled</p>
+                    <p className="font-semibold text-destructive mb-1">Cancelled — this order will not be fulfilled</p>
                     <p className="text-sm text-muted-foreground">
                       If you believe this is an error or need assistance, please{" "}
                       <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" className="text-accent underline">
@@ -289,7 +264,7 @@ export default function TrackOrder() {
                         )}
                       </div>
                       <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
-                        Use your order number as the payment reference. Once payment is confirmed, your order status will update automatically.
+                        Use your order number as the payment reference. Once payment is confirmed, your status will move to Preparing order.
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         <a
@@ -392,7 +367,7 @@ export default function TrackOrder() {
                             >
                               {s.label}
                             </p>
-                            <p className="text-sm text-muted-foreground">{s.desc}</p>
+                            <p className="text-sm text-muted-foreground">{s.description}</p>
                           </div>
                           {active && (
                             <motion.span
