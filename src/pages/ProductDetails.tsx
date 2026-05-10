@@ -9,6 +9,7 @@ import ProductCard from "@/components/products/ProductCard";
 import type { Product } from "@/types/shop";
 import { getPriceTiers } from "@/lib/pricing";
 import AnimatedPrice from "@/components/AnimatedPrice";
+import { getProductPricingMessages } from "@/lib/pricingMessaging";
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -111,13 +112,27 @@ export default function ProductDetails() {
             const selectedTier = tiersList.find((t) => t.unit === selectedUnit) || tiersList[0];
             const piecePrice = tiersList.find((t) => (t.qty_per_unit || 1) === 1)?.price ?? 0;
             const unitPrice = selectedTier?.price ?? 0;
+            const pricingMessages = getProductPricingMessages(product);
             const perPiece = selectedTier ? unitPrice / Math.max(1, selectedTier.qty_per_unit || 1) : 0;
             const savePct = selectedTier && (selectedTier.qty_per_unit || 1) > 1 && piecePrice > 0 && perPiece < piecePrice
               ? Math.round(((piecePrice - perPiece) / piecePrice) * 100)
               : null;
             const activeIndex = Math.max(0, tiersList.findIndex((t) => t.unit === selectedUnit));
+            const ruleType = String(product.pricing_rule_type || "").toUpperCase();
+            const isRuleDriven =
+              ruleType === "SKU_THRESHOLD" ||
+              ruleType === "GROUP_THRESHOLD" ||
+              ruleType === "SKU_TIERED" ||
+              ruleType === "GROUP_TIERED" ||
+              ruleType === "TIERED";
             return (
               <>
+                <div className="rounded-xl border border-border bg-card/60 px-3 py-2">
+                  <p className="text-xs font-semibold">{pricingMessages.primary}</p>
+                  {pricingMessages.secondary && (
+                    <p className="text-[11px] text-muted-foreground mt-1">{pricingMessages.secondary}</p>
+                  )}
+                </div>
                 {/* Apple-style segmented pill switcher */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.12 }} className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -142,14 +157,15 @@ export default function ProductDetails() {
                       const active = t.unit === selectedUnit;
                       const meetsThreshold = !t.min_qty || qty >= t.min_qty;
                       const needMore = t.min_qty && qty < t.min_qty ? t.min_qty - qty : 0;
+                      const disabled = isRuleDriven || !meetsThreshold;
                       return (
                         <button
                           key={t.unit}
-                          onClick={() => meetsThreshold && setSelectedUnit(t.unit)}
-                          disabled={!meetsThreshold}
-                          aria-disabled={!meetsThreshold}
-                          title={needMore ? `Add ${needMore} more to unlock ${t.unit} pricing` : undefined}
-                          className={`relative z-10 flex-1 px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors ${active ? "text-foreground" : "text-muted-foreground hover:text-foreground"} ${!meetsThreshold ? "opacity-40 cursor-not-allowed" : ""}`}
+                          onClick={() => !disabled && setSelectedUnit(t.unit)}
+                          disabled={disabled}
+                          aria-disabled={disabled}
+                          title={needMore ? `Add ${needMore} more to unlock ${t.unit} pricing` : isRuleDriven ? "Price is applied automatically from cart quantity rules" : undefined}
+                          className={`relative z-10 flex-1 px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors ${active ? "text-foreground" : "text-muted-foreground hover:text-foreground"} ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
                         >
                           {t.unit}
                           {t.qty_per_unit && t.qty_per_unit > 1 ? (
@@ -162,6 +178,11 @@ export default function ProductDetails() {
                       );
                     })}
                   </div>
+                  {isRuleDriven && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Final unit price is applied automatically in cart from quantity rules.
+                    </p>
+                  )}
 
                   {/* One big animated price */}
                   <div className="flex items-end justify-between gap-4 pt-1">
@@ -239,7 +260,13 @@ export default function ProductDetails() {
                   <Button
                     size="lg"
                     className="h-12 flex-1 bg-gradient-accent text-accent-foreground border-0 shadow-glow hover:opacity-95"
-                    onClick={() => addToCart({ ...product, name: `${product.name} (1 ${selectedTier?.unit || "piece"})` } as Product, qty, unitPrice)}
+                    onClick={() =>
+                      addToCart(
+                        isRuleDriven ? product : ({ ...product, name: `${product.name} (1 ${selectedTier?.unit || "piece"})` } as Product),
+                        qty,
+                        isRuleDriven ? undefined : unitPrice
+                      )
+                    }
                   >
                     <ShoppingBag className="h-4 w-4 mr-2" />
                     <AnimatePresence mode="wait">

@@ -4,6 +4,7 @@ import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
+import { getCartPricingMessage } from "@/lib/pricingMessaging";
 
 export default function Cart() {
   const { cartItems, updateQuantity, removeFromCart, totalAmount, clearCart, evaluations, pricingLoading } = useCart();
@@ -34,20 +35,14 @@ export default function Cart() {
               const unitPrice = ev ? ev.unit_price : item.price;
               const lineTotal = ev ? ev.line_total : item.price * item.quantity;
               const pricingLabel = ev?.pricing_label;
-              const wholesaleEligible = ev?.wholesale_eligible;
+              const wholesaleEligible = Boolean(ev?.wholesale_eligible ?? ev?.is_wholesale_eligible);
               const thresholdQty = ev?.threshold_quantity;
               const ruleType = ev?.rule_type;
-
-              // Threshold progress flags — separate by rule type for clarity
-              const isSkuThreshold =
-                !wholesaleEligible &&
-                thresholdQty != null &&
-                ruleType === "SKU_THRESHOLD";
+              const pricingMessage = getCartPricingMessage(ev, item.quantity);
               const isGroupThreshold =
                 !wholesaleEligible &&
                 thresholdQty != null &&
-                ruleType === "GROUP_THRESHOLD";
-              const needed = isSkuThreshold && thresholdQty != null ? thresholdQty - item.quantity : 0;
+                String(ruleType || "").toUpperCase() === "GROUP_THRESHOLD";
 
               return (
                 <motion.li
@@ -81,14 +76,19 @@ export default function Cart() {
                         <span className="text-[10px] text-muted-foreground animate-pulse">evaluating…</span>
                       )}
                     </div>
-                    {isSkuThreshold && needed > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Add <span className="font-semibold text-foreground">{needed}</span> more to unlock wholesale pricing
-                      </p>
-                    )}
                     {isGroupThreshold && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Group threshold not yet reached — add more qualifying items
+                        Group threshold uses combined quantities from qualifying products
+                      </p>
+                    )}
+                    {pricingMessage && (
+                      <p className={`text-xs mt-1 ${wholesaleEligible ? "text-accent" : "text-muted-foreground"}`}>
+                        {pricingMessage}
+                      </p>
+                    )}
+                    {(ev?.rule_name || ev?.pricing_group_name) && (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {ev?.rule_name ? `Rule: ${ev.rule_name}` : ""}{ev?.rule_name && ev?.pricing_group_name ? " · " : ""}{ev?.pricing_group_name ? `Group: ${ev.pricing_group_name}` : ""}
                       </p>
                     )}
                     <div className="mt-3 flex items-center justify-between">

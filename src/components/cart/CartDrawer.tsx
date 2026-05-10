@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { getCartPricingMessage } from "@/lib/pricingMessaging";
 
 export default function CartDrawer() {
   const { isOpen, closeCart, cartItems, updateQuantity, removeFromCart, totalAmount, itemCount, evaluations, pricingLoading } = useCart();
@@ -36,7 +37,11 @@ export default function CartDrawer() {
           ) : (
             <ul className="space-y-3">
               <AnimatePresence initial={false}>
-                {cartItems.map((item) => (
+                {cartItems.map((item) => {
+                  const ev = evaluations[item.id];
+                  const pricingMessage = getCartPricingMessage(ev, item.quantity);
+                  const wholesaleEligible = Boolean(ev?.wholesale_eligible ?? ev?.is_wholesale_eligible);
+                  return (
                   <motion.li
                     key={item.id}
                     layout
@@ -61,16 +66,21 @@ export default function CartDrawer() {
                         </button>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
-                        <p className="text-sm font-semibold">{formatPrice(evaluations[item.id]?.unit_price ?? item.price)}</p>
-                        {evaluations[item.id]?.pricing_label && (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${evaluations[item.id]?.wholesale_eligible ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>
-                            {evaluations[item.id]?.pricing_label}
+                        <p className="text-sm font-semibold">{formatPrice(ev?.unit_price ?? item.price)}</p>
+                        {ev?.pricing_label && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${wholesaleEligible ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>
+                            {ev.pricing_label}
                           </span>
                         )}
-                        {pricingLoading && !evaluations[item.id] && (
+                        {pricingLoading && !ev && (
                           <span className="text-[10px] text-muted-foreground animate-pulse">…</span>
                         )}
                       </div>
+                      {pricingMessage && (
+                        <p className={`text-[11px] mt-1 ${wholesaleEligible ? "text-accent" : "text-muted-foreground"}`}>
+                          {pricingMessage}
+                        </p>
+                      )}
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex items-center gap-1 bg-background border border-border rounded-full p-0.5">
                           <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="h-7 w-7 rounded-full grid place-items-center hover:bg-secondary transition-colors" aria-label="Decrease">
@@ -83,11 +93,12 @@ export default function CartDrawer() {
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
-                        <span className="text-sm font-semibold">{formatPrice((evaluations[item.id]?.unit_price ?? item.price) * item.quantity)}</span>
+                        <span className="text-sm font-semibold">{formatPrice((ev?.unit_price ?? item.price) * item.quantity)}</span>
                       </div>
                     </div>
                   </motion.li>
-                ))}
+                  );
+                })}
               </AnimatePresence>
             </ul>
           )}
