@@ -1,15 +1,28 @@
-export type PricingRuleType = "CONSTANT" | "SKU_THRESHOLD" | "GROUP_THRESHOLD" | "TIERED";
+export type PricingRuleType =
+  | "CONSTANT"
+  | "FIXED_UNIT"
+  | "SKU_THRESHOLD"
+  | "GROUP_THRESHOLD"
+  | "SKU_TIERED"
+  | "GROUP_TIERED"
+  // Legacy backend value still returned by older rules; keep for compatibility while backend rollout completes.
+  | "TIERED";
 
 export interface PricingEvaluation {
   product_id: string | number;
   quantity: number;
   unit_price: number;
   line_total: number;
-  wholesale_eligible: boolean;
+  // Canonical field used in the storefront
+  wholesale_eligible?: boolean;
+  // Backward-compatible alias returned by some backend payloads
+  is_wholesale_eligible?: boolean;
   threshold_quantity: number | null;
   effective_quantity: number;
   rule_type: PricingRuleType;
-  pricing_label: string;
+  rule_name?: string;
+  pricing_group_name?: string | null;
+  pricing_label?: string;
 }
 
 export interface Product {
@@ -31,6 +44,9 @@ export interface Product {
   is_sponsored?: boolean;
   price_tiers?: PriceTier[];
   pricing_rule_type?: PricingRuleType;
+  pricing_rule_name?: string;
+  pricing_group_name?: string | null;
+  wholesale_threshold_qty?: number | null;
   // Flash sale fields from API
   discounted_price?: number;
   flash_sale_id?: number;

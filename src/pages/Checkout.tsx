@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { searchLocations } from "@/lib/kenya-locations";
 import OrderSuccessOverlay from "@/components/OrderSuccessOverlay";
+import { getCartPricingMessage, isWholesaleEligible } from "@/lib/pricingMessaging";
 
 const TRANSPORT_COMPANIES = [
   "NAEKANA Sacco",
@@ -375,6 +376,8 @@ export default function Checkout() {
                     const unitPrice = ev ? ev.unit_price : i.price;
                     const lineTotal = ev ? ev.line_total : i.price * i.quantity;
                     const pricingLabel = ev?.pricing_label;
+                    const pricingMessage = getCartPricingMessage(ev, i.quantity);
+                    const wholesaleEligible = isWholesaleEligible(ev);
                     return (
                     <tr key={i.id} className="border-b border-border/50">
                       <td className="py-2.5 pr-2">
@@ -387,8 +390,13 @@ export default function Checkout() {
                           <div>
                             <span className="line-clamp-2 leading-snug">{i.name}</span>
                             {pricingLabel && (
-                              <span className={`block text-[10px] font-semibold uppercase tracking-wider mt-0.5 ${ev?.wholesale_eligible ? "text-accent" : "text-muted-foreground"}`}>
+                              <span className={`block text-[10px] font-semibold uppercase tracking-wider mt-0.5 ${wholesaleEligible ? "text-accent" : "text-muted-foreground"}`}>
                                 {pricingLabel}
+                              </span>
+                            )}
+                            {pricingMessage && (
+                              <span className={`block text-[10px] mt-0.5 ${wholesaleEligible ? "text-accent" : "text-muted-foreground"}`}>
+                                {pricingMessage}
                               </span>
                             )}
                           </div>
