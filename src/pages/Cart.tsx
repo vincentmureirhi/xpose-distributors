@@ -39,6 +39,9 @@ export default function Cart() {
               const thresholdQty = ev?.threshold_quantity;
               const ruleType = ev?.rule_type;
               const pricingMessage = getCartPricingMessage(ev, item.quantity);
+              const ruleMeta = [ev?.rule_name ? `Rule: ${ev.rule_name}` : null, ev?.pricing_group_name ? `Group: ${ev.pricing_group_name}` : null]
+                .filter(Boolean)
+                .join(" · ");
               const isGroupThreshold =
                 !wholesaleEligible &&
                 thresholdQty != null &&
@@ -86,9 +89,9 @@ export default function Cart() {
                         {pricingMessage}
                       </p>
                     )}
-                    {(ev?.rule_name || ev?.pricing_group_name) && (
+                    {ruleMeta && (
                       <p className="text-[11px] text-muted-foreground mt-1">
-                        {ev?.rule_name ? `Rule: ${ev.rule_name}` : ""}{ev?.rule_name && ev?.pricing_group_name ? " · " : ""}{ev?.pricing_group_name ? `Group: ${ev.pricing_group_name}` : ""}
+                        {ruleMeta}
                       </p>
                     )}
                     <div className="mt-3 flex items-center justify-between">

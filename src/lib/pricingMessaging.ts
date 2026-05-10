@@ -2,7 +2,7 @@ import { formatPrice } from "@/context/CartContext";
 import type { PricingEvaluation, PricingRuleType, Product } from "@/types/shop";
 
 export const isRuleType = (ruleType?: PricingRuleType, expected?: PricingRuleType) =>
-  String(ruleType || "").toUpperCase() === String(expected || "").toUpperCase();
+  !!ruleType && !!expected && String(ruleType).toUpperCase() === String(expected).toUpperCase();
 
 export const isRuleDrivenType = (ruleType?: PricingRuleType) => {
   const rule = String(ruleType || "").toUpperCase();

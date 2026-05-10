@@ -260,6 +260,7 @@ export default function ProductDetails() {
                     size="lg"
                     className="h-12 flex-1 bg-gradient-accent text-accent-foreground border-0 shadow-glow hover:opacity-95"
                     onClick={() =>
+                      // Rule-driven prices are resolved by backend cart evaluation; avoid client-side final price assumptions.
                       addToCart(product, qty, isRuleDriven ? undefined : unitPrice)
                     }
                   >
