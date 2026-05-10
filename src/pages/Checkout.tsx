@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +16,13 @@ import { cn } from "@/lib/utils";
 import { searchLocations } from "@/lib/kenya-locations";
 import OrderSuccessOverlay from "@/components/OrderSuccessOverlay";
 import { getCartPricingMessage, isWholesaleEligible } from "@/lib/pricingMessaging";
+import {
+  buildRouteOrderNotes,
+  createRouteCustomer,
+  getStoredRouteCustomers,
+  saveRouteCustomers,
+  type RouteCustomer,
+} from "@/lib/routeCustomerWorkflow";
 
 const TRANSPORT_COMPANIES = [
   "NAEKANA Sacco",
@@ -59,6 +66,7 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
+type CheckoutWorkflow = "self_service" | "sales_rep";
 
 const fieldVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -72,8 +80,23 @@ const fieldVariants = {
 export default function Checkout() {
   const { cartItems, totalAmount, clearCart, evaluations } = useCart();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<{ id: string } | null>(null);
+  const [workflow, setWorkflow] = useState<CheckoutWorkflow>(
+    searchParams.get("workflow") === "sales-rep" ? "sales_rep" : "self_service"
+  );
+  const [routeCustomers, setRouteCustomers] = useState<RouteCustomer[]>([]);
+  const [selectedRouteCustomerId, setSelectedRouteCustomerId] = useState("");
+  const [repName, setRepName] = useState("");
+  const [repPhone, setRepPhone] = useState("");
+  const [repArea, setRepArea] = useState("");
+  const [newRouteCustomer, setNewRouteCustomer] = useState({
+    name: "",
+    phone: "",
+    location: "",
+    notes: "",
+  });
 
   const [locationQuery, setLocationQuery] = useState("");
   const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
@@ -94,6 +117,10 @@ export default function Checkout() {
     document.title = "Checkout — XPOSE";
     if (cartItems.length === 0) navigate("/cart", { replace: true });
   }, [cartItems.length, navigate]);
+
+  useEffect(() => {
+    setRouteCustomers(getStoredRouteCustomers());
+  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -119,14 +146,105 @@ export default function Checkout() {
     setLocationOpen(false);
   };
 
+  const applyRouteCustomer = (customer: RouteCustomer) => {
+    setSelectedRouteCustomerId(customer.id);
+    setValue("customer_name", customer.name, { shouldValidate: true });
+    setValue("customer_phone", customer.phone, { shouldValidate: true });
+    if (customer.location) {
+      setLocationQuery(customer.location);
+      setValue("delivery_location", customer.location, { shouldValidate: true });
+    }
+  };
+
+  const changeWorkflow = (next: CheckoutWorkflow) => {
+    setWorkflow(next);
+    const nextParams = new URLSearchParams(searchParams);
+    if (next === "sales_rep") {
+      nextParams.set("workflow", "sales-rep");
+      if (!selectedRouteCustomerId && routeCustomers[0]) {
+        applyRouteCustomer(routeCustomers[0]);
+      }
+    } else {
+      nextParams.delete("workflow");
+      setSelectedRouteCustomerId("");
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const selectedRouteCustomer = routeCustomers.find((c) => c.id === selectedRouteCustomerId);
+
+  const addRouteCustomerInline = () => {
+    const name = newRouteCustomer.name.trim();
+    const phone = newRouteCustomer.phone.trim();
+    const location = newRouteCustomer.location.trim();
+    if (!name || !phone || !location) {
+      toast.error("Add customer details", {
+        description: "Name, phone, and location are required for route customers.",
+      });
+      return;
+    }
+
+    const customer = createRouteCustomer(newRouteCustomer);
+    const updated = [customer, ...routeCustomers];
+    setRouteCustomers(updated);
+    saveRouteCustomers(updated);
+    applyRouteCustomer(customer);
+    setNewRouteCustomer({ name: "", phone: "", location: "", notes: "" });
+    toast.success("Route customer saved", {
+      description: `${customer.name} is now selected for this order.`,
+    });
+  };
+
+  const clearSelectedRouteCustomer = () => {
+    setSelectedRouteCustomerId("");
+    setValue("customer_name", "", { shouldValidate: true });
+    setValue("customer_phone", "", { shouldValidate: true });
+  };
+
   const onSubmit = async (values: FormValues) => {
+    if (workflow === "sales_rep") {
+      if (!repName.trim()) {
+        toast.error("Sales rep name required", {
+          description: "Add your name to capture a route customer order.",
+        });
+        return;
+      }
+      if (!selectedRouteCustomer) {
+        toast.error("Select a route customer", {
+          description: "Choose an existing route customer or add one inline.",
+        });
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
+      const orderNotes =
+        workflow === "sales_rep" && selectedRouteCustomer
+          ? buildRouteOrderNotes({
+              rep_name: repName,
+              rep_phone: repPhone || undefined,
+              rep_area: repArea || undefined,
+              route_customer: selectedRouteCustomer,
+              order_notes: values.notes || undefined,
+            })
+          : values.notes || undefined;
+
+      const customerName = workflow === "sales_rep" && selectedRouteCustomer
+        ? selectedRouteCustomer.name
+        : values.customer_name;
+      const customerPhone = workflow === "sales_rep" && selectedRouteCustomer
+        ? selectedRouteCustomer.phone
+        : values.customer_phone;
+      const deliveryLocation = workflow === "sales_rep" && selectedRouteCustomer
+        ? selectedRouteCustomer.location || values.delivery_location
+        : values.delivery_location;
+
       const result = await guestCheckout({
-        customer_name: values.customer_name,
-        customer_phone: values.customer_phone,
-        delivery_address: `${values.delivery_location} — ${values.transport_company}`,
-        notes: values.notes || undefined,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        delivery_address: `${deliveryLocation} — ${values.transport_company}`,
+        notes: orderNotes,
         items: cartItems.map((i) => {
           const ev = evaluations[i.id];
           return { product_id: i.id, quantity: i.quantity, unit_price: ev ? ev.unit_price : i.price };
@@ -178,23 +296,148 @@ export default function Checkout() {
             <div>
               <h2 className="font-display font-bold text-xl">Your details</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                No account needed — just fill in your details below.
+                {workflow === "sales_rep"
+                  ? "Capture orders for route customers in the field."
+                  : "No account needed — just fill in your details below."}
               </p>
             </div>
+
+            <div className="rounded-xl border border-border bg-secondary/40 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Checkout workflow</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={workflow === "self_service" ? "default" : "outline"}
+                  className="h-10"
+                  onClick={() => changeWorkflow("self_service")}
+                >
+                  Customer self-service
+                </Button>
+                <Button
+                  type="button"
+                  variant={workflow === "sales_rep" ? "default" : "outline"}
+                  className="h-10"
+                  onClick={() => changeWorkflow("sales_rep")}
+                >
+                  Sales rep order capture
+                </Button>
+              </div>
+            </div>
+
+            {workflow === "sales_rep" && (
+              <>
+                <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-3">
+                  <p className="text-sm font-semibold">Sales rep details</p>
+                  <div className="grid md:grid-cols-3 gap-3">
+                    <Input
+                      value={repName}
+                      onChange={(e) => setRepName(e.target.value)}
+                      placeholder="Rep name *"
+                      className="h-11"
+                    />
+                    <Input
+                      value={repPhone}
+                      onChange={(e) => setRepPhone(e.target.value)}
+                      placeholder="Rep phone"
+                      className="h-11"
+                    />
+                    <Input
+                      value={repArea}
+                      onChange={(e) => setRepArea(e.target.value)}
+                      placeholder="Current area / route"
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-3">
+                  <p className="text-sm font-semibold">Route customer</p>
+                  <div className="grid md:grid-cols-[1fr_auto] gap-3">
+                    <select
+                      value={selectedRouteCustomerId}
+                      onChange={(e) => {
+                        const customer = routeCustomers.find((c) => c.id === e.target.value);
+                        if (customer) applyRouteCustomer(customer);
+                        else clearSelectedRouteCustomer();
+                      }}
+                      className="w-full h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                    >
+                      <option value="">Select existing route customer…</option>
+                      {routeCustomers.map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name} — {customer.location}
+                        </option>
+                      ))}
+                    </select>
+                    <Button type="button" variant="outline" className="h-11" onClick={clearSelectedRouteCustomer}>
+                      Clear
+                    </Button>
+                  </div>
+
+                  <div className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Add route customer inline
+                    </p>
+                    <div className="grid md:grid-cols-3 gap-3">
+                      <Input
+                        value={newRouteCustomer.name}
+                        onChange={(e) => setNewRouteCustomer((prev) => ({ ...prev, name: e.target.value }))}
+                        placeholder="Business / customer name"
+                        className="h-11"
+                      />
+                      <Input
+                        value={newRouteCustomer.phone}
+                        onChange={(e) => setNewRouteCustomer((prev) => ({ ...prev, phone: e.target.value }))}
+                        placeholder="Phone number"
+                        className="h-11"
+                      />
+                      <Input
+                        value={newRouteCustomer.location}
+                        onChange={(e) => setNewRouteCustomer((prev) => ({ ...prev, location: e.target.value }))}
+                        placeholder="Location / area"
+                        className="h-11"
+                      />
+                    </div>
+                    <Textarea
+                      value={newRouteCustomer.notes}
+                      onChange={(e) => setNewRouteCustomer((prev) => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Route customer notes (optional)"
+                      rows={2}
+                      className="resize-none"
+                    />
+                    <Button type="button" variant="outline" className="h-10" onClick={addRouteCustomerInline}>
+                      Save and use customer
+                    </Button>
+                  </div>
+
+                  {selectedRouteCustomer && (
+                    <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm">
+                      <p className="font-semibold">Ordering for: {selectedRouteCustomer.name}</p>
+                      <p className="text-muted-foreground">{selectedRouteCustomer.phone} • {selectedRouteCustomer.location}</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
             {/* Full Name */}
             <motion.div custom={0} variants={fieldVariants} initial="hidden" animate="visible" className="space-y-1.5">
               <Label htmlFor="customer_name">
                 <span className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
-                  Full Name <span className="text-destructive ml-0.5">*</span>
+                  {workflow === "sales_rep" ? "Route Customer Name" : "Full Name"} <span className="text-destructive ml-0.5">*</span>
                 </span>
               </Label>
               <Input
                 id="customer_name"
-                placeholder="Jane Doe"
+                placeholder={workflow === "sales_rep" ? "Selected route customer" : "Jane Doe"}
                 {...register("customer_name")}
-                className={cn("h-12", errors.customer_name && "border-destructive focus-visible:ring-destructive")}
+                readOnly={workflow === "sales_rep"}
+                className={cn(
+                  "h-12",
+                  workflow === "sales_rep" && "bg-secondary/50",
+                  errors.customer_name && "border-destructive focus-visible:ring-destructive"
+                )}
               />
               {errors.customer_name && (
                 <p className="text-xs text-destructive">{errors.customer_name.message}</p>
@@ -206,15 +449,20 @@ export default function Checkout() {
               <Label htmlFor="customer_phone">
                 <span className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  Phone Number <span className="text-destructive ml-0.5">*</span>
+                  {workflow === "sales_rep" ? "Route Customer Phone" : "Phone Number"} <span className="text-destructive ml-0.5">*</span>
                 </span>
               </Label>
               <Input
                 id="customer_phone"
                 type="tel"
-                placeholder="0701 377 869"
+                placeholder={workflow === "sales_rep" ? "Selected route customer phone" : "0701 377 869"}
                 {...register("customer_phone")}
-                className={cn("h-12", errors.customer_phone && "border-destructive focus-visible:ring-destructive")}
+                readOnly={workflow === "sales_rep"}
+                className={cn(
+                  "h-12",
+                  workflow === "sales_rep" && "bg-secondary/50",
+                  errors.customer_phone && "border-destructive focus-visible:ring-destructive"
+                )}
               />
               {errors.customer_phone && (
                 <p className="text-xs text-destructive">{errors.customer_phone.message}</p>
@@ -319,7 +567,7 @@ export default function Checkout() {
               <Label htmlFor="notes">
                 <span className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-muted-foreground" />
-                  Additional Notes
+                  {workflow === "sales_rep" ? "Order Notes" : "Additional Notes"}
                   <span className="text-muted-foreground text-xs font-normal">(optional)</span>
                 </span>
               </Label>
@@ -344,10 +592,15 @@ export default function Checkout() {
                     <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Placing order…
                   </>
                 ) : (
-                  `Place order — ${formatPrice(totalAmount)}`
+                  `${workflow === "sales_rep" ? "Capture route order" : "Place order"} — ${formatPrice(totalAmount)}`
                 )}
               </Button>
             </motion.div>
+            {workflow === "sales_rep" && selectedRouteCustomer && (
+              <p className="text-xs text-muted-foreground">
+                This order will be submitted on behalf of <span className="font-semibold text-foreground">{selectedRouteCustomer.name}</span>.
+              </p>
+            )}
           </form>
         </motion.div>
 
@@ -360,6 +613,14 @@ export default function Checkout() {
             className="rounded-2xl border border-border bg-card p-6"
           >
             <h2 className="font-display font-bold text-lg mb-4">Order summary</h2>
+            {workflow === "sales_rep" && selectedRouteCustomer && (
+              <div className="mb-4 rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm">
+                <p className="font-semibold">Route customer order</p>
+                <p className="text-muted-foreground">
+                  {selectedRouteCustomer.name} • {selectedRouteCustomer.location}
+                </p>
+              </div>
+            )}
             <div className="overflow-x-auto mb-4">
               <table className="w-full text-sm border-collapse">
                 <thead>
