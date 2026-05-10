@@ -66,12 +66,20 @@ function extractRouteCustomerRows(payload: unknown): BackendRouteCustomer[] {
 }
 
 export async function listRouteCustomers(sales_rep_id?: string): Promise<RouteCustomer[]> {
+  const toCustomers = (payload: unknown) => {
+    const rows = extractRouteCustomerRows(payload);
+    const normalized = rows.map(normalizeRouteCustomer);
+    return normalized.filter((customer): customer is RouteCustomer => !!customer);
+  };
+  const params = sales_rep_id ? { customer_type: "route", sales_rep_id } : { customer_type: "route" };
+  const fallbackParams = sales_rep_id ? { sales_rep_id } : undefined;
+
   try {
-    const { data } = await apiClient.get("/customers", { params: { customer_type: "route", sales_rep_id } });
-    return extractRouteCustomerRows(data).map(normalizeRouteCustomer).filter((customer): customer is RouteCustomer => !!customer);
+    const { data } = await apiClient.get("/customers", { params });
+    return toCustomers(data);
   } catch {
-    const { data } = await apiClient.get("/customers/route", { params: { sales_rep_id } });
-    return extractRouteCustomerRows(data).map(normalizeRouteCustomer).filter((customer): customer is RouteCustomer => !!customer);
+    const { data } = await apiClient.get("/customers/route", { params: fallbackParams });
+    return toCustomers(data);
   }
 }
 

@@ -52,7 +52,6 @@ export function createRouteCustomer(input: RouteCustomerInput, now = new Date())
     name: input.name.trim(),
     phone: input.phone.trim(),
     location,
-    route_area: location,
     notes: trimmedNotes ? trimmedNotes : undefined,
     created_at: now.toISOString(),
   };
@@ -72,7 +71,7 @@ export function mergeRouteCustomers(primary: RouteCustomer[], fallback: RouteCus
     const phone = (customer.phone || "").toLowerCase();
     const name = (customer.name || "").toLowerCase();
     const location = (customer.location || "").toLowerCase();
-    const identityKey = `${phone}|${name}|${location}`;
+    const identityKey = JSON.stringify([phone, name, location]);
     const keys = backendId ? [backendId, identityKey] : [identityKey];
     if (keys.some((key) => seen.has(key))) continue;
     keys.forEach((key) => seen.add(key));

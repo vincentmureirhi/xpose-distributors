@@ -138,8 +138,11 @@ export default function Checkout() {
         setRouteCustomers(merged);
         saveRouteCustomers(merged);
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return;
+        if (import.meta.env.DEV) {
+          console.warn("Failed to sync route customers from backend. Check API availability/auth context.", error);
+        }
       })
       .finally(() => {
         if (!active) return;
@@ -229,7 +232,10 @@ export default function Checkout() {
         customer = backendCustomer;
         persistedInBackend = true;
       }
-    } catch {
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn("Failed to upsert route customer in backend. Falling back to local save.", error);
+      }
       persistedInBackend = false;
     }
 
