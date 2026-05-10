@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trackOrder } from "@/lib/api/orders";
 import {
+  CUSTOMER_ORDER_PREPARING_STAGE_KEY,
   CUSTOMER_ORDER_PROGRESS_STAGES,
   getCustomerOrderStatusInfo,
   resolveCustomerOrderStage,
@@ -90,7 +91,7 @@ export default function TrackOrder() {
   const rawStatus = order?.order_status || order?.status || "";
   const resolvedKey = resolveCustomerOrderStage(rawStatus);
   const currentStatus = getCustomerOrderStatusInfo(rawStatus);
-  const preparingOrderLabel = getCustomerOrderStatusInfo("processing").label;
+  const preparingOrderLabel = getCustomerOrderStatusInfo(CUSTOMER_ORDER_PREPARING_STAGE_KEY).label;
   const isCancelled = resolvedKey === "cancelled";
   const isPending = resolvedKey === "pending";
   const currentIndex = isCancelled ? -1 : stages.findIndex((s) => s.key === resolvedKey);
@@ -203,7 +204,7 @@ export default function TrackOrder() {
                       : "border-border bg-secondary/30"
                 )}
               >
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">What this means</p>
+                <h3 className="text-xs uppercase tracking-wider text-muted-foreground">What this means</h3>
                 <p className={cn("text-sm mt-1", isCancelled && "text-destructive/90")}>{currentStatus.description}</p>
               </div>
 

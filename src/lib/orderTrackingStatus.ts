@@ -41,6 +41,8 @@ export const CUSTOMER_ORDER_PROGRESS_STAGES: CustomerOrderStageKey[] = [
   "completed",
 ];
 
+export const CUSTOMER_ORDER_PREPARING_STAGE_KEY: CustomerOrderStageKey = "processing";
+
 const STATUS_TO_STAGE_MAP: Record<string, CustomerOrderStageKey> = {
   pending: "pending",
   payment_pending: "pending",
