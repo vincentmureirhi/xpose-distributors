@@ -4,13 +4,24 @@ import type { PricingEvaluation, PricingRuleType, Product } from "@/types/shop";
 const isRule = (ruleType?: PricingRuleType, expected?: PricingRuleType) =>
   String(ruleType || "").toUpperCase() === String(expected || "").toUpperCase();
 
+export const isRuleDrivenType = (ruleType?: PricingRuleType) => {
+  const rule = String(ruleType || "").toUpperCase();
+  return (
+    rule === "SKU_THRESHOLD" ||
+    rule === "GROUP_THRESHOLD" ||
+    rule === "SKU_TIERED" ||
+    rule === "GROUP_TIERED" ||
+    rule === "TIERED"
+  );
+};
+
 const isWholesaleEligible = (ev?: PricingEvaluation) =>
   Boolean(ev?.is_wholesale_eligible ?? ev?.wholesale_eligible);
 
 export function getProductPricingMessages(product: Product) {
-  const retail = Number(product.retail_price || product.price || 0);
-  const wholesale = Number(product.wholesale_price || 0);
-  const threshold = Number(product.wholesale_threshold_qty || product.min_qty_wholesale || 0);
+  const retail = Number(product.retail_price ?? product.price ?? 0);
+  const wholesale = Number(product.wholesale_price ?? 0);
+  const threshold = Number(product.wholesale_threshold_qty ?? product.min_qty_wholesale ?? 0);
   const tiers = product.price_tiers || [];
   const ruleType = product.pricing_rule_type;
   const groupName = product.pricing_group_name;
@@ -64,7 +75,7 @@ export function getProductPricingMessages(product: Product) {
 
   return {
     primary: retail > 0 ? `Retail: ${formatPrice(retail)}` : "Price available at checkout",
-    secondary: null,
+    secondary: undefined,
   };
 }
 

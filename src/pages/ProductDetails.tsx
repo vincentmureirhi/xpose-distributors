@@ -9,7 +9,7 @@ import ProductCard from "@/components/products/ProductCard";
 import type { Product } from "@/types/shop";
 import { getPriceTiers } from "@/lib/pricing";
 import AnimatedPrice from "@/components/AnimatedPrice";
-import { getProductPricingMessages } from "@/lib/pricingMessaging";
+import { getProductPricingMessages, isRuleDrivenType } from "@/lib/pricingMessaging";
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -118,13 +118,7 @@ export default function ProductDetails() {
               ? Math.round(((piecePrice - perPiece) / piecePrice) * 100)
               : null;
             const activeIndex = Math.max(0, tiersList.findIndex((t) => t.unit === selectedUnit));
-            const ruleType = String(product.pricing_rule_type || "").toUpperCase();
-            const isRuleDriven =
-              ruleType === "SKU_THRESHOLD" ||
-              ruleType === "GROUP_THRESHOLD" ||
-              ruleType === "SKU_TIERED" ||
-              ruleType === "GROUP_TIERED" ||
-              ruleType === "TIERED";
+            const isRuleDriven = isRuleDrivenType(product.pricing_rule_type);
             return (
               <>
                 <div className="rounded-xl border border-border bg-card/60 px-3 py-2">
@@ -158,13 +152,18 @@ export default function ProductDetails() {
                       const meetsThreshold = !t.min_qty || qty >= t.min_qty;
                       const needMore = t.min_qty && qty < t.min_qty ? t.min_qty - qty : 0;
                       const disabled = isRuleDriven || !meetsThreshold;
+                      const buttonTitle = needMore
+                        ? `Add ${needMore} more to unlock ${t.unit} pricing`
+                        : isRuleDriven
+                          ? "Price is applied automatically from cart quantity rules"
+                          : undefined;
                       return (
                         <button
                           key={t.unit}
                           onClick={() => !disabled && setSelectedUnit(t.unit)}
                           disabled={disabled}
                           aria-disabled={disabled}
-                          title={needMore ? `Add ${needMore} more to unlock ${t.unit} pricing` : isRuleDriven ? "Price is applied automatically from cart quantity rules" : undefined}
+                          title={buttonTitle}
                           className={`relative z-10 flex-1 px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors ${active ? "text-foreground" : "text-muted-foreground hover:text-foreground"} ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
                         >
                           {t.unit}

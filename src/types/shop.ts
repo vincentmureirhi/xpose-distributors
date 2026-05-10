@@ -5,15 +5,16 @@ export type PricingRuleType =
   | "GROUP_THRESHOLD"
   | "SKU_TIERED"
   | "GROUP_TIERED"
-  | "TIERED"
-  | (string & {});
+  | "TIERED";
 
 export interface PricingEvaluation {
   product_id: string | number;
   quantity: number;
   unit_price: number;
   line_total: number;
+  // Canonical field used in the storefront
   wholesale_eligible?: boolean;
+  // Backward-compatible alias returned by some backend payloads
   is_wholesale_eligible?: boolean;
   threshold_quantity: number | null;
   effective_quantity: number;
