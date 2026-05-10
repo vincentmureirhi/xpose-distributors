@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { searchLocations } from "@/lib/kenya-locations";
 import OrderSuccessOverlay from "@/components/OrderSuccessOverlay";
 import { getCartPricingMessage, isWholesaleEligible } from "@/lib/pricingMessaging";
+import { useSalesRepSession } from "@/context/SalesRepSessionContext";
 import {
   buildRouteOrderNotes,
   createRouteCustomer,
@@ -83,16 +84,20 @@ const fieldVariants = {
 export default function Checkout() {
   const { cartItems, totalAmount, clearCart, evaluations } = useCart();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    isSalesRepAuthenticated,
+    salesRep,
+    mustChangePassword,
+    locationPermission,
+    requestLocationPermission,
+  } = useSalesRepSession();
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<{ id: string } | null>(null);
-  const [workflow, setWorkflow] = useState<CheckoutWorkflow>(
-    searchParams.get("workflow") === "sales-rep" ? "sales_rep" : "self_service"
-  );
+  const workflow: CheckoutWorkflow = isSalesRepAuthenticated ? "sales_rep" : "self_service";
   const [routeCustomers, setRouteCustomers] = useState<RouteCustomer[]>([]);
   const [loadingRouteCustomers, setLoadingRouteCustomers] = useState(false);
   const [selectedRouteCustomerId, setSelectedRouteCustomerId] = useState("");
-  const [repName, setRepName] = useState("");
+  const repName = salesRep?.full_name || salesRep?.username || "Sales rep";
   const [repPhone, setRepPhone] = useState("");
   const [repArea, setRepArea] = useState("");
   const [newRouteCustomer, setNewRouteCustomer] = useState({
@@ -117,7 +122,17 @@ export default function Checkout() {
     resolver: zodResolver(schema),
   });
 
-  const salesRepId = searchParams.get("sales_rep_id") || searchParams.get("salesRepId") || undefined;
+  const salesRepId = salesRep?.id;
+  const repOperationsBlockedReason = !isSalesRepAuthenticated
+    ? null
+    : mustChangePassword
+      ? "Password change is required before rep operational checkout."
+      : locationPermission === "granted"
+        ? null
+        : locationPermission === "denied"
+          ? "Location access is denied. Enable location to capture route orders."
+          : "Location permission is required to continue with rep route operations.";
+  const repOperationsBlocked = workflow === "sales_rep" && !!repOperationsBlockedReason;
 
   useEffect(() => {
     document.title = "Checkout — XPOSE";
@@ -125,6 +140,18 @@ export default function Checkout() {
   }, [cartItems.length, navigate]);
 
   useEffect(() => {
+    if (!salesRep) return;
+    setRepPhone(salesRep.phone || "");
+    setRepArea(salesRep.route_area || "");
+  }, [salesRep]);
+
+  useEffect(() => {
+    if (!isSalesRepAuthenticated) {
+      setRouteCustomers([]);
+      setLoadingRouteCustomers(false);
+      return;
+    }
+
     const stored = getStoredRouteCustomers();
     setRouteCustomers(stored);
 
@@ -152,7 +179,7 @@ export default function Checkout() {
     return () => {
       active = false;
     };
-  }, [salesRepId]);
+  }, [isSalesRepAuthenticated, salesRepId]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -188,24 +215,27 @@ export default function Checkout() {
     }
   };
 
-  const changeWorkflow = (next: CheckoutWorkflow) => {
-    setWorkflow(next);
-    const nextParams = new URLSearchParams(searchParams);
-    if (next === "sales_rep") {
-      nextParams.set("workflow", "sales-rep");
-      if (!selectedRouteCustomerId && routeCustomers[0]) {
-        applyRouteCustomer(routeCustomers[0]);
-      }
-    } else {
-      nextParams.delete("workflow");
-      setSelectedRouteCustomerId("");
-    }
-    setSearchParams(nextParams, { replace: true });
-  };
-
   const selectedRouteCustomer = routeCustomers.find((c) => c.id === selectedRouteCustomerId);
 
+  useEffect(() => {
+    if (workflow !== "sales_rep") return;
+    if (selectedRouteCustomerId || routeCustomers.length === 0) return;
+    const firstCustomer = routeCustomers[0];
+    setSelectedRouteCustomerId(firstCustomer.id);
+    setValue("customer_name", firstCustomer.name, { shouldValidate: true });
+    setValue("customer_phone", firstCustomer.phone, { shouldValidate: true });
+    if (firstCustomer.location) {
+      setLocationQuery(firstCustomer.location);
+      setValue("delivery_location", firstCustomer.location, { shouldValidate: true });
+    }
+  }, [routeCustomers, selectedRouteCustomerId, setValue, workflow]);
+
   const addRouteCustomerInline = async () => {
+    if (repOperationsBlocked) {
+      toast.error("Rep route workflow blocked", { description: repOperationsBlockedReason || undefined });
+      return;
+    }
+
     const name = newRouteCustomer.name.trim();
     const phone = newRouteCustomer.phone.trim();
     const location = newRouteCustomer.location.trim();
@@ -275,16 +305,31 @@ export default function Checkout() {
 
   const onSubmit = async (values: FormValues) => {
     if (workflow === "sales_rep") {
-      if (!repName.trim()) {
-        toast.error("Sales rep name required", {
-          description: "Add your name to capture a route customer order.",
+      if (mustChangePassword) {
+        toast.error("Password change required", {
+          description: "Change your password before capturing route orders.",
         });
+        navigate("/sales-rep/change-password");
+        return;
+      }
+      if (repOperationsBlockedReason) {
+        toast.error("Location permission required", {
+          description: repOperationsBlockedReason,
+        });
+        navigate("/sales-rep/location-access");
         return;
       }
       if (!selectedRouteCustomer) {
         toast.error("Select a route customer", {
           description: "Choose an existing route customer or add one inline.",
         });
+        return;
+      }
+      if (!salesRepId) {
+        toast.error("Rep session missing", {
+          description: "Sign in again to continue with authenticated rep checkout.",
+        });
+        navigate("/sales-rep/login");
         return;
       }
     }
@@ -376,26 +421,15 @@ export default function Checkout() {
               </p>
             </div>
 
-            <div className="rounded-xl border border-border bg-secondary/40 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Checkout workflow</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant={workflow === "self_service" ? "default" : "outline"}
-                  className="h-10"
-                  onClick={() => changeWorkflow("self_service")}
-                >
-                  Customer self-service
-                </Button>
-                <Button
-                  type="button"
-                  variant={workflow === "sales_rep" ? "default" : "outline"}
-                  className="h-10"
-                  onClick={() => changeWorkflow("sales_rep")}
-                >
-                  Sales rep order capture
-                </Button>
-              </div>
+            <div className="rounded-xl border border-border bg-secondary/40 p-3 text-sm">
+              {workflow === "sales_rep" ? (
+                <p>
+                  Authenticated sales rep checkout is active for{" "}
+                  <span className="font-semibold">{repName}</span>.
+                </p>
+              ) : (
+                <p>Customer self-service checkout is active.</p>
+              )}
             </div>
 
             {workflow === "sales_rep" && (
@@ -405,8 +439,7 @@ export default function Checkout() {
                   <div className="grid md:grid-cols-3 gap-3">
                     <Input
                       value={repName}
-                      onChange={(e) => setRepName(e.target.value)}
-                      placeholder="Rep name *"
+                      readOnly
                       className="h-11"
                     />
                     <Input
@@ -424,6 +457,27 @@ export default function Checkout() {
                   </div>
                 </div>
 
+                {repOperationsBlockedReason && (
+                  <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm space-y-3">
+                    <p className="font-semibold text-destructive">Rep order capture is blocked</p>
+                    <p className="text-muted-foreground">{repOperationsBlockedReason}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {mustChangePassword ? (
+                        <Button type="button" asChild size="sm">
+                          <Link to="/sales-rep/change-password">Change password</Link>
+                        </Button>
+                      ) : (
+                        <Button type="button" size="sm" onClick={() => void requestLocationPermission()}>
+                          Enable location
+                        </Button>
+                      )}
+                      <Button type="button" size="sm" variant="outline" asChild>
+                        <Link to="/sales-rep/location-access">Open location setup</Link>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-3">
                   <p className="text-sm font-semibold">Route customer</p>
                   {loadingRouteCustomers && (
@@ -437,6 +491,7 @@ export default function Checkout() {
                         if (customer) applyRouteCustomer(customer);
                         else clearSelectedRouteCustomer();
                       }}
+                      disabled={repOperationsBlocked}
                       className="w-full h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                     >
                       <option value="">Select existing route customer…</option>
@@ -446,7 +501,7 @@ export default function Checkout() {
                         </option>
                       ))}
                     </select>
-                    <Button type="button" variant="outline" className="h-11" onClick={clearSelectedRouteCustomer}>
+                    <Button type="button" variant="outline" className="h-11" onClick={clearSelectedRouteCustomer} disabled={repOperationsBlocked}>
                       Clear
                     </Button>
                   </div>
@@ -460,18 +515,21 @@ export default function Checkout() {
                         value={newRouteCustomer.name}
                         onChange={(e) => setNewRouteCustomer((prev) => ({ ...prev, name: e.target.value }))}
                         placeholder="Business / customer name"
+                        disabled={repOperationsBlocked}
                         className="h-11"
                       />
                       <Input
                         value={newRouteCustomer.phone}
                         onChange={(e) => setNewRouteCustomer((prev) => ({ ...prev, phone: e.target.value }))}
                         placeholder="Phone number"
+                        disabled={repOperationsBlocked}
                         className="h-11"
                       />
                       <Input
                         value={newRouteCustomer.location}
                         onChange={(e) => setNewRouteCustomer((prev) => ({ ...prev, location: e.target.value }))}
                         placeholder="Location / area"
+                        disabled={repOperationsBlocked}
                         className="h-11"
                       />
                     </div>
@@ -479,10 +537,11 @@ export default function Checkout() {
                       value={newRouteCustomer.notes}
                       onChange={(e) => setNewRouteCustomer((prev) => ({ ...prev, notes: e.target.value }))}
                       placeholder="Route customer notes (optional)"
+                      disabled={repOperationsBlocked}
                       rows={2}
                       className="resize-none"
                     />
-                    <Button type="button" variant="outline" className="h-10" onClick={addRouteCustomerInline}>
+                    <Button type="button" variant="outline" className="h-10" onClick={addRouteCustomerInline} disabled={repOperationsBlocked}>
                       Save and use customer
                     </Button>
                   </div>
@@ -661,13 +720,15 @@ export default function Checkout() {
               <Button
                 type="submit"
                 size="lg"
-                disabled={submitting}
+                disabled={submitting || repOperationsBlocked}
                 className="w-full h-14 bg-gradient-accent text-accent-foreground border-0 shadow-glow text-base font-semibold"
               >
                 {submitting ? (
                   <>
                     <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Placing order…
                   </>
+                ) : repOperationsBlocked ? (
+                  "Enable location to capture route order"
                 ) : (
                   `${workflow === "sales_rep" ? "Capture route order" : "Place order"} — ${formatPrice(totalAmount)}`
                 )}

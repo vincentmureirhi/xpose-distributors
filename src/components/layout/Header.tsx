@@ -3,6 +3,7 @@ import { Menu, Search, ShoppingBag, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/context/CartContext";
+import { useSalesRepSession } from "@/context/SalesRepSessionContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ const navLinks = [
 
 export default function Header() {
   const { itemCount, openCart } = useCart();
+  const { isSalesRepAuthenticated, salesRep, logout } = useSalesRepSession();
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -84,6 +86,15 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-1">
+          {isSalesRepAuthenticated ? (
+            <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={logout}>
+              {salesRep?.full_name || "Sales rep"} • Logout
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" className="hidden md:inline-flex" asChild>
+              <Link to="/sales-rep/login">Rep login</Link>
+            </Button>
+          )}
           <Button variant="ghost" size="icon" onClick={() => setSearchOpen((v) => !v)} aria-label="Search">
             <Search className="h-5 w-5" />
           </Button>
@@ -154,6 +165,31 @@ export default function Header() {
                   {l.label}
                 </NavLink>
               ))}
+              {isSalesRepAuthenticated ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    setMobileOpen(false);
+                  }}
+                  className="px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-secondary text-left"
+                >
+                  {salesRep?.full_name || "Sales rep"} • Logout
+                </button>
+              ) : (
+                <NavLink
+                  to="/sales-rep/login"
+                  onClick={() => setMobileOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      "px-3 py-3 rounded-lg text-sm font-medium transition-colors",
+                      isActive ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary"
+                    )
+                  }
+                >
+                  Rep login
+                </NavLink>
+              )}
             </div>
           </motion.div>
         )}
