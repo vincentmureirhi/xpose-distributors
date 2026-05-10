@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
 
 export default function Cart() {
-  const { cartItems, updateQuantity, removeFromCart, totalAmount, clearCart } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, totalAmount, clearCart, evaluations, pricingLoading } = useCart();
   useEffect(() => { document.title = "Cart — XPOSE"; }, []);
 
   if (cartItems.length === 0) {
@@ -29,39 +29,80 @@ export default function Cart() {
       <div className="grid lg:grid-cols-[1fr_400px] gap-8">
         <ul className="space-y-3">
           <AnimatePresence>
-            {cartItems.map((item) => (
-              <motion.li
-                key={item.id}
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: 50 }}
-                className="flex gap-4 p-4 rounded-2xl bg-card border border-border"
-              >
-                <Link to={`/products/${item.id}`} className="h-24 w-24 md:h-28 md:w-28 rounded-xl overflow-hidden bg-secondary flex-shrink-0">
-                  {item.image_url && <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" loading="lazy" />}
-                </Link>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start gap-3">
-                    <Link to={`/products/${item.id}`} className="flex-1">
-                      <h3 className="font-medium hover:text-accent transition-colors line-clamp-2">{item.name}</h3>
-                    </Link>
-                    <button onClick={() => removeFromCart(item.id)} className="text-muted-foreground hover:text-destructive p-1" aria-label="Remove">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">{formatPrice(item.price)} each</p>
-                  <div className="mt-3 flex items-center justify-between">
-                    <div className="flex items-center gap-1 bg-secondary rounded-full p-0.5">
-                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="h-8 w-8 rounded-full grid place-items-center hover:bg-background transition-colors"><Minus className="h-3.5 w-3.5" /></button>
-                      <motion.span key={item.quantity} initial={{ scale: 0.7 }} animate={{ scale: 1 }} className="w-8 text-center text-sm font-semibold">{item.quantity}</motion.span>
-                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="h-8 w-8 rounded-full grid place-items-center hover:bg-background transition-colors"><Plus className="h-3.5 w-3.5" /></button>
+            {cartItems.map((item) => {
+              const ev = evaluations[item.id];
+              const unitPrice = ev ? ev.unit_price : item.price;
+              const lineTotal = ev ? ev.line_total : item.price * item.quantity;
+              const pricingLabel = ev?.pricing_label;
+              const wholesaleEligible = ev?.wholesale_eligible;
+              const thresholdQty = ev?.threshold_quantity;
+              const ruleType = ev?.rule_type;
+
+              // Threshold progress flags — separate by rule type for clarity
+              const isSkuThreshold =
+                !wholesaleEligible &&
+                thresholdQty != null &&
+                ruleType === "SKU_THRESHOLD";
+              const isGroupThreshold =
+                !wholesaleEligible &&
+                thresholdQty != null &&
+                ruleType === "GROUP_THRESHOLD";
+              const needed = isSkuThreshold && thresholdQty != null ? thresholdQty - item.quantity : 0;
+
+              return (
+                <motion.li
+                  key={item.id}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: 50 }}
+                  className="flex gap-4 p-4 rounded-2xl bg-card border border-border"
+                >
+                  <Link to={`/products/${item.id}`} className="h-24 w-24 md:h-28 md:w-28 rounded-xl overflow-hidden bg-secondary flex-shrink-0">
+                    {item.image_url && <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" loading="lazy" />}
+                  </Link>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start gap-3">
+                      <Link to={`/products/${item.id}`} className="flex-1">
+                        <h3 className="font-medium hover:text-accent transition-colors line-clamp-2">{item.name}</h3>
+                      </Link>
+                      <button onClick={() => removeFromCart(item.id)} className="text-muted-foreground hover:text-destructive p-1" aria-label="Remove">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
-                    <p className="font-display font-bold">{formatPrice(item.price * item.quantity)}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-sm text-muted-foreground">{formatPrice(unitPrice)} each</p>
+                      {pricingLabel && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${wholesaleEligible ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>
+                          {pricingLabel}
+                        </span>
+                      )}
+                      {pricingLoading && !ev && (
+                        <span className="text-[10px] text-muted-foreground animate-pulse">evaluating…</span>
+                      )}
+                    </div>
+                    {isSkuThreshold && needed > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Add <span className="font-semibold text-foreground">{needed}</span> more to unlock wholesale pricing
+                      </p>
+                    )}
+                    {isGroupThreshold && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Group threshold not yet reached — add more qualifying items
+                      </p>
+                    )}
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="flex items-center gap-1 bg-secondary rounded-full p-0.5">
+                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="h-8 w-8 rounded-full grid place-items-center hover:bg-background transition-colors"><Minus className="h-3.5 w-3.5" /></button>
+                        <motion.span key={item.quantity} initial={{ scale: 0.7 }} animate={{ scale: 1 }} className="w-8 text-center text-sm font-semibold">{item.quantity}</motion.span>
+                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="h-8 w-8 rounded-full grid place-items-center hover:bg-background transition-colors"><Plus className="h-3.5 w-3.5" /></button>
+                      </div>
+                      <p className="font-display font-bold">{formatPrice(lineTotal)}</p>
+                    </div>
                   </div>
-                </div>
-              </motion.li>
-            ))}
+                </motion.li>
+              );
+            })}
           </AnimatePresence>
           <div className="pt-2">
             <Button variant="ghost" size="sm" onClick={clearCart} className="text-muted-foreground hover:text-destructive">Clear cart</Button>

@@ -69,7 +69,7 @@ const fieldVariants = {
 };
 
 export default function Checkout() {
-  const { cartItems, totalAmount, clearCart } = useCart();
+  const { cartItems, totalAmount, clearCart, evaluations } = useCart();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<{ id: string } | null>(null);
@@ -126,7 +126,10 @@ export default function Checkout() {
         customer_phone: values.customer_phone,
         delivery_address: `${values.delivery_location} — ${values.transport_company}`,
         notes: values.notes || undefined,
-        items: cartItems.map((i) => ({ product_id: i.id, quantity: i.quantity, unit_price: i.price })),
+        items: cartItems.map((i) => {
+          const ev = evaluations[i.id];
+          return { product_id: i.id, quantity: i.quantity, unit_price: ev ? ev.unit_price : i.price };
+        }),
       });
       clearCart();
       const orderId = result.order_number || result.id;
@@ -367,7 +370,12 @@ export default function Checkout() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cartItems.map((i) => (
+                  {cartItems.map((i) => {
+                    const ev = evaluations[i.id];
+                    const unitPrice = ev ? ev.unit_price : i.price;
+                    const lineTotal = ev ? ev.line_total : i.price * i.quantity;
+                    const pricingLabel = ev?.pricing_label;
+                    return (
                     <tr key={i.id} className="border-b border-border/50">
                       <td className="py-2.5 pr-2">
                         <div className="flex items-center gap-2">
@@ -376,14 +384,22 @@ export default function Checkout() {
                               <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" />
                             </div>
                           )}
-                          <span className="line-clamp-2 leading-snug">{i.name}</span>
+                          <div>
+                            <span className="line-clamp-2 leading-snug">{i.name}</span>
+                            {pricingLabel && (
+                              <span className={`block text-[10px] font-semibold uppercase tracking-wider mt-0.5 ${ev?.wholesale_eligible ? "text-accent" : "text-muted-foreground"}`}>
+                                {pricingLabel}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="py-2.5 text-center text-muted-foreground">{i.quantity}</td>
-                      <td className="py-2.5 text-right whitespace-nowrap">{formatPrice(i.price)}</td>
-                      <td className="py-2.5 text-right whitespace-nowrap font-semibold">{formatPrice(i.price * i.quantity)}</td>
+                      <td className="py-2.5 text-right whitespace-nowrap">{formatPrice(unitPrice)}</td>
+                      <td className="py-2.5 text-right whitespace-nowrap font-semibold">{formatPrice(lineTotal)}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -1,3 +1,17 @@
+export type PricingRuleType = "CONSTANT" | "SKU_THRESHOLD" | "GROUP_THRESHOLD" | "TIERED";
+
+export interface PricingEvaluation {
+  product_id: string | number;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  wholesale_eligible: boolean;
+  threshold_quantity: number | null;
+  effective_quantity: number;
+  rule_type: PricingRuleType;
+  pricing_label: string;
+}
+
 export interface Product {
   id: string | number;
   name: string;
@@ -16,6 +30,7 @@ export interface Product {
   is_flash?: boolean;
   is_sponsored?: boolean;
   price_tiers?: PriceTier[];
+  pricing_rule_type?: PricingRuleType;
   // Flash sale fields from API
   discounted_price?: number;
   flash_sale_id?: number;
@@ -43,6 +58,10 @@ export interface CartItem {
   price: number;
   image_url: string;
   quantity: number;
+  pricing_label?: string;
+  rule_type?: PricingRuleType;
+  wholesale_eligible?: boolean;
+  threshold_quantity?: number | null;
 }
 
 export interface Order {
