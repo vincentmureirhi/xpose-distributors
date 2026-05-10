@@ -7,6 +7,13 @@ export interface GuestCheckoutPayload {
   customer_email?: string;
   delivery_address: string;
   notes?: string;
+  order_type?: "normal" | "route";
+  order_workflow_type?: "normal_self_service" | "route_self_service" | "route_sales_rep_capture";
+  sales_rep_id?: string;
+  customer_id?: string;
+  customer_location_id?: string;
+  route_area?: string;
+  route_notes?: string;
   items: { product_id: string | number; quantity: number; unit_price?: number }[];
 }
 

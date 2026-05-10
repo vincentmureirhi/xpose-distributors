@@ -1,8 +1,12 @@
 export interface RouteCustomer {
   id: string;
+  backend_customer_id?: string;
   name: string;
   phone: string;
   location: string;
+  customer_location_id?: string;
+  sales_rep_id?: string;
+  route_area?: string;
   notes?: string;
   created_at: string;
 }
@@ -42,14 +46,37 @@ export function saveRouteCustomers(customers: RouteCustomer[], storage: Storage 
 export function createRouteCustomer(input: RouteCustomerInput, now = new Date()): RouteCustomer {
   const ts = now.getTime();
   const trimmedNotes = input.notes?.trim();
+  const location = input.location.trim();
   return {
     id: `route-${ts}-${Math.random().toString(36).slice(2, 8)}`,
     name: input.name.trim(),
     phone: input.phone.trim(),
-    location: input.location.trim(),
+    location,
+    route_area: location,
     notes: trimmedNotes ? trimmedNotes : undefined,
     created_at: now.toISOString(),
   };
+}
+
+export function getRouteCustomerBackendId(routeCustomer: RouteCustomer): string | undefined {
+  if (routeCustomer.backend_customer_id) return routeCustomer.backend_customer_id;
+  return routeCustomer.id.startsWith("route-") ? undefined : routeCustomer.id;
+}
+
+export function mergeRouteCustomers(primary: RouteCustomer[], fallback: RouteCustomer[]): RouteCustomer[] {
+  const seen = new Set<string>();
+  const merged: RouteCustomer[] = [];
+
+  for (const customer of [...primary, ...fallback]) {
+    const backendId = getRouteCustomerBackendId(customer);
+    const identityKey = `${customer.phone.toLowerCase()}|${customer.name.toLowerCase()}|${customer.location.toLowerCase()}`;
+    const keys = backendId ? [backendId, identityKey] : [identityKey];
+    if (keys.some((key) => seen.has(key))) continue;
+    keys.forEach((key) => seen.add(key));
+    merged.push(customer);
+  }
+
+  return merged;
 }
 
 export function buildRouteOrderNotes(payload: RouteOrderNotePayload) {

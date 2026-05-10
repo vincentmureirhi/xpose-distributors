@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { guestCheckout } from "@/lib/api/orders";
+import { listRouteCustomers, upsertRouteCustomer } from "@/lib/api/route-customers";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { searchLocations } from "@/lib/kenya-locations";
@@ -19,7 +20,9 @@ import { getCartPricingMessage, isWholesaleEligible } from "@/lib/pricingMessagi
 import {
   buildRouteOrderNotes,
   createRouteCustomer,
+  getRouteCustomerBackendId,
   getStoredRouteCustomers,
+  mergeRouteCustomers,
   saveRouteCustomers,
   type RouteCustomer,
 } from "@/lib/routeCustomerWorkflow";
@@ -87,6 +90,7 @@ export default function Checkout() {
     searchParams.get("workflow") === "sales-rep" ? "sales_rep" : "self_service"
   );
   const [routeCustomers, setRouteCustomers] = useState<RouteCustomer[]>([]);
+  const [loadingRouteCustomers, setLoadingRouteCustomers] = useState(false);
   const [selectedRouteCustomerId, setSelectedRouteCustomerId] = useState("");
   const [repName, setRepName] = useState("");
   const [repPhone, setRepPhone] = useState("");
@@ -113,14 +117,39 @@ export default function Checkout() {
     resolver: zodResolver(schema),
   });
 
+  const salesRepId = searchParams.get("sales_rep_id") || searchParams.get("salesRepId") || undefined;
+
   useEffect(() => {
     document.title = "Checkout — XPOSE";
     if (cartItems.length === 0) navigate("/cart", { replace: true });
   }, [cartItems.length, navigate]);
 
   useEffect(() => {
-    setRouteCustomers(getStoredRouteCustomers());
-  }, []);
+    const stored = getStoredRouteCustomers();
+    setRouteCustomers(stored);
+
+    let active = true;
+    setLoadingRouteCustomers(true);
+
+    listRouteCustomers(salesRepId)
+      .then((backendCustomers) => {
+        if (!active) return;
+        const merged = mergeRouteCustomers(backendCustomers, stored);
+        setRouteCustomers(merged);
+        saveRouteCustomers(merged);
+      })
+      .catch(() => {
+        if (!active) return;
+      })
+      .finally(() => {
+        if (!active) return;
+        setLoadingRouteCustomers(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [salesRepId]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -173,7 +202,7 @@ export default function Checkout() {
 
   const selectedRouteCustomer = routeCustomers.find((c) => c.id === selectedRouteCustomerId);
 
-  const addRouteCustomerInline = () => {
+  const addRouteCustomerInline = async () => {
     const name = newRouteCustomer.name.trim();
     const phone = newRouteCustomer.phone.trim();
     const location = newRouteCustomer.location.trim();
@@ -184,14 +213,35 @@ export default function Checkout() {
       return;
     }
 
-    const customer = createRouteCustomer(newRouteCustomer, new Date());
-    const updated = [customer, ...routeCustomers];
+    const localCustomer = createRouteCustomer(newRouteCustomer, new Date());
+    let customer = localCustomer;
+    let persistedInBackend = false;
+
+    try {
+      const backendCustomer = await upsertRouteCustomer({
+        customer_name: name,
+        customer_phone: phone,
+        route_area: location,
+        route_notes: newRouteCustomer.notes || undefined,
+        sales_rep_id: salesRepId,
+      });
+      if (backendCustomer) {
+        customer = backendCustomer;
+        persistedInBackend = true;
+      }
+    } catch {
+      persistedInBackend = false;
+    }
+
+    const updated = mergeRouteCustomers([customer], routeCustomers);
     setRouteCustomers(updated);
     saveRouteCustomers(updated);
     applyRouteCustomer(customer);
     setNewRouteCustomer({ name: "", phone: "", location: "", notes: "" });
     toast.success("Route customer saved", {
-      description: `${customer.name} is now selected for this order.`,
+      description: persistedInBackend
+        ? `${customer.name} is synced and selected for this order.`
+        : `${customer.name} is saved locally and selected for this order.`,
     });
   };
 
@@ -253,6 +303,16 @@ export default function Checkout() {
         customer_phone: customerPhone,
         delivery_address: `${deliveryLocation} — ${values.transport_company}`,
         notes: orderNotes,
+        ...(workflow === "sales_rep" &&
+          selectedRouteCustomer && {
+            order_type: "route",
+            order_workflow_type: "route_sales_rep_capture",
+            sales_rep_id: salesRepId,
+            customer_id: getRouteCustomerBackendId(selectedRouteCustomer),
+            customer_location_id: selectedRouteCustomer.customer_location_id,
+            route_area: selectedRouteCustomer.route_area || selectedRouteCustomer.location || repArea || undefined,
+            route_notes: selectedRouteCustomer.notes || undefined,
+          }),
         items: cartItems.map((i) => {
           const ev = evaluations[i.id];
           return { product_id: i.id, quantity: i.quantity, unit_price: ev ? ev.unit_price : i.price };
@@ -360,6 +420,9 @@ export default function Checkout() {
 
                 <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-3">
                   <p className="text-sm font-semibold">Route customer</p>
+                  {loadingRouteCustomers && (
+                    <p className="text-xs text-muted-foreground">Syncing route customers from backend…</p>
+                  )}
                   <div className="grid md:grid-cols-[1fr_auto] gap-3">
                     <select
                       value={selectedRouteCustomerId}
