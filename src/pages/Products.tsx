@@ -8,7 +8,7 @@ import type { Product, Category } from "@/types/shop";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export default function Products() {
   const [params, setParams] = useSearchParams();
@@ -21,6 +21,7 @@ export default function Products() {
   const sort = params.get("sort") || "featured";
   const min = params.get("min") || "";
   const max = params.get("max") || "";
+  const flashOnly = params.get("flash") === "1";
 
   const setParam = (k: string, v: string) => {
     const next = new URLSearchParams(params);
@@ -41,7 +42,12 @@ export default function Products() {
       .finally(() => setLoading(false));
   }, [search, category, sort, min, max]);
 
-  const resultCount = products.length;
+  const visibleProducts = useMemo(
+    () => (flashOnly ? products.filter((p) => p.is_flash || p.discounted_price != null) : products),
+    [flashOnly, products]
+  );
+
+  const resultCount = visibleProducts.length;
 
   const filterFields = (
     <div className="space-y-5">
@@ -86,7 +92,9 @@ export default function Products() {
     <div className="container py-10 md:py-14">
       <div className="mb-8">
         <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Catalog</p>
-        <h1 className="font-display font-bold text-4xl md:text-6xl tracking-tight">All products</h1>
+        <h1 className="font-display font-bold text-4xl md:text-6xl tracking-tight">
+          {flashOnly ? "Flash sale products" : "All products"}
+        </h1>
         <p className="text-muted-foreground mt-2">Discover curated picks across every category.</p>
       </div>
 
@@ -107,7 +115,12 @@ export default function Products() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-80">
-            <SheetHeader className="mb-6"><SheetTitle>Filters</SheetTitle></SheetHeader>
+            <SheetHeader className="mb-6">
+              <SheetTitle>Filters</SheetTitle>
+              <SheetDescription className="sr-only">
+                Refine products by category, sort order, and price range.
+              </SheetDescription>
+            </SheetHeader>
             {filterFields}
           </SheetContent>
         </Sheet>
@@ -132,7 +145,7 @@ export default function Products() {
                 <div key={i} className="aspect-square rounded-2xl bg-muted animate-pulse" />
               ))}
             </div>
-          ) : products.length === 0 ? (
+          ) : visibleProducts.length === 0 ? (
             <div className="text-center py-20 rounded-2xl border border-dashed border-border">
               <p className="font-display font-semibold text-lg">No products match your filters</p>
               <p className="text-sm text-muted-foreground mt-1">Try clearing them and starting fresh.</p>
@@ -140,7 +153,7 @@ export default function Products() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-              {products.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+              {visibleProducts.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
             </div>
           )}
         </div>

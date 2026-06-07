@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Category } from "@/types/shop";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export interface Filters {
   search: string;
@@ -89,7 +89,12 @@ export default function FilterRail({ filters, setFilters, categories, resultCoun
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-80">
-              <SheetHeader className="mb-6"><SheetTitle>Filters</SheetTitle></SheetHeader>
+              <SheetHeader className="mb-6">
+                <SheetTitle>Filters</SheetTitle>
+                <SheetDescription className="sr-only">
+                  Refine products by category, sort order, and price range.
+                </SheetDescription>
+              </SheetHeader>
               <FilterFields filters={filters} setFilters={setFilters} categories={categories} />
             </SheetContent>
           </Sheet>

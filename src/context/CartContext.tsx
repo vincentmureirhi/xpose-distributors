@@ -14,7 +14,27 @@ const getStored = (): CartItem[] => {
 };
 
 const normalizePrice = (p: Product) =>
-  Number(p.retail_price || p.price || p.wholesale_price || 0);
+  Number(p.discounted_price || p.retail_price || p.price || p.wholesale_price || 0);
+
+const getQuantityRules = (source: Product | CartItem) => {
+  const min = Math.max(1, Number(source.min_order_qty || 1));
+  const step = Math.max(1, Number(source.order_qty_step || 1));
+  return { min, step };
+};
+
+const alignQuantity = (quantity: number, source: Product | CartItem) => {
+  const { min, step } = getQuantityRules(source);
+  if (!Number.isFinite(quantity) || quantity <= 0) return 0;
+  if (quantity <= min) return min;
+  return min + Math.ceil((quantity - min) / step) * step;
+};
+
+const normalizeAddQuantity = (quantity: number, source: Product | CartItem) => {
+  const { min, step } = getQuantityRules(source);
+  if (!Number.isFinite(quantity) || quantity <= 0) return min;
+  if (quantity < min) return min;
+  return Math.ceil(quantity / step) * step;
+};
 
 interface CartCtx {
   cartItems: CartItem[];
@@ -91,12 +111,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addToCart = useCallback((product: Product, quantity = 1, unitPrice?: number) => {
     setCartItems((prev) => {
       const existing = prev.find((i) => i.id === product.id);
+      const addition = normalizeAddQuantity(quantity, product);
       if (existing) {
         return prev.map((i) =>
           i.id === product.id
             ? {
                 ...i,
-                quantity: i.quantity + quantity,
+                quantity: alignQuantity(i.quantity + addition, i),
                 ...(unitPrice !== undefined ? { price: unitPrice } : {}),
               }
             : i
@@ -110,7 +131,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
           name: product.name,
           price,
           image_url: product.image_url || "",
-          quantity,
+          quantity: alignQuantity(addition, product),
+          min_order_qty: Math.max(1, Number(product.min_order_qty || 1)),
+          order_qty_step: Math.max(1, Number(product.order_qty_step || 1)),
+          selling_unit_label: product.selling_unit_label || "piece",
         },
       ];
     });
@@ -122,8 +146,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCartItems((prev) => prev.filter((i) => i.id !== id));
       return;
     }
-    setCartItems((prev) => prev.map((i) => (i.id === id ? { ...i, quantity } : i)));
+    setCartItems((prev) => prev.map((i) => (i.id === id ? { ...i, quantity: alignQuantity(quantity, i) } : i)));
   }, []);
+
 
   const removeFromCart = useCallback((id: string | number) => {
     setCartItems((prev) => prev.filter((i) => i.id !== id));

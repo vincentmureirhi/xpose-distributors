@@ -84,7 +84,12 @@ export async function listRouteCustomers(sales_rep_id?: string): Promise<RouteCu
 }
 
 export async function upsertRouteCustomer(payload: UpsertRouteCustomerPayload): Promise<RouteCustomer | null> {
-  const { data } = await apiClient.post("/customers/route/upsert", payload);
+  const { data } = await apiClient.post("/customers/route/upsert", {
+    ...payload,
+    name: payload.customer_name,
+    phone: payload.customer_phone,
+    location_id: payload.customer_location_id,
+  });
   const root = data as Record<string, unknown>;
   const routeCustomer =
     (root.data as Record<string, unknown> | undefined)?.customer ||

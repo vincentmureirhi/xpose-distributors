@@ -1,21 +1,47 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+
 import {
   changeSalesRepPassword,
-  extractApiErrorMessage,
   fetchSalesRepSession,
   loginSalesRep,
   updateOwnSalesRepLocation,
   type SalesRepProfile,
 } from "@/lib/api/sales-rep-auth";
+
 import { setSalesRepAuthToken } from "@/lib/api/client";
-import { resolveSessionActor, type SessionActor } from "@/lib/salesRepSession";
+
+import {
+  resolveSessionActor,
+  type SessionActor,
+} from "@/lib/salesRepSession";
 
 const SALES_REP_TOKEN_KEY = "salesRepAuthToken";
-const LOCATION_UPDATE_INTERVAL_MS = 5 * 60 * 1000;
+
 const GEOLOCATION_PERMISSION_DENIED = 1;
 
+const MINIMUM_GPS_ACCURACY_METERS = 50;
+
+const LOCATION_UPLOAD_INTERVAL_MS = 15000;
+
+const MINIMUM_MOVEMENT_DISTANCE_METERS = 10;
+
 type SessionStatus = "restoring" | "ready";
-type LocationPermissionState = "unknown" | "prompt" | "granted" | "denied";
+
+type LocationPermissionState =
+  | "unknown"
+  | "prompt"
+  | "granted"
+  | "denied";
+
 interface SalesRepSessionContextValue {
   status: SessionStatus;
   salesRep: SalesRepProfile | null;
@@ -26,17 +52,30 @@ interface SalesRepSessionContextValue {
   mustChangePassword: boolean;
   locationPermission: LocationPermissionState;
   repOperationalReady: boolean;
+
   login: (identifier: string, password: string) => Promise<SalesRepProfile>;
   logout: () => void;
   refreshSession: () => Promise<void>;
-  changePassword: (payload: { current_password: string; new_password: string; confirm_password: string }) => Promise<SalesRepProfile>;
+
+  changePassword: (payload: {
+    current_password: string;
+    new_password: string;
+    confirm_password: string;
+  }) => Promise<SalesRepProfile>;
+
   requestLocationPermission: () => Promise<boolean>;
-  sendLocationUpdate: () => Promise<void>;
+
+  sendLocationUpdate: (position: GeolocationPosition) => Promise<void>;
+
   getErrorMessage: (error: unknown, fallback: string) => string;
 }
 
-const SalesRepSessionContext = createContext<SalesRepSessionContextValue | undefined>(undefined);
+const SalesRepSessionContext =
+  createContext<SalesRepSessionContextValue | undefined>(undefined);
 
+// -----------------------------
+// STORAGE HELPERS
+// -----------------------------
 function readStoredToken() {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem(SALES_REP_TOKEN_KEY);
@@ -44,43 +83,85 @@ function readStoredToken() {
 
 function persistToken(token: string | null) {
   if (typeof window === "undefined") return;
-  if (token) window.localStorage.setItem(SALES_REP_TOKEN_KEY, token);
-  else window.localStorage.removeItem(SALES_REP_TOKEN_KEY);
-}
 
-async function readLocationPermissionState(): Promise<LocationPermissionState> {
-  if (typeof navigator === "undefined") return "unknown";
-  if (!navigator.permissions?.query) return "unknown";
-  try {
-    const result = await navigator.permissions.query({ name: "geolocation" });
-    if (result.state === "granted") return "granted";
-    if (result.state === "denied") return "denied";
-    return "prompt";
-  } catch {
-    return "unknown";
+  if (token) {
+    window.localStorage.setItem(SALES_REP_TOKEN_KEY, token);
+  } else {
+    window.localStorage.removeItem(SALES_REP_TOKEN_KEY);
   }
 }
 
-function getCurrentPosition(): Promise<GeolocationPosition> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error("Geolocation is not supported by this browser."));
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
+// -----------------------------
+// GEO HELPERS
+// -----------------------------
+function watchSalesRepPosition(
+  onUpdate: (position: GeolocationPosition) => void,
+  onError?: (error: GeolocationPositionError) => void
+) {
+  if (!navigator.geolocation) {
+    throw new Error("Geolocation is not supported.");
+  }
+
+  return navigator.geolocation.watchPosition(
+    onUpdate,
+    onError || (() => undefined),
+    {
       enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 30000,
-    });
-  });
+      timeout: 60000,
+      maximumAge: 0,
+    }
+  );
 }
 
-export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
+function calculateDistanceMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+) {
+  const R = 6371e3;
+
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(Δφ / 2) ** 2 +
+    Math.cos(φ1) *
+      Math.cos(φ2) *
+      Math.sin(Δλ / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
+// =====================================================
+// PROVIDER
+// =====================================================
+export function SalesRepSessionProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const restoredOnceRef = useRef(false);
-  const [status, setStatus] = useState<SessionStatus>("restoring");
+  const lastUploadTimeRef = useRef(0);
+  const lastPositionRef = useRef<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
+  const [status, setStatus] =
+    useState<SessionStatus>("restoring");
+
   const [token, setToken] = useState<string | null>(null);
-  const [salesRep, setSalesRep] = useState<SalesRepProfile | null>(null);
-  const [locationPermission, setLocationPermission] = useState<LocationPermissionState>("unknown");
+  const [salesRep, setSalesRep] =
+    useState<SalesRepProfile | null>(null);
+
+  const [locationPermission, setLocationPermission] =
+    useState<LocationPermissionState>("unknown");
 
   const applyToken = (nextToken: string | null) => {
     setToken(nextToken);
@@ -88,14 +169,21 @@ export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
     setSalesRepAuthToken(nextToken);
   };
 
+  // -----------------------------
+  // LOGOUT
+  // -----------------------------
   const logout = useCallback(() => {
     applyToken(null);
     setSalesRep(null);
     setLocationPermission("unknown");
   }, []);
 
+  // -----------------------------
+  // SESSION RESTORE
+  // -----------------------------
   const refreshSession = useCallback(async () => {
     const currentToken = readStoredToken();
+
     if (!currentToken) {
       logout();
       setStatus("ready");
@@ -106,9 +194,9 @@ export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
       applyToken(currentToken);
       const session = await fetchSalesRepSession();
       setSalesRep(session.sales_rep);
-      setStatus("ready");
     } catch {
       logout();
+    } finally {
       setStatus("ready");
     }
   }, [logout]);
@@ -119,107 +207,199 @@ export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
     refreshSession();
   }, [refreshSession]);
 
+  // -----------------------------
+  // LOGIN
+  // -----------------------------
+  const login = useCallback(
+    async (identifier: string, password: string) => {
+      const res = await loginSalesRep(identifier, password);
+
+      applyToken(res.token);
+      setSalesRep(res.sales_rep);
+      setStatus("ready");
+
+      return res.sales_rep;
+    },
+    []
+  );
+
+  // -----------------------------
+  // PASSWORD
+  // -----------------------------
+  const changePassword = useCallback(async (payload: any) => {
+    const res = await changeSalesRepPassword(payload);
+    setSalesRep(res.sales_rep);
+    return res.sales_rep;
+  }, []);
+
+  // -----------------------------
+  // LOCATION UPLOAD
+  // -----------------------------
+  const sendLocationUpdate = useCallback(
+    async (position: GeolocationPosition) => {
+      if (!salesRep || salesRep.must_change_password) return;
+
+      const accuracy = position.coords.accuracy;
+
+      if (accuracy > MINIMUM_GPS_ACCURACY_METERS) return;
+
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      const now = Date.now();
+
+      const last = lastPositionRef.current;
+
+      if (last) {
+        const dist = calculateDistanceMeters(
+          last.latitude,
+          last.longitude,
+          lat,
+          lng
+        );
+
+        if (dist < MINIMUM_MOVEMENT_DISTANCE_METERS) return;
+      }
+
+      if (now - lastUploadTimeRef.current < LOCATION_UPLOAD_INTERVAL_MS)
+        return;
+
+      try {
+        await updateOwnSalesRepLocation({
+          latitude: lat,
+          longitude: lng,
+          accuracy_meters: accuracy,
+          source: "gps-live",
+          recorded_at: new Date(position.timestamp).toISOString(),
+        });
+
+        lastUploadTimeRef.current = now;
+        lastPositionRef.current = { latitude: lat, longitude: lng };
+      } catch (e) {
+        console.error("Location upload failed", e);
+      }
+    },
+    [salesRep]
+  );
+
+  // -----------------------------
+  // LOCATION PERMISSION
+  // -----------------------------
+  const requestLocationPermission = useCallback(async () => {
+    return new Promise<boolean>((resolve) => {
+      const watchId = watchSalesRepPosition(
+        async (pos) => {
+          await sendLocationUpdate(pos);
+          setLocationPermission("granted");
+          navigator.geolocation.clearWatch(watchId);
+          resolve(true);
+        },
+        (err) => {
+          if (err.code === GEOLOCATION_PERMISSION_DENIED) {
+            setLocationPermission("denied");
+          }
+          navigator.geolocation.clearWatch(watchId);
+          resolve(false);
+        }
+      );
+    });
+  }, [sendLocationUpdate]);
+
+  // -----------------------------
+  // GPS WATCH
+  // -----------------------------
   useEffect(() => {
-    let active = true;
-    if (!salesRep) {
-      setLocationPermission("unknown");
+    if (
+      !salesRep ||
+      salesRep.must_change_password ||
+      locationPermission !== "granted"
+    ) {
       return;
     }
 
-    readLocationPermissionState().then((state) => {
-      if (!active) return;
-      setLocationPermission(state);
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [salesRep]);
-
-  const sendLocationUpdate = useCallback(async () => {
-    if (!salesRep || salesRep.must_change_password) return;
-    const position = await getCurrentPosition();
-    await updateOwnSalesRepLocation({
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-      accuracy_meters: Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : undefined,
-      source: "storefront",
-      recorded_at: new Date(position.timestamp).toISOString(),
-    });
-  }, [salesRep]);
-
-  const requestLocationPermission = useCallback(async () => {
-    try {
-      await sendLocationUpdate();
-      setLocationPermission("granted");
-      return true;
-    } catch (error) {
-      const geolocationError = error as GeolocationPositionError;
-      if (geolocationError?.code === GEOLOCATION_PERMISSION_DENIED) {
-        setLocationPermission("denied");
-      } else {
-        setLocationPermission(await readLocationPermissionState());
+    const watchId = watchSalesRepPosition(
+      (pos) => sendLocationUpdate(pos),
+      (err) => {
+        if (err.code === GEOLOCATION_PERMISSION_DENIED) {
+          setLocationPermission("denied");
+        }
       }
-      return false;
-    }
-  }, [sendLocationUpdate]);
+    );
 
-  useEffect(() => {
-    if (!salesRep || salesRep.must_change_password || locationPermission !== "granted") return;
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [salesRep, locationPermission, sendLocationUpdate]);
 
-    const run = () => {
-      sendLocationUpdate().catch(() => undefined);
-    };
-
-    run();
-    const timer = window.setInterval(run, LOCATION_UPDATE_INTERVAL_MS);
-    return () => window.clearInterval(timer);
-  }, [locationPermission, salesRep, sendLocationUpdate]);
-
-  const login = useCallback(async (identifier: string, password: string) => {
-    const response = await loginSalesRep(identifier, password);
-    applyToken(response.token);
-    setSalesRep(response.sales_rep);
-    setStatus("ready");
-    return response.sales_rep;
-  }, []);
-
-  const changePassword = useCallback(async (payload: { current_password: string; new_password: string; confirm_password: string }) => {
-    const response = await changeSalesRepPassword(payload);
-    setSalesRep(response.sales_rep);
-    return response.sales_rep;
-  }, []);
-
-  const actor = resolveSessionActor(salesRep, typeof window !== "undefined" ? window.location.pathname : "");
+  // -----------------------------
+  // CONTEXT VALUE
+  // -----------------------------
   const value = useMemo<SalesRepSessionContextValue>(
     () => ({
       status,
       salesRep,
       token,
-      actor,
+
+      actor: resolveSessionActor(
+        salesRep,
+        typeof window !== "undefined"
+          ? window.location.pathname
+          : ""
+      ),
+
       checkoutActor: salesRep ? "sales_rep" : "normal_customer",
       isSalesRepAuthenticated: !!salesRep,
       mustChangePassword: !!salesRep?.must_change_password,
+
       locationPermission,
-      repOperationalReady: !!salesRep && !salesRep.must_change_password && locationPermission === "granted",
+      repOperationalReady:
+        !!salesRep &&
+        !salesRep.must_change_password &&
+        locationPermission === "granted",
+
       login,
       logout,
       refreshSession,
       changePassword,
       requestLocationPermission,
       sendLocationUpdate,
-      getErrorMessage: extractApiErrorMessage,
+
+      // ✅ FIXED HERE (NO IMPORT ANYMORE)
+      getErrorMessage: (error: unknown, fallback: string) =>
+        (error as any)?.response?.data?.error ||
+        (error as any)?.response?.data?.message ||
+        (error as any)?.message ||
+        fallback,
     }),
-    [actor, changePassword, locationPermission, login, logout, refreshSession, requestLocationPermission, salesRep, sendLocationUpdate, status, token]
+    [
+      status,
+      salesRep,
+      token,
+      login,
+      logout,
+      refreshSession,
+      changePassword,
+      requestLocationPermission,
+      sendLocationUpdate,
+      locationPermission,
+    ]
   );
 
-  return <SalesRepSessionContext.Provider value={value}>{children}</SalesRepSessionContext.Provider>;
+  return (
+    <SalesRepSessionContext.Provider value={value}>
+      {children}
+    </SalesRepSessionContext.Provider>
+  );
 }
 
+// -----------------------------
+// HOOK
+// -----------------------------
 export function useSalesRepSession() {
-  const context = useContext(SalesRepSessionContext);
-  if (!context) {
-    throw new Error("useSalesRepSession must be used within SalesRepSessionProvider");
+  const ctx = useContext(SalesRepSessionContext);
+
+  if (!ctx) {
+    throw new Error(
+      "useSalesRepSession must be used within provider"
+    );
   }
-  return context;
+
+  return ctx;
 }

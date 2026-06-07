@@ -26,7 +26,7 @@ export default function Footer() {
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link to="/products" className="hover:text-foreground">All products</Link></li>
             <li><Link to="/categories" className="hover:text-foreground">Categories</Link></li>
-            <li><Link to="/products?flash=1" className="hover:text-foreground">Flash Sales</Link></li>
+            <li><Link to="/flash-sale" className="hover:text-foreground">Flash Sales</Link></li>
           </ul>
         </div>
         <div>

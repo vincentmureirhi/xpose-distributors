@@ -25,46 +25,73 @@ interface SalesRepSessionResponse {
   sales_rep: SalesRepProfile;
 }
 
-interface ApiErrorShape {
-  error?: string;
-  message?: string;
-}
-
+// -----------------------------
+// SAFE RESPONSE UNWRAPPER
+// -----------------------------
 function unwrapResponseData<T>(payload: unknown): T {
   const root = payload as { data?: unknown };
   return (root?.data ?? payload) as T;
 }
 
-export function extractApiErrorMessage(error: unknown, fallback: string): string {
-  const responseData = (error as { response?: { data?: ApiErrorShape } })?.response?.data;
-  if (responseData?.error) return responseData.error;
-  if (responseData?.message) return responseData.message;
+export function extractApiErrorMessage(error: unknown, fallback: string) {
+  const err = error as {
+    response?: { data?: { error?: string; message?: string } };
+    message?: string;
+  };
 
-  const genericMessage = (error as { message?: string })?.message;
-  if (genericMessage) return genericMessage;
-
-  return fallback;
+  return (
+    err?.response?.data?.error ||
+    err?.response?.data?.message ||
+    err?.message ||
+    fallback
+  );
 }
 
-export async function loginSalesRep(identifier: string, password: string): Promise<SalesRepLoginResponse> {
-  const { data } = await apiClient.post("/sales-reps/auth/login", { identifier, password });
+// -----------------------------
+// LOGIN
+// -----------------------------
+export async function loginSalesRep(
+  identifier: string,
+  password: string
+): Promise<SalesRepLoginResponse> {
+  const { data } = await apiClient.post(
+    "/sales-reps/auth/login",
+    { identifier, password }
+  );
+
   return unwrapResponseData<SalesRepLoginResponse>(data);
 }
 
+// -----------------------------
+// SESSION
+// -----------------------------
 export async function fetchSalesRepSession(): Promise<SalesRepSessionResponse> {
-  const { data } = await apiClient.get("/sales-reps/auth/me");
+  const { data } = await apiClient.get(
+    "/sales-reps/auth/me"
+  );
+
   return unwrapResponseData<SalesRepSessionResponse>(data);
 }
 
+// -----------------------------
+// CHANGE PASSWORD
+// -----------------------------
 export async function changeSalesRepPassword(payload: {
   current_password: string;
   new_password: string;
   confirm_password: string;
 }): Promise<SalesRepSessionResponse> {
-  const { data } = await apiClient.post("/sales-reps/auth/change-password", payload);
+  const { data } = await apiClient.post(
+    "/sales-reps/auth/change-password",
+    payload
+  );
+
   return unwrapResponseData<SalesRepSessionResponse>(data);
 }
 
+// -----------------------------
+// LOCATION UPDATE
+// -----------------------------
 export async function updateOwnSalesRepLocation(payload: {
   latitude: number;
   longitude: number;
@@ -72,6 +99,10 @@ export async function updateOwnSalesRepLocation(payload: {
   source?: string;
   recorded_at?: string;
 }) {
-  const { data } = await apiClient.post("/sales-reps/me/location", payload);
+  const { data } = await apiClient.post(
+    "/sales-reps/me/location",
+    payload
+  );
+
   return unwrapResponseData(data);
 }

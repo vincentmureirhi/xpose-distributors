@@ -8,46 +8,74 @@ import FeaturedGrid from "@/components/home/FeaturedGrid";
 import BlogPreview from "@/components/home/BlogPreview";
 import { listProducts } from "@/lib/api/products";
 import { listCategories } from "@/lib/api/categories";
-import { getActiveFlashSales, type FlashSaleData } from "@/lib/api/flash-sales";
+import { getActiveFlashSales } from "@/lib/api/flash-sales";
 import type { Product, Category } from "@/types/shop";
+
+// Inline type so we don't depend on ../types/flash-sale having the right fields
+interface ActiveSale {
+  id: number;
+  name: string;
+  end_date: string;
+  products: Array<{
+    id: number | string;
+    discounted_price?: number | null;
+    [key: string]: unknown;
+  }>;
+}
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [activeFlashSale, setActiveFlashSale] = useState<FlashSaleData | null>(null);
+  const [activeSale, setActiveSale] = useState<ActiveSale | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "XPOSE — A Hybrid Company. Everyday Feels Like BLACK FRIDAY";
+    document.title =
+      "XPOSE — A Hybrid Company. Everyday Feels Like BLACK FRIDAY";
+
     Promise.all([listProducts(), listCategories(), getActiveFlashSales()])
       .then(([p, c, flashSales]) => {
         setCategories(c);
 
-        // Apply flash sale discounts to products
         if (flashSales.length > 0) {
-          const sale = flashSales[0];
-          setActiveFlashSale(sale);
+          const sale = flashSales[0] as unknown as ActiveSale;
+          const saleProducts = Array.isArray(sale.products) ? sale.products : [];
+
+          // Build a map of product_id → discounted_price from the sale's product list
           const flashMap = new Map<number | string, number>();
-          sale.products.forEach((fp) => {
-            if (fp.discounted_price) flashMap.set(fp.id, fp.discounted_price);
+          saleProducts.forEach((fp) => {
+            if (fp.discounted_price != null) {
+              flashMap.set(fp.id, fp.discounted_price as number);
+            }
           });
-          if (flashMap.size > 0) {
+
+          if (flashMap.size > 0 && sale.end_date) {
+            setActiveSale(sale);
             setProducts(
               p.map((prod) => {
                 const discounted = flashMap.get(prod.id);
-                return discounted ? { ...prod, discounted_price: discounted, is_flash: true } : prod;
+                return discounted != null
+                  ? { ...prod, discounted_price: discounted, is_flash: true }
+                  : prod;
               })
             );
             return;
           }
         }
+
         setProducts(p);
       })
-      .finally(() => setLoading(false));
+      .catch((error) => {
+        console.error("Failed loading homepage data:", error);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
-  const flashProducts = activeFlashSale
-    ? products.filter((p) => p.is_flash || p.discounted_price)
+  // Only products tagged by the flash map above are shown in the sale section
+  const flashProducts: Product[] = activeSale
+    ? products.filter((p) => p.is_flash === true || p.discounted_price != null)
     : [];
 
   return (
@@ -55,19 +83,24 @@ export default function Home() {
       <Hero />
       <Marquee />
       <ValueProps />
-      {activeFlashSale && activeFlashSale.end_date && flashProducts.length > 0 && (
+
+      {activeSale && activeSale.end_date && flashProducts.length > 0 && (
         <FlashSale
           products={flashProducts}
-          endDate={activeFlashSale.end_date}
-          saleName={activeFlashSale.name}
+          endDate={activeSale.end_date}
+          saleName={activeSale.name}
         />
       )}
+
       {loading ? (
         <section className="container py-16 md:py-24">
           <div className="h-8 w-48 bg-muted animate-pulse rounded mb-8" />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="aspect-[4/5] md:aspect-square rounded-2xl bg-muted animate-pulse" />
+              <div
+                key={i}
+                className="aspect-[4/5] md:aspect-square rounded-2xl bg-muted animate-pulse"
+              />
             ))}
           </div>
         </section>
@@ -77,6 +110,7 @@ export default function Home() {
           <FeaturedGrid products={products.slice(0, 8)} />
         </>
       )}
+
       <BlogPreview />
     </>
   );

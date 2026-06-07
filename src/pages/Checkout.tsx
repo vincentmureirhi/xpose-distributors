@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, CreditCard, FileText, Loader2, MapPin, Phone, User, Truck, X } from "lucide-react";
+import { ArrowLeft, CreditCard, FileText, Loader2, MapPin, Phone, Search, User, Truck, X } from "lucide-react";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,6 +110,7 @@ export default function Checkout() {
   const [routeCustomers, setRouteCustomers] = useState<RouteCustomer[]>([]);
   const [loadingRouteCustomers, setLoadingRouteCustomers] = useState(false);
   const [selectedRouteCustomerId, setSelectedRouteCustomerId] = useState("");
+  const [routeCustomerSearch, setRouteCustomerSearch] = useState("");
   const repDisplayName = getSalesRepDisplayName(salesRep);
   const [repPhone, setRepPhone] = useState("");
   const [repArea, setRepArea] = useState("");
@@ -225,6 +226,16 @@ export default function Checkout() {
   };
 
   const selectedRouteCustomer = routeCustomers.find((c) => c.id === selectedRouteCustomerId);
+  const filteredRouteCustomers = useMemo(() => {
+    const q = routeCustomerSearch.trim().toLowerCase();
+    if (!q) return routeCustomers;
+    return routeCustomers.filter((customer) =>
+      [customer.name, customer.phone, customer.location, customer.route_area, customer.notes]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q))
+    );
+  }, [routeCustomerSearch, routeCustomers]);
+
 
   useEffect(() => {
     if (workflow !== "sales_rep") return;
@@ -508,6 +519,16 @@ export default function Checkout() {
                   {loadingRouteCustomers && (
                     <p className="text-xs text-muted-foreground">Syncing route customers from backend…</p>
                   )}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={routeCustomerSearch}
+                      onChange={(e) => setRouteCustomerSearch(e.target.value)}
+                      placeholder="Search existing route customers by name, phone, or area"
+                      disabled={repOperationsBlocked}
+                      className="h-11 pl-10"
+                    />
+                  </div>
                   <div className="grid md:grid-cols-[1fr_auto] gap-3">
                     <select
                       value={selectedRouteCustomerId}
@@ -520,7 +541,7 @@ export default function Checkout() {
                       className="w-full h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                     >
                       <option value="">Select existing route customer…</option>
-                      {routeCustomers.map((customer) => (
+                      {filteredRouteCustomers.map((customer) => (
                         <option key={customer.id} value={customer.id}>
                           {customer.name} — {customer.location}
                         </option>
@@ -530,6 +551,11 @@ export default function Checkout() {
                       Clear
                     </Button>
                   </div>
+                  {routeCustomerSearch && filteredRouteCustomers.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      No matching route customer found. Add the customer below and it will sync to admin.
+                    </p>
+                  )}
 
                   <div className="rounded-lg border border-dashed border-border p-3 space-y-3">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

@@ -5,11 +5,13 @@ import { Flame } from "lucide-react";
 import type { Product } from "@/types/shop";
 import ProductCard from "@/components/products/ProductCard";
 
-interface Props {
+type Props = {
   products: Product[];
   endDate: string;
-  saleName?: string;
-}
+  saleName: string;
+  discountType?: "percentage" | "fixed";
+  discountValue?: number;
+};
 
 function useCountdown(endDate: string) {
   const [t, setT] = useState(() => {
@@ -48,7 +50,7 @@ export default function FlashSale({ products, endDate, saleName }: Props) {
   return (
     <section className="container py-16 md:py-24">
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
-        <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
+        <motion.div className="relative" initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-bold uppercase tracking-wider mb-3">
             <Flame className="h-3.5 w-3.5" /> Flash Sale
           </div>
@@ -70,7 +72,7 @@ export default function FlashSale({ products, endDate, saleName }: Props) {
               <p className="text-[10px] mt-1 text-muted-foreground tracking-wider">{label}</p>
             </div>
           ))}
-          <Link to="/products" className="ml-2 text-sm font-medium underline-offset-4 hover:underline">
+          <Link to="/flash-sale" className="ml-2 text-sm font-medium underline-offset-4 hover:underline">
             Shop all →
           </Link>
         </div>

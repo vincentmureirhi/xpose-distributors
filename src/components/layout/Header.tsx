@@ -13,6 +13,7 @@ import Wordmark from "@/components/brand/Wordmark";
 const navLinks = [
   { to: "/", label: "Home" },
   { to: "/products", label: "Shop" },
+  { to: "/flash-sale", label: "Flash Sale" },
   { to: "/categories", label: "Categories" },
   { to: "/track-order", label: "Track" },
 ];
@@ -100,7 +101,14 @@ export default function Header() {
           <Button variant="ghost" size="icon" onClick={() => setSearchOpen((v) => !v)} aria-label="Search">
             <Search className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={openCart} aria-label="Cart" className="relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={openCart}
+            aria-label="Cart"
+            className="relative"
+            data-cart-button="true"
+          >
             <ShoppingBag className="h-5 w-5" />
             {itemCount > 0 && (
               <motion.span

@@ -22,6 +22,7 @@ import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
+import FlashSalePage from "./pages/FlashSalePage";
 import SalesRepLogin from "./pages/SalesRepLogin";
 import SalesRepChangePassword from "./pages/SalesRepChangePassword";
 import SalesRepLocationAccess from "./pages/SalesRepLocationAccess";
@@ -47,7 +48,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <SalesRepSessionProvider>
           <SalesRepPasswordRedirector />
           <CartProvider>
@@ -67,6 +68,7 @@ const App = () => (
                   <Route path="/track-order" element={<TrackOrder />} />
                   <Route path="/blog" element={<Blog />} />
                   <Route path="/blog/:id" element={<BlogPost />} />
+                  <Route path="/flash-sale" element={<FlashSalePage />} />
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/login" element={<Navigate to="/sales-rep/login" replace />} />
                   <Route path="*" element={<NotFound />} />

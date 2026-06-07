@@ -31,7 +31,7 @@ function getBotResponse(input: string): string {
 const quickActions = [
   { label: "🛍️ Browse Products", path: "/products" },
   { label: "📦 Track My Order", path: "/track-order" },
-  { label: "⚡ Flash Sales", path: "/products?flash=1" },
+  { label: "⚡ Flash Sales", path: "/flash-sale" },
   { label: "📰 View Blog", path: "/blog" },
   { label: "💬 Contact Support", whatsapp: true },
   { label: "🚚 Shipping Info", faq: "shipping" },

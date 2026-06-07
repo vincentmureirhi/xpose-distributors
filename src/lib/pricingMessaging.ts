@@ -25,6 +25,16 @@ export function getProductPricingMessages(product: Product) {
   const tiers = product.price_tiers || [];
   const ruleType = product.pricing_rule_type;
   const groupName = product.pricing_group_name;
+  const flashPrice = Number(product.discounted_price || 0);
+
+  if (flashPrice > 0 && retail > 0 && flashPrice < retail) {
+    return {
+      primary: `Flash price: ${formatPrice(flashPrice)} | Was ${formatPrice(retail)}`,
+      secondary: product.flash_sale_end_date
+        ? `Flash sale ends ${new Date(product.flash_sale_end_date).toLocaleString()}`
+        : "Flash sale price applies at checkout",
+    };
+  }
 
   if (isRuleType(ruleType, "SKU_THRESHOLD")) {
     return {
@@ -87,6 +97,13 @@ export function getCartPricingMessage(ev: PricingEvaluation | undefined, quantit
   const effectiveQty = Number(ev.effective_quantity || quantity || 0);
   const ruleType = String(ev.rule_type || "").toUpperCase();
   const group = ev.pricing_group_name;
+
+  if (ev.flash_sale_id || String(ev.pricing_label || "").toLowerCase() === "flash sale") {
+    if (ev.flash_sale_end_date) {
+      return `Flash sale price locked until ${new Date(ev.flash_sale_end_date).toLocaleString()}`;
+    }
+    return "Flash sale price applied";
+  }
 
   if (ruleType === "SKU_THRESHOLD") {
     if (eligible) return "Wholesale unlocked";
