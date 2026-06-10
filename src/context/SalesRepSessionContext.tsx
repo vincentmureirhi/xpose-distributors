@@ -23,7 +23,7 @@ const SALES_REP_TOKEN_KEY = "salesRepAuthToken";
 const GEOLOCATION_PERMISSION_DENIED = 1;
 
 const PREFERRED_GPS_ACCURACY_METERS = 100;
-const MAX_UPLOAD_GPS_ACCURACY_METERS = 1000;
+const MAX_UPLOAD_GPS_ACCURACY_METERS = 5000;
 const LOCATION_UPLOAD_INTERVAL_MS = 10_000;
 const LOCATION_STATIONARY_HEARTBEAT_MS = 60_000;
 const MINIMUM_MOVEMENT_DISTANCE_METERS = 10;
@@ -331,7 +331,7 @@ export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
           speed_kph: getOptionalSpeedKph(position),
           heading_degrees: getOptionalHeading(position),
           source: "gps-live",
-          recorded_at: new Date(position.timestamp).toISOString(),
+          recorded_at: new Date().toISOString(),
         });
 
         lastUploadTimeRef.current = now;
