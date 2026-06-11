@@ -47,9 +47,20 @@ function getProductImage(product: Product) {
   return product.image_url || product.images?.[0] || "";
 }
 
-function getTierLabel(tier?: PriceTier) {
-  if (!tier) return "unit";
-  return tier.unit || tier.label || "unit";
+function cleanUnit(value?: string) {
+  return String(value || "piece").trim() || "piece";
+}
+
+function getTierLabel(tier: PriceTier | undefined, sellingUnit: string) {
+  if (!tier) return cleanUnit(sellingUnit);
+  if (tier.label) return tier.label;
+  if (tier.min_qty && tier.min_qty > 1) {
+    return tier.max_qty ? `${tier.min_qty}-${tier.max_qty} ${sellingUnit}` : `${tier.min_qty}+ ${sellingUnit}`;
+  }
+
+  const unit = cleanUnit(tier.unit);
+  if (unit === "piece" && sellingUnit !== "piece") return sellingUnit;
+  return unit;
 }
 
 function getPluralUnit(unit: string, quantity: number) {
@@ -200,11 +211,11 @@ export default function ProductDetails() {
 
   const minOrderQty = getMinimumOrderQty(product);
   const orderStep = getOrderStep(product);
-  const sellingUnit = product.selling_unit_label || "piece";
+  const sellingUnit = cleanUnit(product.selling_unit_label);
   const rawStockQty = product.current_stock ?? product.stock;
   const stockQty = Number(rawStockQty);
   const hasStockQty = rawStockQty !== undefined && rawStockQty !== null && rawStockQty !== "" && Number.isFinite(stockQty);
-  const normalizedStockStatus = String(product.stock_status || "").toLowerCase();
+  const normalizedStockStatus = String(product.stock_status_override || product.stock_status || "").toLowerCase();
   const isOutOfStock = normalizedStockStatus === "out_of_stock" || (hasStockQty && stockQty <= 0);
   const cannotMeetMinimum = hasStockQty && stockQty > 0 && stockQty < minOrderQty;
   const cannotOrder = isOutOfStock || cannotMeetMinimum;
@@ -223,7 +234,7 @@ export default function ProductDetails() {
           : "Limited stock"
         : "In stock";
   const selectedTier = tiersList.find((tier) => tier.unit === selectedUnit) || tiersList[0];
-  const selectedTierLabel = getTierLabel(selectedTier);
+  const selectedTierLabel = getTierLabel(selectedTier, sellingUnit);
   const piecePrice = tiersList.find((tier) => Number(tier.qty_per_unit || 1) === 1)?.price || 0;
   const selectedUnitPrice = numberOrZero(selectedTier?.price || product.retail_price || product.price);
   const hasFlashDeal = hasActiveFlashDeal(product, selectedUnitPrice);

@@ -25,13 +25,36 @@ function readStockValue(raw: any) {
   return { known: false, value: undefined };
 }
 
+function normalizeStockStatus(value: any) {
+  const status = String(value || "").trim().toLowerCase();
+  if (!status) return "";
+
+  if (status === "limited_stock" || status === "low_stock" || status === "reorder_now") {
+    return "limited_stock";
+  }
+
+  if (status === "out_of_stock" || status === "sold_out" || status === "unavailable") {
+    return "out_of_stock";
+  }
+
+  if (status === "in_stock" || status === "healthy" || status === "available") {
+    return "in_stock";
+  }
+
+  if (status === "unknown") return "unknown";
+
+  return status;
+}
+
 export function normalizeProduct(raw: any): Product {
   const stock = readStockValue(raw);
   const minOrderQty = Math.max(1, Number(raw?.min_order_qty || raw?.minimum_order_qty || 1));
   const limitedThreshold = Math.max(minOrderQty, 10);
+  const overrideStatus = normalizeStockStatus(raw?.stock_status_override);
+  const apiStatus = normalizeStockStatus(raw?.stock_status);
   const stockStatus =
-    raw?.stock_status ||
-    raw?.stock_status_override ||
+    overrideStatus ||
+    apiStatus ||
     (!stock.known
       ? "unknown"
       : stock.value! <= 0
@@ -49,6 +72,7 @@ export function normalizeProduct(raw: any): Product {
       raw?.order_unit_label ||
       "piece",
     stock_status: stockStatus,
+    stock_status_override: overrideStatus || raw?.stock_status_override,
   };
 
   if (stock.known) {

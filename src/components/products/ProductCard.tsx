@@ -12,6 +12,31 @@ interface Props {
   index?: number;
 }
 
+function cleanUnit(value?: string) {
+  return String(value || "piece").trim() || "piece";
+}
+
+function formatPrimaryPriceLabel(tier: ReturnType<typeof getPriceTiers>[number] | undefined, sellingUnit: string) {
+  if (!tier) return "";
+  if (tier.label) return tier.label;
+  if (tier.min_qty && tier.min_qty > 1) {
+    return tier.max_qty ? `${tier.min_qty}-${tier.max_qty} ${sellingUnit}` : `${tier.min_qty}+ ${sellingUnit}`;
+  }
+  return `Per ${sellingUnit}`;
+}
+
+function formatTierLabel(tier: ReturnType<typeof getPriceTiers>[number] | undefined, sellingUnit: string) {
+  if (!tier) return "";
+  if (tier.label) return tier.label;
+  if (tier.min_qty && tier.min_qty > 1) {
+    return tier.max_qty ? `${tier.min_qty}-${tier.max_qty} ${sellingUnit}` : `${tier.min_qty}+ ${sellingUnit}`;
+  }
+
+  const unit = cleanUnit(tier.unit);
+  if (unit === "piece" && sellingUnit !== "piece") return `Per ${sellingUnit}`;
+  return `Per ${unit}${tier.qty_per_unit && tier.qty_per_unit > 1 ? ` - ${tier.qty_per_unit}pc` : ""}`;
+}
+
 export default function ProductCard({ product, index = 0 }: Props) {
   const { addToCart } = useCart();
   const imageBoxRef = useRef<HTMLAnchorElement>(null);
@@ -31,11 +56,11 @@ export default function ProductCard({ product, index = 0 }: Props) {
   const localBasePrice = baseTier?.price ?? Number(product.retail_price || product.price || 0);
   const minOrderQty = Math.max(1, Number(product.min_order_qty || baseTier?.min_qty || 1));
   const orderStep = Math.max(1, Number(product.order_qty_step || 1));
-  const sellingUnit = product.selling_unit_label || "piece";
+  const sellingUnit = cleanUnit(product.selling_unit_label);
   const rawStockQty = product.current_stock ?? product.stock;
   const stockQty = Number(rawStockQty);
   const hasStockQty = rawStockQty !== undefined && rawStockQty !== null && rawStockQty !== "" && Number.isFinite(stockQty);
-  const normalizedStockStatus = String(product.stock_status || "").toLowerCase();
+  const normalizedStockStatus = String(product.stock_status_override || product.stock_status || "").toLowerCase();
   const isOutOfStock = normalizedStockStatus === "out_of_stock" || (hasStockQty && stockQty <= 0);
   const cannotMeetMinimum = hasStockQty && stockQty > 0 && stockQty < minOrderQty;
   const cannotOrder = isOutOfStock || cannotMeetMinimum;
@@ -56,13 +81,8 @@ export default function ProductCard({ product, index = 0 }: Props) {
   const addQuantity = Math.max(minOrderQty, Number(baseTier?.min_qty || 1));
   const displayPrice = hasFlashDeal ? product.discounted_price! : localBasePrice;
   const originalPrice = hasFlashDeal ? (localBasePrice || product.retail_price || 0) : null;
-  const baseTierLabel = baseTier?.label || (baseTier?.min_qty && baseTier.min_qty > 1 ? `${baseTier.min_qty}+ pcs` : "1 piece");
-  const tierLabel = (tier: typeof baseTier) => {
-    if (!tier) return "";
-    if (tier.label) return tier.label;
-    if (tier.min_qty && tier.min_qty > 1) return tier.max_qty ? `${tier.min_qty}-${tier.max_qty} pcs` : `${tier.min_qty}+ pcs`;
-    return `1 ${tier.unit}${tier.qty_per_unit && tier.qty_per_unit > 1 ? ` - ${tier.qty_per_unit}pc` : ""}`;
-  };
+  const baseTierLabel = formatPrimaryPriceLabel(baseTier, sellingUnit);
+  const tierLabel = (tier: typeof baseTier) => formatTierLabel(tier, sellingUnit);
 
   const runFlyToCart = () => {
     if (typeof window === "undefined" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -163,7 +183,7 @@ export default function ProductCard({ product, index = 0 }: Props) {
           </div>
         </Link>
 
-        <div className="p-4 space-y-2">
+        <div className="space-y-2 p-3 sm:p-4">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span className="truncate">{product.category_name}</span>
           </div>
@@ -173,29 +193,29 @@ export default function ProductCard({ product, index = 0 }: Props) {
 
           <div className="pt-1 space-y-1">
             {hasFlashDeal ? (
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[11px] uppercase tracking-wider text-accent font-semibold">Flash price</span>
-                <div className="text-right">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+                <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider text-accent">Flash price</span>
+                <div className="min-w-0 text-right">
                   {originalPrice && (
-                    <span className="text-[11px] text-muted-foreground line-through mr-1">{formatPrice(originalPrice)}</span>
+                    <span className="mr-1 text-[11px] text-muted-foreground line-through">{formatPrice(originalPrice)}</span>
                   )}
-                  <span className="font-display font-bold text-base leading-none text-accent">{formatPrice(displayPrice)}</span>
+                  <span className="whitespace-nowrap font-display text-sm font-bold leading-none text-accent sm:text-base">{formatPrice(displayPrice)}</span>
                 </div>
               </div>
             ) : (
               <>
                 {baseTier && (
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{baseTierLabel}</span>
-                    <span className="font-display font-bold text-base leading-none">{formatPrice(baseTier.price)}</span>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+                    <span className="min-w-0 truncate text-[11px] uppercase tracking-wider text-muted-foreground">{baseTierLabel}</span>
+                    <span className="whitespace-nowrap font-display text-sm font-bold leading-none sm:text-base">{formatPrice(baseTier.price)}</span>
                   </div>
                 )}
                 {secondaryTiers.map((t) => (
-                  <div key={t.unit} className="flex items-baseline justify-between gap-2">
-                    <span className="text-[11px] uppercase tracking-wider text-accent font-semibold">
+                  <div key={t.unit} className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+                    <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider text-accent">
                       {tierLabel(t)}
                     </span>
-                    <span className="font-display font-semibold text-sm leading-none">{formatPrice(t.price)}</span>
+                    <span className="whitespace-nowrap font-display text-sm font-semibold leading-none">{formatPrice(t.price)}</span>
                   </div>
                 ))}
               </>
