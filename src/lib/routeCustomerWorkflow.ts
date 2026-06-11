@@ -5,6 +5,9 @@ export interface RouteCustomer {
   phone: string;
   location: string;
   customer_location_id?: string;
+  region_id?: string;
+  region_name?: string;
+  location_name?: string;
   sales_rep_id?: string;
   route_area?: string;
   notes?: string;

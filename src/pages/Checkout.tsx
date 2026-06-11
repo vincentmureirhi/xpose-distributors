@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { guestCheckout } from "@/lib/api/orders";
+import { listLocations, listRegions, type LocationOption, type RegionOption } from "@/lib/api/geography";
 import { listRouteCustomers, upsertRouteCustomer } from "@/lib/api/route-customers";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -20,9 +21,7 @@ import { getCartPricingMessage, isWholesaleEligible } from "@/lib/pricingMessagi
 import { useSalesRepSession } from "@/context/SalesRepSessionContext";
 import {
   buildRouteOrderNotes,
-  createRouteCustomer,
   getRouteCustomerBackendId,
-  getStoredRouteCustomers,
   mergeRouteCustomers,
   saveRouteCustomers,
   type RouteCustomer,
@@ -59,14 +58,13 @@ const TRANSPORT_COMPANIES = [
   "Intercity Express",
 ];
 
+const KENYAN_PHONE_REGEX = /^(0|\+254|254)[17]\d{8}$/;
+
 const schema = z.object({
-  customer_name: z.string().min(2, "Full name must be at least 2 characters"),
-  customer_phone: z
-    .string()
-    .min(9, "Enter a valid Kenyan phone number")
-    .regex(/^(0|\+254|254)[17]\d{8}$/, "Enter a valid Kenyan phone number (e.g. 07XX XXX XXX)"),
-  delivery_location: z.string().min(2, "Select or type your delivery location"),
-  transport_company: z.string().min(2, "Please select a transport company"),
+  customer_name: z.string().optional(),
+  customer_phone: z.string().optional(),
+  delivery_location: z.string().optional(),
+  transport_company: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -77,11 +75,16 @@ function resolveRepOperationBlockReason(params: {
   isSalesRepAuthenticated: boolean;
   mustChangePassword: boolean;
   locationPermission: "unknown" | "prompt" | "granted" | "denied";
+  repOperationalReady: boolean;
+  locationSyncMessage?: string;
 }) {
   if (!params.isSalesRepAuthenticated) return null;
   if (params.mustChangePassword) return "Password change is required before rep operational checkout.";
-  if (params.locationPermission === "granted") return null;
   if (params.locationPermission === "denied") return "Location access is denied. Enable location to capture route orders.";
+  if (params.locationPermission === "granted" && !params.repOperationalReady) {
+    return params.locationSyncMessage || "Waiting for accurate GPS sync before route order capture.";
+  }
+  if (params.locationPermission === "granted") return null;
   return "Location permission is required to continue with rep route operations.";
 }
 
@@ -102,6 +105,8 @@ export default function Checkout() {
     salesRep,
     mustChangePassword,
     locationPermission,
+    lastLocationSync,
+    repOperationalReady,
     requestLocationPermission,
   } = useSalesRepSession();
   const [submitting, setSubmitting] = useState(false);
@@ -111,13 +116,19 @@ export default function Checkout() {
   const [loadingRouteCustomers, setLoadingRouteCustomers] = useState(false);
   const [selectedRouteCustomerId, setSelectedRouteCustomerId] = useState("");
   const [routeCustomerSearch, setRouteCustomerSearch] = useState("");
+  const [regions, setRegions] = useState<RegionOption[]>([]);
+  const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [selectedRegionId, setSelectedRegionId] = useState("");
+  const [selectedLocationId, setSelectedLocationId] = useState("");
+  const [loadingRegions, setLoadingRegions] = useState(false);
+  const [loadingLocations, setLoadingLocations] = useState(false);
   const repDisplayName = getSalesRepDisplayName(salesRep);
   const [repPhone, setRepPhone] = useState("");
   const [repArea, setRepArea] = useState("");
   const [newRouteCustomer, setNewRouteCustomer] = useState({
     name: "",
     phone: "",
-    location: "",
+    location_id: "",
     notes: "",
   });
 
@@ -131,9 +142,18 @@ export default function Checkout() {
     handleSubmit,
     control,
     setValue,
+    setError,
+    clearErrors,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      customer_name: "",
+      customer_phone: "",
+      delivery_location: "",
+      transport_company: "",
+      notes: "",
+    },
   });
 
   const salesRepId = salesRep?.id;
@@ -141,6 +161,8 @@ export default function Checkout() {
     isSalesRepAuthenticated,
     mustChangePassword,
     locationPermission,
+    repOperationalReady,
+    locationSyncMessage: lastLocationSync.message,
   });
   const repOperationsBlocked = workflow === "sales_rep" && !!repOperationsBlockedReason;
 
@@ -155,41 +177,138 @@ export default function Checkout() {
     setRepArea(salesRep.route_area || "");
   }, [salesRep]);
 
+  const selectedRegion = useMemo(
+    () => regions.find((region) => region.id === selectedRegionId),
+    [regions, selectedRegionId]
+  );
+  const selectedLocation = useMemo(
+    () => locations.find((location) => location.id === selectedLocationId),
+    [locations, selectedLocationId]
+  );
+
   useEffect(() => {
     if (!isSalesRepAuthenticated) {
+      setRegions([]);
+      setLocations([]);
       setRouteCustomers([]);
       setLoadingRouteCustomers(false);
       return;
     }
 
-    const stored = getStoredRouteCustomers();
-    setRouteCustomers(stored);
-
     let active = true;
-    setLoadingRouteCustomers(true);
+    setLoadingRegions(true);
 
-    listRouteCustomers(salesRepId)
-      .then((backendCustomers) => {
+    listRegions()
+      .then((rows) => {
         if (!active) return;
-        const merged = mergeRouteCustomers(backendCustomers, stored);
-        setRouteCustomers(merged);
-        saveRouteCustomers(merged);
+        setRegions(rows);
+        if (!selectedRegionId && repArea) {
+          const normalizedArea = repArea.trim().toLowerCase();
+          const matchedRegion = rows.find((region) => region.name.trim().toLowerCase() === normalizedArea);
+          if (matchedRegion) setSelectedRegionId(matchedRegion.id);
+        }
       })
       .catch((error) => {
         if (!active) return;
         if (import.meta.env.DEV) {
-          console.warn("Failed to sync route customers from backend. Check API availability/auth context.", error);
+          console.warn("Failed to load regions for route checkout.", error);
         }
+        toast.error("Could not load regions", {
+          description: "Refresh the page before capturing a route order.",
+        });
       })
       .finally(() => {
         if (!active) return;
-        setLoadingRouteCustomers(false);
+        setLoadingRegions(false);
       });
 
     return () => {
       active = false;
     };
-  }, [isSalesRepAuthenticated, salesRepId]);
+  }, [isSalesRepAuthenticated, repArea]);
+
+  useEffect(() => {
+    if (!isSalesRepAuthenticated || workflow !== "sales_rep" || !selectedRegionId) {
+      setLocations([]);
+      setSelectedLocationId("");
+      return;
+    }
+
+    let active = true;
+    setLoadingLocations(true);
+
+    listLocations({ region_id: selectedRegionId })
+      .then((rows) => {
+        if (!active) return;
+        setLocations(rows);
+        setSelectedLocationId((current) =>
+          current && rows.some((location) => location.id === current) ? current : ""
+        );
+        setNewRouteCustomer((current) => ({
+          ...current,
+          location_id: current.location_id && rows.some((location) => location.id === current.location_id)
+            ? current.location_id
+            : "",
+        }));
+      })
+      .catch((error) => {
+        if (!active) return;
+        if (import.meta.env.DEV) {
+          console.warn("Failed to load locations for selected region.", error);
+        }
+        toast.error("Could not load locations", {
+          description: "Try selecting the region again.",
+        });
+      })
+      .finally(() => {
+        if (!active) return;
+        setLoadingLocations(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isSalesRepAuthenticated, selectedRegionId, workflow]);
+
+  useEffect(() => {
+    if (!isSalesRepAuthenticated || workflow !== "sales_rep" || !selectedRegionId) {
+      setRouteCustomers([]);
+      setLoadingRouteCustomers(false);
+      return;
+    }
+
+    const query = routeCustomerSearch.trim();
+
+    let active = true;
+    const timer = window.setTimeout(() => {
+      setLoadingRouteCustomers(true);
+      listRouteCustomers({
+        region_id: selectedRegionId,
+        location_id: selectedLocationId || undefined,
+        search: query.length >= 2 ? query : undefined,
+        limit: 75,
+      })
+        .then((backendCustomers) => {
+          if (!active) return;
+          setRouteCustomers(backendCustomers);
+          saveRouteCustomers(backendCustomers);
+        })
+        .catch((error) => {
+          if (import.meta.env.DEV) {
+            console.warn("Failed to search route customers from backend.", error);
+          }
+        })
+        .finally(() => {
+          if (!active) return;
+          setLoadingRouteCustomers(false);
+        });
+    }, 300);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [isSalesRepAuthenticated, routeCustomerSearch, selectedLocationId, selectedRegionId, workflow]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -219,10 +338,14 @@ export default function Checkout() {
     setSelectedRouteCustomerId(customer.id);
     setValue("customer_name", customer.name, { shouldValidate: true });
     setValue("customer_phone", customer.phone, { shouldValidate: true });
-    if (customer.location) {
-      setLocationQuery(customer.location);
-      setValue("delivery_location", customer.location, { shouldValidate: true });
+    if (customer.region_id) setSelectedRegionId(customer.region_id);
+    if (customer.customer_location_id) setSelectedLocationId(customer.customer_location_id);
+    const customerLocation = customer.location_name || customer.location || selectedLocation?.name || selectedRegion?.name || "";
+    if (customerLocation) {
+      setLocationQuery(customerLocation);
+      setValue("delivery_location", customerLocation, { shouldValidate: true });
     }
+    clearErrors(["customer_name", "customer_phone", "delivery_location"]);
   };
 
   const selectedRouteCustomer = routeCustomers.find((c) => c.id === selectedRouteCustomerId);
@@ -236,28 +359,16 @@ export default function Checkout() {
     );
   }, [routeCustomerSearch, routeCustomers]);
 
-
   useEffect(() => {
-    if (workflow !== "sales_rep") return;
-    if (routeCustomers.length === 0) {
-      if (selectedRouteCustomerId) {
-        setSelectedRouteCustomerId("");
-        setValue("customer_name", "", { shouldValidate: true });
-        setValue("customer_phone", "", { shouldValidate: true });
-      }
-      return;
-    }
+    if (workflow !== "sales_rep" || !selectedRouteCustomerId) return;
     const selectedExists = routeCustomers.some((customer) => customer.id === selectedRouteCustomerId);
     if (selectedExists) return;
-    const firstCustomer = routeCustomers[0];
-    setSelectedRouteCustomerId(firstCustomer.id);
-    setValue("customer_name", firstCustomer.name, { shouldValidate: true });
-    setValue("customer_phone", firstCustomer.phone, { shouldValidate: true });
-    if (firstCustomer.location) {
-      setLocationQuery(firstCustomer.location);
-      setValue("delivery_location", firstCustomer.location, { shouldValidate: true });
-    }
-  }, [routeCustomers, selectedRouteCustomerId, setLocationQuery, setValue, workflow]);
+    setSelectedRouteCustomerId("");
+    setValue("customer_name", "", { shouldValidate: true });
+    setValue("customer_phone", "", { shouldValidate: true });
+    setValue("delivery_location", "", { shouldValidate: true });
+    setLocationQuery("");
+  }, [routeCustomers, selectedRouteCustomerId, setValue, workflow]);
 
   const addRouteCustomerInline = async () => {
     if (repOperationsBlocked) {
@@ -267,53 +378,101 @@ export default function Checkout() {
 
     const name = newRouteCustomer.name.trim();
     const phone = newRouteCustomer.phone.trim();
-    const location = newRouteCustomer.location.trim();
-    if (!name || !phone || !location) {
+    const locationId = newRouteCustomer.location_id || selectedLocationId;
+    const routeLocation = locations.find((location) => location.id === locationId);
+    if (!name || !phone || !selectedRegionId || !locationId || !routeLocation) {
       toast.error("Add customer details", {
-        description: "Name, phone, and location are required for route customers.",
+        description: "Name, phone, region, and location are required for route customers.",
       });
       return;
     }
-
-    const localCustomer = createRouteCustomer(newRouteCustomer, new Date());
-    let customer = localCustomer;
-    let persistedInBackend = false;
+    if (!KENYAN_PHONE_REGEX.test(phone)) {
+      toast.error("Enter a valid phone number", {
+        description: "Use a Kenyan mobile number such as 07XX XXX XXX.",
+      });
+      return;
+    }
 
     try {
       const backendCustomer = await upsertRouteCustomer({
         customer_name: name,
         customer_phone: phone,
-        route_area: location,
+        route_area: routeLocation.name,
         route_notes: newRouteCustomer.notes || undefined,
         sales_rep_id: salesRepId,
+        customer_location_id: locationId,
+        reject_existing: true,
       });
-      if (backendCustomer) {
-        customer = backendCustomer;
-        persistedInBackend = true;
+      if (!backendCustomer) {
+        toast.error("Route customer was not saved", {
+          description: "The server did not return the saved customer. Please try again.",
+        });
+        return;
       }
+      const customer: RouteCustomer = {
+        ...backendCustomer,
+        customer_location_id: backendCustomer.customer_location_id || locationId,
+        location: backendCustomer.location || routeLocation.name,
+        location_name: backendCustomer.location_name || routeLocation.name,
+        region_id: backendCustomer.region_id || selectedRegionId,
+        region_name: backendCustomer.region_name || selectedRegion?.name,
+        route_area: backendCustomer.route_area || routeLocation.name,
+      };
+      const updated = mergeRouteCustomers([customer], routeCustomers);
+      setRouteCustomers(updated);
+      saveRouteCustomers(updated);
+      applyRouteCustomer(customer);
+      setNewRouteCustomer({ name: "", phone: "", location_id: locationId, notes: "" });
+      toast.success("Route customer saved", {
+        description: `${customer.name} is synced to admin and selected for this order.`,
+      });
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.warn("Failed to upsert route customer in backend. Falling back to local save.", error);
+      const apiError = error as {
+        response?: { status?: number; data?: { message?: string; data?: { customer?: RouteCustomer } } };
+      };
+      if (apiError.response?.status === 409) {
+        const existing = apiError.response.data?.data?.customer;
+        if (existing) {
+          const normalizedExisting = mergeRouteCustomers([existing], routeCustomers);
+          setRouteCustomers(normalizedExisting);
+          saveRouteCustomers(normalizedExisting);
+        }
+        toast.error("Route customer already exists", {
+          description: apiError.response.data?.message || "Search and select the existing route customer.",
+        });
+        return;
       }
-      persistedInBackend = false;
-    }
 
-    const updated = mergeRouteCustomers([customer], routeCustomers);
-    setRouteCustomers(updated);
-    saveRouteCustomers(updated);
-    applyRouteCustomer(customer);
-    setNewRouteCustomer({ name: "", phone: "", location: "", notes: "" });
-    toast.success("Route customer saved", {
-      description: persistedInBackend
-        ? `${customer.name} is synced and selected for this order.`
-        : `${customer.name} is saved locally and selected for this order.`,
-    });
+      if (import.meta.env.DEV) {
+        console.warn("Failed to upsert route customer in backend.", error);
+      }
+      toast.error("Route customer was not saved", {
+        description: apiError.response?.data?.message || "Check your connection and try again.",
+      });
+    }
   };
 
   const clearSelectedRouteCustomer = () => {
     setSelectedRouteCustomerId("");
     setValue("customer_name", "", { shouldValidate: true });
     setValue("customer_phone", "", { shouldValidate: true });
+    setValue("delivery_location", "", { shouldValidate: true });
+    setLocationQuery("");
+  };
+
+  const handleRouteRegionChange = (regionId: string) => {
+    setSelectedRegionId(regionId);
+    setSelectedLocationId("");
+    setRouteCustomerSearch("");
+    setRouteCustomers([]);
+    clearSelectedRouteCustomer();
+    setNewRouteCustomer((current) => ({ ...current, location_id: "" }));
+  };
+
+  const handleRouteLocationFilterChange = (locationId: string) => {
+    setSelectedLocationId(locationId);
+    setNewRouteCustomer((current) => ({ ...current, location_id: locationId }));
+    clearSelectedRouteCustomer();
   };
 
   const resolveCheckoutCustomerData = (values: FormValues) => {
@@ -321,18 +480,50 @@ export default function Checkout() {
       return {
         customerName: selectedRouteCustomer.name,
         customerPhone: selectedRouteCustomer.phone,
-        deliveryLocation: selectedRouteCustomer.location || values.delivery_location,
+        deliveryLocation: selectedRouteCustomer.location || values.delivery_location?.trim() || "",
       };
     }
 
     return {
-      customerName: values.customer_name,
-      customerPhone: values.customer_phone,
-      deliveryLocation: values.delivery_location,
+      customerName: values.customer_name?.trim() || "",
+      customerPhone: values.customer_phone?.trim() || "",
+      deliveryLocation: values.delivery_location?.trim() || "",
     };
   };
 
+  const validateSelfServiceCheckout = (values: FormValues) => {
+    clearErrors(["customer_name", "customer_phone", "delivery_location", "transport_company"]);
+    const name = values.customer_name?.trim() || "";
+    const phone = values.customer_phone?.trim() || "";
+    const deliveryLocation = values.delivery_location?.trim() || "";
+    const transportCompany = values.transport_company?.trim() || "";
+
+    if (name.length < 2) {
+      setError("customer_name", { type: "manual", message: "Full name must be at least 2 characters" });
+      return false;
+    }
+    if (!KENYAN_PHONE_REGEX.test(phone)) {
+      setError("customer_phone", {
+        type: "manual",
+        message: "Enter a valid Kenyan phone number (e.g. 07XX XXX XXX)",
+      });
+      return false;
+    }
+    if (deliveryLocation.length < 2) {
+      setError("delivery_location", { type: "manual", message: "Select or type your delivery location" });
+      return false;
+    }
+    if (transportCompany.length < 2) {
+      setError("transport_company", { type: "manual", message: "Please select a transport company" });
+      return false;
+    }
+
+    return true;
+  };
+
   const onSubmit = async (values: FormValues) => {
+    if (workflow === "self_service" && !validateSelfServiceCheckout(values)) return;
+
     if (workflow === "sales_rep") {
       if (mustChangePassword) {
         toast.error("Password change required", {
@@ -377,11 +568,15 @@ export default function Checkout() {
           : values.notes || undefined;
 
       const { customerName, customerPhone, deliveryLocation } = resolveCheckoutCustomerData(values);
+      const transportCompany = values.transport_company?.trim();
 
       const result = await guestCheckout({
         customer_name: customerName,
         customer_phone: customerPhone,
-        delivery_address: `${deliveryLocation} — ${values.transport_company}`,
+        delivery_address:
+          workflow === "sales_rep"
+            ? deliveryLocation || selectedRouteCustomer?.location || selectedLocation?.name || selectedRegion?.name || ""
+            : `${deliveryLocation} - ${transportCompany}`,
         notes: orderNotes,
         ...(workflow === "sales_rep" &&
           selectedRouteCustomer && {
@@ -390,7 +585,7 @@ export default function Checkout() {
             sales_rep_id: salesRepId,
             customer_id: getRouteCustomerBackendId(selectedRouteCustomer),
             customer_location_id: selectedRouteCustomer.customer_location_id,
-            route_area: selectedRouteCustomer.route_area || selectedRouteCustomer.location || repArea,
+            route_area: selectedRouteCustomer.route_area || selectedRouteCustomer.location || selectedRegion?.name || repArea,
             route_notes: selectedRouteCustomer.notes || undefined,
           }),
         items: cartItems.map((i) => {
@@ -412,26 +607,27 @@ export default function Checkout() {
   };
 
   return (
-    <div className="container py-10 md:py-14">
+    <div className="container max-w-7xl overflow-x-hidden px-4 py-6 sm:py-8 md:py-14">
       <OrderSuccessOverlay
         show={!!success}
         orderId={success?.id || ""}
+        paymentMode={workflow === "sales_rep" ? "route_credit" : "mpesa"}
         onDone={() => navigate(success?.id ? `/track-order?id=${success.id}` : "/track-order")}
       />
 
-      <div className="mb-8">
+      <div className="mb-6 md:mb-8">
         <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2">
           <Link to="/cart">
             <ArrowLeft className="h-4 w-4 mr-1" /> Back to cart
           </Link>
         </Button>
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          <h1 className="font-display font-bold text-4xl md:text-5xl tracking-tight">Checkout</h1>
+          <h1 className="font-display font-bold text-3xl sm:text-4xl md:text-5xl tracking-tight">Checkout</h1>
           <p className="text-muted-foreground mt-2">Fill in your details and we'll handle the rest.</p>
         </motion.div>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_400px] gap-8">
+      <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:gap-8">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -439,7 +635,7 @@ export default function Checkout() {
         >
           <form
             onSubmit={handleSubmit(onSubmit)}
-            className="rounded-2xl border border-border bg-card p-6 md:p-8 space-y-6"
+            className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-soft sm:rounded-2xl sm:p-5 md:p-8 space-y-5 md:space-y-6"
           >
             <div>
               <h2 className="font-display font-bold text-xl">Your details</h2>
@@ -463,27 +659,67 @@ export default function Checkout() {
 
             {workflow === "sales_rep" && (
               <>
-                <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-3">
-                  <p className="text-sm font-semibold">Sales rep details</p>
-                  <div className="grid md:grid-cols-3 gap-3">
-                    <Input
-                      value={repDisplayName}
-                      readOnly
-                      aria-label="Sales rep name"
-                      className="h-11"
-                    />
+                <div className="rounded-xl border border-border bg-secondary/30 p-3 sm:p-4 space-y-4">
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <p className="text-sm font-semibold">Route capture portal</p>
+                    <p className="text-xs text-muted-foreground">
+                      Select the route region first, then search customers registered in that region.
+                    </p>
+                  </div>
+                  <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                    <Input value={repDisplayName} readOnly aria-label="Sales rep name" className="h-11 min-w-0" />
                     <Input
                       value={repPhone}
                       onChange={(e) => setRepPhone(e.target.value)}
                       placeholder="Rep phone"
-                      className="h-11"
+                      className="h-11 min-w-0"
                     />
-                    <Input
-                      value={repArea}
-                      onChange={(e) => setRepArea(e.target.value)}
-                      placeholder="Current area / route"
-                      className="h-11"
-                    />
+                  </div>
+                  <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                    <div className="min-w-0 space-y-1.5">
+                      <Label htmlFor="route-region" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Current region
+                      </Label>
+                      <select
+                        id="route-region"
+                        value={selectedRegionId}
+                        onChange={(e) => handleRouteRegionChange(e.target.value)}
+                        disabled={repOperationsBlocked || loadingRegions}
+                        className="h-11 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                      >
+                        <option value="">{loadingRegions ? "Loading regions..." : "Select region..."}</option>
+                        {regions.map((region) => (
+                          <option key={region.id} value={region.id}>
+                            {region.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="min-w-0 space-y-1.5">
+                      <Label htmlFor="route-location-filter" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Location filter
+                      </Label>
+                      <select
+                        id="route-location-filter"
+                        value={selectedLocationId}
+                        onChange={(e) => handleRouteLocationFilterChange(e.target.value)}
+                        disabled={repOperationsBlocked || !selectedRegionId || loadingLocations}
+                        className="h-11 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                      >
+                        <option value="">
+                          {!selectedRegionId
+                            ? "Select region first"
+                            : loadingLocations
+                              ? "Loading locations..."
+                              : "All locations in region"}
+                        </option>
+                        {locations.map((location) => (
+                          <option key={location.id} value={location.id}>
+                            {location.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
 
@@ -514,8 +750,15 @@ export default function Checkout() {
                   </div>
                 )}
 
-                <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-3">
-                  <p className="text-sm font-semibold">Route customer</p>
+                <div className="rounded-xl border border-border bg-secondary/30 p-3 sm:p-4 space-y-3">
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <p className="text-sm font-semibold">Route customer</p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedRegion
+                        ? `Searching ${selectedRegion.name}${selectedLocation ? ` / ${selectedLocation.name}` : ""}`
+                        : "Choose a region to start searching route customers."}
+                    </p>
+                  </div>
                   {loadingRouteCustomers && (
                     <p className="text-xs text-muted-foreground">Syncing route customers from backend…</p>
                   )}
@@ -524,12 +767,12 @@ export default function Checkout() {
                     <Input
                       value={routeCustomerSearch}
                       onChange={(e) => setRouteCustomerSearch(e.target.value)}
-                      placeholder="Search existing route customers by name, phone, or area"
-                      disabled={repOperationsBlocked}
-                      className="h-11 pl-10"
+                      placeholder="Search by customer name, phone, or location"
+                      disabled={repOperationsBlocked || !selectedRegionId}
+                      className="h-11 min-w-0 pl-10"
                     />
                   </div>
-                  <div className="grid md:grid-cols-[1fr_auto] gap-3">
+                  <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                     <select
                       value={selectedRouteCustomerId}
                       onChange={(e) => {
@@ -537,21 +780,29 @@ export default function Checkout() {
                         if (customer) applyRouteCustomer(customer);
                         else clearSelectedRouteCustomer();
                       }}
-                      disabled={repOperationsBlocked}
-                      className="w-full h-11 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                      disabled={repOperationsBlocked || !selectedRegionId}
+                      className="h-11 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                     >
-                      <option value="">Select existing route customer…</option>
+                      <option value="">
+                        {!selectedRegionId ? "Select region first..." : "Select existing route customer..."}
+                      </option>
                       {filteredRouteCustomers.map((customer) => (
                         <option key={customer.id} value={customer.id}>
-                          {customer.name} — {customer.location}
+                          {customer.name} - {customer.location_name || customer.location}
                         </option>
                       ))}
                     </select>
-                    <Button type="button" variant="outline" className="h-11" onClick={clearSelectedRouteCustomer} disabled={repOperationsBlocked}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 w-full sm:w-auto"
+                      onClick={clearSelectedRouteCustomer}
+                      disabled={repOperationsBlocked}
+                    >
                       Clear
                     </Button>
                   </div>
-                  {routeCustomerSearch && filteredRouteCustomers.length === 0 && (
+                  {selectedRegionId && routeCustomerSearch && filteredRouteCustomers.length === 0 && (
                     <p className="text-xs text-muted-foreground">
                       No matching route customer found. Add the customer below and it will sync to admin.
                     </p>
@@ -559,9 +810,9 @@ export default function Checkout() {
 
                   <div className="rounded-lg border border-dashed border-border p-3 space-y-3">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Add route customer inline
+                      Add route customer
                     </p>
-                    <div className="grid md:grid-cols-3 gap-3">
+                    <div className="grid min-w-0 gap-3 lg:grid-cols-2">
                       <Input
                         value={newRouteCustomer.name}
                         onChange={(e) => setNewRouteCustomer((prev) => ({ ...prev, name: e.target.value }))}
@@ -576,13 +827,38 @@ export default function Checkout() {
                         disabled={repOperationsBlocked}
                         className="h-11"
                       />
-                      <Input
-                        value={newRouteCustomer.location}
-                        onChange={(e) => setNewRouteCustomer((prev) => ({ ...prev, location: e.target.value }))}
-                        placeholder="Location / area"
-                        disabled={repOperationsBlocked}
-                        className="h-11"
-                      />
+                      <select
+                        value={selectedRegionId}
+                        onChange={(e) => handleRouteRegionChange(e.target.value)}
+                        disabled={repOperationsBlocked || loadingRegions}
+                        className="h-11 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                      >
+                        <option value="">Customer region...</option>
+                        {regions.map((region) => (
+                          <option key={region.id} value={region.id}>
+                            {region.name}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={newRouteCustomer.location_id || selectedLocationId}
+                        onChange={(e) => setNewRouteCustomer((prev) => ({ ...prev, location_id: e.target.value }))}
+                        disabled={repOperationsBlocked || !selectedRegionId || loadingLocations}
+                        className="h-11 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                      >
+                        <option value="">
+                          {!selectedRegionId
+                            ? "Select region first"
+                            : loadingLocations
+                              ? "Loading locations..."
+                              : "Customer location..."}
+                        </option>
+                        {locations.map((location) => (
+                          <option key={location.id} value={location.id}>
+                            {location.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <Textarea
                       value={newRouteCustomer.notes}
@@ -592,15 +868,23 @@ export default function Checkout() {
                       rows={2}
                       className="resize-none"
                     />
-                    <Button type="button" variant="outline" className="h-10" onClick={addRouteCustomerInline} disabled={repOperationsBlocked}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 w-full sm:w-auto"
+                      onClick={addRouteCustomerInline}
+                      disabled={repOperationsBlocked || !selectedRegionId}
+                    >
                       Save and use customer
                     </Button>
                   </div>
 
                   {selectedRouteCustomer && (
-                    <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm">
+                    <div className="min-w-0 rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm">
                       <p className="font-semibold">Ordering for: {selectedRouteCustomer.name}</p>
-                      <p className="text-muted-foreground">{selectedRouteCustomer.phone} • {selectedRouteCustomer.location}</p>
+                      <p className="break-words text-muted-foreground">
+                        {selectedRouteCustomer.phone} - {selectedRouteCustomer.location_name || selectedRouteCustomer.location}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -608,7 +892,13 @@ export default function Checkout() {
             )}
 
             {/* Full Name */}
-            <motion.div custom={0} variants={fieldVariants} initial="hidden" animate="visible" className="space-y-1.5">
+            <motion.div
+              custom={0}
+              variants={fieldVariants}
+              initial="hidden"
+              animate="visible"
+              className={cn("space-y-1.5", workflow === "sales_rep" && "hidden")}
+            >
               <Label htmlFor="customer_name">
                 <span className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
@@ -632,7 +922,13 @@ export default function Checkout() {
             </motion.div>
 
             {/* Phone */}
-            <motion.div custom={1} variants={fieldVariants} initial="hidden" animate="visible" className="space-y-1.5">
+            <motion.div
+              custom={1}
+              variants={fieldVariants}
+              initial="hidden"
+              animate="visible"
+              className={cn("space-y-1.5", workflow === "sales_rep" && "hidden")}
+            >
               <Label htmlFor="customer_phone">
                 <span className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
@@ -657,7 +953,13 @@ export default function Checkout() {
             </motion.div>
 
             {/* Delivery Location — autocomplete */}
-            <motion.div custom={2} variants={fieldVariants} initial="hidden" animate="visible" className="space-y-1.5">
+            <motion.div
+              custom={2}
+              variants={fieldVariants}
+              initial="hidden"
+              animate="visible"
+              className={cn("space-y-1.5", workflow === "sales_rep" && "hidden")}
+            >
               <Label htmlFor="delivery_location">
                 <span className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -724,7 +1026,13 @@ export default function Checkout() {
             </motion.div>
 
             {/* Mode of Transport */}
-            <motion.div custom={3} variants={fieldVariants} initial="hidden" animate="visible" className="space-y-1.5">
+            <motion.div
+              custom={3}
+              variants={fieldVariants}
+              initial="hidden"
+              animate="visible"
+              className={cn("space-y-1.5", workflow === "sales_rep" && "hidden")}
+            >
               <Label htmlFor="transport_company">
                 <span className="flex items-center gap-2">
                   <Truck className="h-4 w-4 text-muted-foreground" />
@@ -772,7 +1080,7 @@ export default function Checkout() {
                 type="submit"
                 size="lg"
                 disabled={submitting || repOperationsBlocked}
-                className="w-full h-14 bg-gradient-accent text-accent-foreground border-0 shadow-glow text-base font-semibold"
+                className="h-auto min-h-14 w-full whitespace-normal bg-gradient-accent px-4 py-3 text-center text-sm font-semibold text-accent-foreground shadow-glow sm:text-base"
               >
                 {submitting ? (
                   <>
@@ -794,12 +1102,12 @@ export default function Checkout() {
         </motion.div>
 
         {/* Order Summary */}
-        <aside className="lg:sticky lg:top-24 lg:self-start">
+        <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
-            className="rounded-2xl border border-border bg-card p-6"
+            className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-soft sm:rounded-2xl sm:p-6"
           >
             <h2 className="font-display font-bold text-lg mb-4">Order summary</h2>
             {workflow === "sales_rep" && selectedRouteCustomer && (
@@ -810,8 +1118,57 @@ export default function Checkout() {
                 </p>
               </div>
             )}
-            <div className="overflow-x-auto mb-4">
-              <table className="w-full text-sm border-collapse">
+            <div className="mb-4 space-y-3 sm:hidden">
+              {cartItems.map((i) => {
+                const ev = evaluations[i.id];
+                const unitPrice = ev ? ev.unit_price : i.price;
+                const lineTotal = ev ? ev.line_total : i.price * i.quantity;
+                const pricingLabel = ev?.pricing_label;
+                const pricingMessage = getCartPricingMessage(ev, i.quantity);
+                const wholesaleEligible = isWholesaleEligible(ev);
+                const flashSaleApplied = Boolean(ev?.flash_sale_id || pricingLabel === "flash sale");
+                return (
+                  <div key={i.id} className="rounded-lg border border-border/70 bg-secondary/30 p-3">
+                    <div className="flex min-w-0 gap-3">
+                      {i.image_url && (
+                        <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-md bg-background">
+                          <img src={i.image_url} alt={i.name} className="h-full w-full object-contain p-1.5" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-2 text-sm font-semibold leading-snug">{i.name}</p>
+                        {pricingLabel && (
+                          <span className={`mt-1 block text-[10px] font-semibold uppercase tracking-wider ${wholesaleEligible || flashSaleApplied ? "text-accent" : "text-muted-foreground"}`}>
+                            {pricingLabel}
+                          </span>
+                        )}
+                        {pricingMessage && (
+                          <span className={`mt-0.5 block text-[10px] ${wholesaleEligible || flashSaleApplied ? "text-accent" : "text-muted-foreground"}`}>
+                            {pricingMessage}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border/70 pt-2 text-xs">
+                      <div>
+                        <span className="block text-muted-foreground">Qty</span>
+                        <span className="font-semibold">{i.quantity}</span>
+                      </div>
+                      <div>
+                        <span className="block text-muted-foreground">Each</span>
+                        <span className="font-semibold">{formatPrice(unitPrice)}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="block text-muted-foreground">Total</span>
+                        <span className="font-bold">{formatPrice(lineTotal)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mb-4 hidden overflow-x-auto sm:block">
+              <table className="w-full min-w-[340px] text-sm border-collapse">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
                     <th className="py-2 text-left font-medium">Product</th>
@@ -828,24 +1185,25 @@ export default function Checkout() {
                     const pricingLabel = ev?.pricing_label;
                     const pricingMessage = getCartPricingMessage(ev, i.quantity);
                     const wholesaleEligible = isWholesaleEligible(ev);
+                    const flashSaleApplied = Boolean(ev?.flash_sale_id || pricingLabel === "flash sale");
                     return (
                     <tr key={i.id} className="border-b border-border/50">
                       <td className="py-2.5 pr-2">
                         <div className="flex items-center gap-2">
                           {i.image_url && (
                             <div className="h-8 w-8 rounded-md bg-secondary overflow-hidden flex-shrink-0">
-                              <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" />
+                              <img src={i.image_url} alt={i.name} className="h-full w-full object-contain p-1" />
                             </div>
                           )}
                           <div>
                             <span className="line-clamp-2 leading-snug">{i.name}</span>
                             {pricingLabel && (
-                              <span className={`block text-[10px] font-semibold uppercase tracking-wider mt-0.5 ${wholesaleEligible ? "text-accent" : "text-muted-foreground"}`}>
+                              <span className={`block text-[10px] font-semibold uppercase tracking-wider mt-0.5 ${wholesaleEligible || flashSaleApplied ? "text-accent" : "text-muted-foreground"}`}>
                                 {pricingLabel}
                               </span>
                             )}
                             {pricingMessage && (
-                              <span className={`block text-[10px] mt-0.5 ${wholesaleEligible ? "text-accent" : "text-muted-foreground"}`}>
+                              <span className={`block text-[10px] mt-0.5 ${wholesaleEligible || flashSaleApplied ? "text-accent" : "text-muted-foreground"}`}>
                                 {pricingMessage}
                               </span>
                             )}
@@ -876,30 +1234,31 @@ export default function Checkout() {
               </div>
             </div>
 
-            {/* Payment info */}
-            <div className="mt-4 pt-4 border-t border-border">
-              <div className="flex items-center gap-2 mb-2">
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment</p>
+            {workflow === "self_service" && (
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <CreditCard className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment</p>
+                </div>
+                <div className="rounded-lg bg-secondary/60 p-3 text-xs space-y-1.5">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">Method</span>
+                    <span className="text-right font-semibold">M-Pesa Buy Goods</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">Till Number</span>
+                    <span className="font-bold tracking-widest">711714</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">Business</span>
+                    <span className="font-semibold">XPOSE</span>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Payment instructions will be shown after placing your order.
+                </p>
               </div>
-              <div className="rounded-lg bg-secondary/60 p-3 text-xs space-y-1.5">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Method</span>
-                  <span className="font-semibold">M-Pesa Buy Goods</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Till Number</span>
-                  <span className="font-bold tracking-widest">711714</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Business</span>
-                  <span className="font-semibold">XPOSE</span>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Payment instructions will be shown after placing your order.
-              </p>
-            </div>
+            )}
           </motion.div>
         </aside>
       </div>

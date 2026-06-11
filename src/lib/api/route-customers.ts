@@ -13,6 +13,10 @@ interface BackendRouteCustomer {
   route_notes?: string;
   notes?: string;
   customer_location_id?: string | number;
+  location_id?: string | number;
+  location_name?: string;
+  region_id?: string | number;
+  region_name?: string;
   sales_rep_id?: string | number;
   created_at?: string;
 }
@@ -25,13 +29,23 @@ export interface UpsertRouteCustomerPayload {
   route_notes?: string;
   sales_rep_id?: string;
   customer_location_id?: string;
+  reject_existing?: boolean;
+}
+
+export interface ListRouteCustomersOptions {
+  sales_rep_id?: string;
+  region_id?: string;
+  location_id?: string;
+  search?: string;
+  limit?: number;
 }
 
 function normalizeRouteCustomer(input: BackendRouteCustomer): RouteCustomer | null {
   const id = input.customer_id ?? input.id;
   const name = (input.customer_name ?? input.name ?? "").trim();
   const phone = (input.customer_phone ?? input.phone ?? "").trim();
-  const routeArea = (input.route_area ?? input.location ?? "").trim();
+  const locationName = (input.location_name ?? input.location ?? input.route_area ?? "").trim();
+  const routeArea = (input.route_area ?? locationName).trim();
   const notes = (input.route_notes ?? input.notes ?? "").trim();
 
   if (!id || !name || !phone) return null;
@@ -41,10 +55,13 @@ function normalizeRouteCustomer(input: BackendRouteCustomer): RouteCustomer | nu
     backend_customer_id: String(id),
     name,
     phone,
-    location: routeArea,
+    location: locationName || routeArea,
     route_area: routeArea,
     notes: notes || undefined,
-    customer_location_id: input.customer_location_id ? String(input.customer_location_id) : undefined,
+    customer_location_id: input.customer_location_id || input.location_id ? String(input.customer_location_id ?? input.location_id) : undefined,
+    location_name: locationName || undefined,
+    region_id: input.region_id ? String(input.region_id) : undefined,
+    region_name: input.region_name || undefined,
     sales_rep_id: input.sales_rep_id ? String(input.sales_rep_id) : undefined,
     created_at: input.created_at || new Date().toISOString(),
   };
@@ -65,14 +82,32 @@ function extractRouteCustomerRows(payload: unknown): BackendRouteCustomer[] {
   return [];
 }
 
-export async function listRouteCustomers(sales_rep_id?: string): Promise<RouteCustomer[]> {
+export async function listRouteCustomers(
+  sales_rep_idOrOptions?: string | ListRouteCustomersOptions,
+  options: ListRouteCustomersOptions = {}
+): Promise<RouteCustomer[]> {
+  const resolvedOptions =
+    typeof sales_rep_idOrOptions === "object"
+      ? sales_rep_idOrOptions
+      : { ...options, ...(sales_rep_idOrOptions ? { sales_rep_id: sales_rep_idOrOptions } : {}) };
   const toCustomers = (payload: unknown) => {
     const rows = extractRouteCustomerRows(payload);
     const normalized = rows.map(normalizeRouteCustomer);
     return normalized.filter((customer): customer is RouteCustomer => !!customer);
   };
-  const params = sales_rep_id ? { customer_type: "route", sales_rep_id } : { customer_type: "route" };
-  const fallbackParams = sales_rep_id ? { sales_rep_id } : undefined;
+  const params = {
+    customer_type: "route",
+    ...(resolvedOptions.sales_rep_id ? { sales_rep_id: resolvedOptions.sales_rep_id } : {}),
+    ...(resolvedOptions.region_id ? { region_id: resolvedOptions.region_id } : {}),
+    ...(resolvedOptions.location_id ? { location_id: resolvedOptions.location_id } : {}),
+    ...(resolvedOptions.search ? { search: resolvedOptions.search } : {}),
+    limit: resolvedOptions.limit || 50,
+  };
+  const fallbackParams = {
+    ...(resolvedOptions.sales_rep_id ? { sales_rep_id: resolvedOptions.sales_rep_id } : {}),
+    ...(resolvedOptions.search ? { search: resolvedOptions.search } : {}),
+    limit: resolvedOptions.limit || 50,
+  };
 
   try {
     const { data } = await apiClient.get("/customers", { params });
