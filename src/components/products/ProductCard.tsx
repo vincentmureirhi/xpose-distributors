@@ -32,11 +32,27 @@ export default function ProductCard({ product, index = 0 }: Props) {
   const minOrderQty = Math.max(1, Number(product.min_order_qty || baseTier?.min_qty || 1));
   const orderStep = Math.max(1, Number(product.order_qty_step || 1));
   const sellingUnit = product.selling_unit_label || "piece";
-  const stockQty = Number(product.current_stock ?? product.stock ?? 0);
-  const isOutOfStock = Number.isFinite(stockQty) && stockQty <= 0;
-  const cannotMeetMinimum = Number.isFinite(stockQty) && stockQty > 0 && stockQty < minOrderQty;
+  const rawStockQty = product.current_stock ?? product.stock;
+  const stockQty = Number(rawStockQty);
+  const hasStockQty = rawStockQty !== undefined && rawStockQty !== null && rawStockQty !== "" && Number.isFinite(stockQty);
+  const normalizedStockStatus = String(product.stock_status || "").toLowerCase();
+  const isOutOfStock = normalizedStockStatus === "out_of_stock" || (hasStockQty && stockQty <= 0);
+  const cannotMeetMinimum = hasStockQty && stockQty > 0 && stockQty < minOrderQty;
   const cannotOrder = isOutOfStock || cannotMeetMinimum;
-  const isLowStock = Number.isFinite(stockQty) && stockQty > 0 && stockQty <= Math.max(minOrderQty, 10);
+  const isLimitedStock =
+    !cannotOrder &&
+    (normalizedStockStatus === "limited_stock" ||
+      normalizedStockStatus === "low_stock" ||
+      (hasStockQty && stockQty > 0 && stockQty <= Math.max(minOrderQty, 10)));
+  const stockLabel = isOutOfStock
+    ? "Out of stock"
+    : cannotMeetMinimum
+      ? `Out of stock for minimum ${minOrderQty}`
+      : isLimitedStock
+        ? hasStockQty
+          ? `Limited stock - ${stockQty} left`
+          : "Limited stock"
+        : "In stock";
   const addQuantity = Math.max(minOrderQty, Number(baseTier?.min_qty || 1));
   const displayPrice = hasFlashDeal ? product.discounted_price! : localBasePrice;
   const originalPrice = hasFlashDeal ? (localBasePrice || product.retail_price || 0) : null;
@@ -192,14 +208,8 @@ export default function ProductCard({ product, index = 0 }: Props) {
               {minOrderQty > 1 ? ` - min ${minOrderQty}` : ""}
               {orderStep > 1 ? ` - step ${orderStep}` : ""}
             </p>
-            <p className={cannotOrder ? "font-semibold text-destructive" : isLowStock ? "font-semibold text-amber-600" : ""}>
-              {isOutOfStock
-                ? "Out of stock"
-                : cannotMeetMinimum
-                  ? `${stockQty} left; minimum ${minOrderQty}`
-                  : isLowStock
-                    ? `${stockQty} left`
-                    : "In stock"}
+            <p className={cannotOrder ? "font-semibold text-destructive" : isLimitedStock ? "font-semibold text-amber-600" : "font-semibold text-emerald-700"}>
+              {stockLabel}
             </p>
           </div>
 

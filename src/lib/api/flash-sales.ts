@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { normalizeProduct } from "./products";
 import type { Product } from "@/types/shop";
 
 export interface FlashSaleData {
@@ -26,7 +27,7 @@ function normalizeSaleRows(rows: unknown): FlashSaleData[] {
   if (!Array.isArray(rows)) return [];
   return (rows as FlashSaleData[]).map((sale) => ({
     ...sale,
-    products: Array.isArray(sale.products) ? sale.products : [],
+    products: Array.isArray(sale.products) ? sale.products.map(normalizeProduct) : [],
   }));
 }
 
@@ -45,7 +46,7 @@ export async function getFlashSaleFeed(): Promise<FlashSaleFeed> {
   if (!ENABLE_PUBLIC_FLASH_FEED) {
     return { active, upcoming: [] };
   }
-  
+
   try {
     const { data } = await apiClient.get("/flash-sales/public");
     const payload = data?.data ?? data ?? {};
@@ -54,7 +55,6 @@ export async function getFlashSaleFeed(): Promise<FlashSaleFeed> {
       upcoming: normalizeSaleRows(payload.upcoming),
     };
   } catch {
-    const active = await getActiveFlashSales();
     return { active, upcoming: [] };
   }
 }

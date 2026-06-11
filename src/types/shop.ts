@@ -44,9 +44,10 @@ export interface Product {
   images?: string[];
   category_id?: string | number;
   category_name?: string;
-  stock?: number;
-  current_stock?: number;
-  stock_status?: "in_stock" | "low_stock" | "out_of_stock" | string;
+  stock?: number | null;
+  current_stock?: number | null;
+  stock_status_override?: "in_stock" | "limited_stock" | "out_of_stock" | string;
+  stock_status?: "in_stock" | "limited_stock" | "low_stock" | "out_of_stock" | "unknown" | string;
   rating?: number;
   reviews_count?: number;
   is_flash?: boolean;

@@ -79,9 +79,10 @@ function CountdownPanel({ label, target }: { label: string; target?: string }) {
 
 function SaleStage({ sale, products }: { sale: FlashSaleData; products: Product[] }) {
   const preview = products.slice(0, 4);
+  const center = (preview.length - 1) / 2;
 
   return (
-    <div className="relative min-h-[360px] overflow-hidden rounded-lg border border-white/10 bg-[#111318] p-6 shadow-2xl">
+    <div className="relative min-h-[390px] overflow-hidden rounded-lg border border-white/10 bg-[#111318] p-5 shadow-2xl sm:p-6 md:min-h-[430px]">
       <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(115deg,transparent_0_48%,rgba(255,255,255,.12)_49%,transparent_50%)] [background-size:28px_28px]" />
       <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-rose-500 via-amber-300 to-cyan-300" />
 
@@ -97,25 +98,21 @@ function SaleStage({ sale, products }: { sale: FlashSaleData; products: Product[
           <p className="mt-3 max-w-sm text-sm leading-6 text-white/55">{sale.description || sale.name}</p>
         </div>
 
-        <div className="flash-stage relative mx-auto h-44 w-full max-w-md">
+        <div className="flash-stage relative mx-auto h-56 w-full max-w-md overflow-visible md:h-64">
           {preview.map((product, index) => (
             <motion.div
               key={product.id}
-              className="absolute left-1/2 top-1/2 h-36 w-28 overflow-hidden rounded-md border border-white/15 bg-white/10 shadow-2xl md:h-44 md:w-36"
-              initial={{ opacity: 0, y: 28, rotateY: -28 }}
-              animate={{ opacity: 1, y: 0, rotateY: [-18, 16, -18] }}
-              transition={{
-                opacity: { duration: 0.35, delay: index * 0.08 },
-                y: { duration: 0.35, delay: index * 0.08 },
-                rotateY: { duration: 4 + index * 0.3, repeat: Infinity, ease: "easeInOut" },
-              }}
+              className="absolute left-1/2 top-1/2 h-40 w-32 overflow-hidden rounded-md border border-white/15 bg-white shadow-2xl md:h-52 md:w-40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.35, delay: index * 0.08 }}
               style={{
-                transform: `translate(-50%, -50%) translateX(${(index - 1.5) * 64}px) rotateZ(${(index - 1.5) * 7}deg)`,
+                transform: `translate(-50%, -50%) translateX(${(index - center) * 54}px) rotateZ(${(index - center) * 6}deg)`,
                 zIndex: 10 + index,
               }}
             >
               {product.image_url ? (
-                <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                <img src={product.image_url} alt={product.name} className="h-full w-full object-contain p-3" />
               ) : (
                 <div className="grid h-full w-full place-items-center bg-gradient-to-br from-rose-500/60 via-amber-300/50 to-cyan-300/50">
                   <span className="font-display text-4xl font-black text-white/80">
@@ -123,7 +120,7 @@ function SaleStage({ sale, products }: { sale: FlashSaleData; products: Product[
                   </span>
                 </div>
               )}
-              <div className="absolute inset-x-0 bottom-0 bg-black/55 p-2 text-[10px] font-semibold leading-tight text-white">
+              <div className="absolute inset-x-0 bottom-0 bg-black/65 p-2 text-[10px] font-semibold leading-tight text-white">
                 {product.name}
               </div>
             </motion.div>

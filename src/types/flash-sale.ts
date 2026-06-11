@@ -3,8 +3,16 @@ export interface FlashSaleProduct {
   name: string;
   sku?: string;
   retail_price: number;
+  price?: number;
   image_url?: string;
   category_name?: string;
+  is_active?: boolean;
+  stock?: number | null;
+  current_stock?: number | null;
+  stock_status?: "in_stock" | "limited_stock" | "low_stock" | "out_of_stock" | "unknown" | string;
+  min_order_qty?: number;
+  order_qty_step?: number;
+  selling_unit_label?: string;
   discounted_price: number;
 }
 

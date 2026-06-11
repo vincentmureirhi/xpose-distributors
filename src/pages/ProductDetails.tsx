@@ -201,11 +201,27 @@ export default function ProductDetails() {
   const minOrderQty = getMinimumOrderQty(product);
   const orderStep = getOrderStep(product);
   const sellingUnit = product.selling_unit_label || "piece";
-  const stockQty = Number(product.current_stock ?? product.stock ?? 0);
-  const isOutOfStock = Number.isFinite(stockQty) && stockQty <= 0;
-  const cannotMeetMinimum = Number.isFinite(stockQty) && stockQty > 0 && stockQty < minOrderQty;
+  const rawStockQty = product.current_stock ?? product.stock;
+  const stockQty = Number(rawStockQty);
+  const hasStockQty = rawStockQty !== undefined && rawStockQty !== null && rawStockQty !== "" && Number.isFinite(stockQty);
+  const normalizedStockStatus = String(product.stock_status || "").toLowerCase();
+  const isOutOfStock = normalizedStockStatus === "out_of_stock" || (hasStockQty && stockQty <= 0);
+  const cannotMeetMinimum = hasStockQty && stockQty > 0 && stockQty < minOrderQty;
   const cannotOrder = isOutOfStock || cannotMeetMinimum;
-  const isLowStock = Number.isFinite(stockQty) && stockQty > 0 && stockQty <= Math.max(minOrderQty, 10);
+  const isLimitedStock =
+    !cannotOrder &&
+    (normalizedStockStatus === "limited_stock" ||
+      normalizedStockStatus === "low_stock" ||
+      (hasStockQty && stockQty > 0 && stockQty <= Math.max(minOrderQty, 10)));
+  const stockLabel = isOutOfStock
+    ? "Out of stock"
+    : cannotMeetMinimum
+      ? `${stockQty} available; minimum ${minOrderQty}`
+      : isLimitedStock
+        ? hasStockQty
+          ? `Limited stock - ${stockQty} left`
+          : "Limited stock"
+        : "In stock";
   const selectedTier = tiersList.find((tier) => tier.unit === selectedUnit) || tiersList[0];
   const selectedTierLabel = getTierLabel(selectedTier);
   const piecePrice = tiersList.find((tier) => Number(tier.qty_per_unit || 1) === 1)?.price || 0;
@@ -238,7 +254,7 @@ export default function ProductDetails() {
   const increaseQty = () => {
     setQty((current) => {
       const next = current + orderStep;
-      if (Number.isFinite(stockQty) && stockQty > 0 && next > stockQty) return current;
+      if (hasStockQty && stockQty > 0 && next > stockQty) return current;
       return next;
     });
   };
@@ -394,18 +410,12 @@ export default function ProductDetails() {
                 className={`rounded-full px-2 py-1 font-semibold ${
                   cannotOrder
                     ? "bg-destructive/10 text-destructive"
-                    : isLowStock
+                    : isLimitedStock
                       ? "bg-amber-500/10 text-amber-700"
                       : "bg-emerald-500/10 text-emerald-700"
                 }`}
               >
-                {isOutOfStock
-                  ? "Out of stock"
-                  : cannotMeetMinimum
-                    ? `${stockQty} available; minimum ${minOrderQty}`
-                    : isLowStock
-                      ? `${stockQty} left`
-                      : "In stock"}
+                {stockLabel}
               </span>
             </div>
           </div>
@@ -580,7 +590,7 @@ export default function ProductDetails() {
                 onClick={increaseQty}
                 className="h-9 w-9 rounded-full grid place-items-center hover:bg-background transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label="Increase quantity"
-                disabled={cannotOrder || (Number.isFinite(stockQty) && stockQty > 0 && qty + orderStep > stockQty)}
+                disabled={cannotOrder || (hasStockQty && stockQty > 0 && qty + orderStep > stockQty)}
               >
                 <Plus className="h-4 w-4" />
               </button>
