@@ -45,6 +45,8 @@ export interface Product {
   category_id?: string | number;
   category_name?: string;
   stock?: number;
+  current_stock?: number;
+  stock_status?: "in_stock" | "low_stock" | "out_of_stock" | string;
   rating?: number;
   reviews_count?: number;
   is_flash?: boolean;
@@ -58,7 +60,7 @@ export interface Product {
   order_qty_step?: number;
   selling_unit_label?: string;
   // Flash sale fields from API
- discounted_price?: number;
+  discounted_price?: number;
   flash_sale_id?: number;
   flash_sale_name?: string;
   flash_sale_start_date?: string;

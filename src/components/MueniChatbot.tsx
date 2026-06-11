@@ -94,10 +94,10 @@ export default function MueniChatbot() {
         {!open && (
           <span
             className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-accent text-[9px] font-bold text-accent-foreground flex items-center justify-center"
-            aria-label="AI-powered chatbot"
-            title="AI-powered chatbot"
+            aria-label="Shopping support"
+            title="Shopping support"
           >
-            AI
+            ?
           </span>
         )}
       </motion.button>
@@ -119,7 +119,7 @@ export default function MueniChatbot() {
               </div>
               <div>
                 <p className="font-bold text-sm">MUENI</p>
-                <p className="text-[10px] text-white/70">Your AI Shopping Assistant</p>
+                <p className="text-[10px] text-white/70">XPOSE shopping support</p>
               </div>
               <button onClick={() => setOpen(false)} className="ml-auto opacity-70 hover:opacity-100">
                 <X className="h-4 w-4" />
@@ -164,7 +164,7 @@ export default function MueniChatbot() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
-                placeholder="Ask me anything…"
+                placeholder="Ask about products or orders..."
                 className="flex-1 h-9 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-violet-400"
               />
               <button

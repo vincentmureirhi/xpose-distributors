@@ -201,6 +201,11 @@ export default function ProductDetails() {
   const minOrderQty = getMinimumOrderQty(product);
   const orderStep = getOrderStep(product);
   const sellingUnit = product.selling_unit_label || "piece";
+  const stockQty = Number(product.current_stock ?? product.stock ?? 0);
+  const isOutOfStock = Number.isFinite(stockQty) && stockQty <= 0;
+  const cannotMeetMinimum = Number.isFinite(stockQty) && stockQty > 0 && stockQty < minOrderQty;
+  const cannotOrder = isOutOfStock || cannotMeetMinimum;
+  const isLowStock = Number.isFinite(stockQty) && stockQty > 0 && stockQty <= Math.max(minOrderQty, 10);
   const selectedTier = tiersList.find((tier) => tier.unit === selectedUnit) || tiersList[0];
   const selectedTierLabel = getTierLabel(selectedTier);
   const piecePrice = tiersList.find((tier) => Number(tier.qty_per_unit || 1) === 1)?.price || 0;
@@ -231,7 +236,11 @@ export default function ProductDetails() {
   };
 
   const increaseQty = () => {
-    setQty((current) => current + orderStep);
+    setQty((current) => {
+      const next = current + orderStep;
+      if (Number.isFinite(stockQty) && stockQty > 0 && next > stockQty) return current;
+      return next;
+    });
   };
 
   const runFlyToCart = () => {
@@ -298,6 +307,7 @@ export default function ProductDetails() {
   };
 
   const handleAddToCart = () => {
+    if (cannotOrder) return;
     runFlyToCart();
     addToCart(product, qty, isRuleDriven ? undefined : effectiveUnitPrice);
   };
@@ -345,6 +355,11 @@ export default function ProductDetails() {
                 Flash sale
               </span>
             )}
+            {cannotOrder && (
+              <span className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold uppercase tracking-wider shadow-soft">
+                {isOutOfStock ? "Sold out" : "Below minimum"}
+              </span>
+            )}
           </div>
         </motion.div>
 
@@ -371,6 +386,28 @@ export default function ProductDetails() {
                 {pricingMessages.secondary}
               </p>
             )}
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="rounded-full bg-secondary px-2 py-1 font-semibold text-foreground">
+                Sold by {sellingUnit}
+              </span>
+              <span
+                className={`rounded-full px-2 py-1 font-semibold ${
+                  cannotOrder
+                    ? "bg-destructive/10 text-destructive"
+                    : isLowStock
+                      ? "bg-amber-500/10 text-amber-700"
+                      : "bg-emerald-500/10 text-emerald-700"
+                }`}
+              >
+                {isOutOfStock
+                  ? "Out of stock"
+                  : cannotMeetMinimum
+                    ? `${stockQty} available; minimum ${minOrderQty}`
+                    : isLowStock
+                      ? `${stockQty} left`
+                      : "In stock"}
+              </span>
+            </div>
           </div>
 
           {tiersList.length > 0 && (
@@ -533,7 +570,7 @@ export default function ProductDetails() {
                 onClick={decreaseQty}
                 className="h-9 w-9 rounded-full grid place-items-center hover:bg-background transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label="Decrease quantity"
-                disabled={qty <= minOrderQty}
+                disabled={cannotOrder || qty <= minOrderQty}
               >
                 <Minus className="h-4 w-4" />
               </button>
@@ -541,8 +578,9 @@ export default function ProductDetails() {
               <button
                 type="button"
                 onClick={increaseQty}
-                className="h-9 w-9 rounded-full grid place-items-center hover:bg-background transition-colors"
+                className="h-9 w-9 rounded-full grid place-items-center hover:bg-background transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label="Increase quantity"
+                disabled={cannotOrder || (Number.isFinite(stockQty) && stockQty > 0 && qty + orderStep > stockQty)}
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -552,6 +590,7 @@ export default function ProductDetails() {
               size="lg"
               className="h-12 flex-1 min-w-[220px] bg-gradient-accent text-accent-foreground border-0 shadow-glow hover:opacity-95"
               onClick={handleAddToCart}
+              disabled={cannotOrder}
             >
               <ShoppingBag className="h-4 w-4 mr-2" />
               <AnimatePresence mode="wait">
@@ -563,8 +602,11 @@ export default function ProductDetails() {
                   transition={{ duration: 0.2 }}
                   className="truncate"
                 >
-                  Add {qty} {getPluralUnit(selectedTierLabel, qty)} -{" "}
-                  {formatPrice(effectiveUnitPrice * qty)}
+                  {cannotOrder
+                    ? isOutOfStock
+                      ? "Out of stock"
+                      : `Minimum order is ${minOrderQty}`
+                    : `Add ${qty} ${getPluralUnit(selectedTierLabel, qty)} - ${formatPrice(effectiveUnitPrice * qty)}`}
                 </motion.span>
               </AnimatePresence>
             </Button>
@@ -576,11 +618,9 @@ export default function ProductDetails() {
               <Share2 className="h-4 w-4" />
             </Button>
 
-            {(minOrderQty > 1 || orderStep > 1) && (
-              <p className="basis-full text-[11px] text-muted-foreground">
-                Sold as {sellingUnit}; minimum {minOrderQty}, then steps of {orderStep}.
-              </p>
-            )}
+            <p className="basis-full text-[11px] text-muted-foreground">
+              Sold as {sellingUnit}; minimum {minOrderQty}, then steps of {orderStep}.
+            </p>
           </motion.div>
 
           <motion.div
