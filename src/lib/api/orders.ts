@@ -21,6 +21,9 @@ export interface GuestCheckoutResult {
   id?: string;
   order_number?: string;
   status?: string;
+  tracking_token?: string;
+  tracking_url?: string;
+  tracking_token_ttl_days?: number;
 }
 
 export async function guestCheckout(payload: GuestCheckoutPayload): Promise<GuestCheckoutResult> {
@@ -42,6 +45,17 @@ export async function trackOrder(orderNumber: string, customerPhone: string): Pr
   try {
     const { data } = await apiClient.get("/orders/track", {
       params: { order_number: orderNumber, customer_phone: customerPhone },
+    });
+    return data?.data || data;
+  } catch {
+    return null;
+  }
+}
+
+export async function trackOrderByToken(token: string): Promise<Order | null> {
+  try {
+    const { data } = await apiClient.get("/orders/track", {
+      params: { t: token },
     });
     return data?.data || data;
   } catch {

@@ -16,7 +16,7 @@ const FAQ: Record<string, string> = {
   returns: "We operate a quality-first policy. If you receive a defective item, contact us within 48 hours via WhatsApp.",
   wholesale: "We support retail and wholesale pricing. Larger quantities unlock better unit pricing where eligible.",
   contact: "Call or WhatsApp us at 0701377869 for direct support.",
-  track: "You can track your order from the Track page using your order number and phone verification.",
+  track: "Use the secure tracking link shown after checkout or sent in your payment confirmation. If you do not have the link, open Track and verify with your order number plus the phone used when ordering.",
 };
 
 const quickActions = [

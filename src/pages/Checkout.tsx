@@ -71,6 +71,19 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 type CheckoutWorkflow = "self_service" | "sales_rep";
 
+function toLocalTrackingPath(trackingUrl?: string, fallbackId?: string) {
+  if (trackingUrl) {
+    try {
+      const parsed = new URL(trackingUrl);
+      return `${parsed.pathname}${parsed.search}`;
+    } catch {
+      if (trackingUrl.startsWith("/")) return trackingUrl;
+    }
+  }
+
+  return fallbackId ? `/track-order?id=${encodeURIComponent(fallbackId)}` : "/track-order";
+}
+
 function resolveRepOperationBlockReason(params: {
   isSalesRepAuthenticated: boolean;
   mustChangePassword: boolean;
@@ -110,7 +123,7 @@ export default function Checkout() {
     requestLocationPermission,
   } = useSalesRepSession();
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState<{ id: string } | null>(null);
+  const [success, setSuccess] = useState<{ id: string; trackingUrl?: string } | null>(null);
   const workflow: CheckoutWorkflow = isSalesRepAuthenticated ? "sales_rep" : "self_service";
   const [routeCustomers, setRouteCustomers] = useState<RouteCustomer[]>([]);
   const [loadingRouteCustomers, setLoadingRouteCustomers] = useState(false);
@@ -595,7 +608,10 @@ export default function Checkout() {
       });
       clearCart();
       const orderId = result.order_number || result.id;
-      setSuccess({ id: orderId ? String(orderId) : "" });
+      setSuccess({
+        id: orderId ? String(orderId) : "",
+        trackingUrl: result.tracking_url,
+      });
     } catch (e) {
       const err = e as { response?: { data?: { message?: string } }; message?: string };
       toast.error("Could not place order", {
@@ -611,8 +627,9 @@ export default function Checkout() {
       <OrderSuccessOverlay
         show={!!success}
         orderId={success?.id || ""}
+        trackingUrl={success?.trackingUrl}
         paymentMode={workflow === "sales_rep" ? "route_credit" : "mpesa"}
-        onDone={() => navigate(success?.id ? `/track-order?id=${success.id}` : "/track-order")}
+        onDone={() => navigate(toLocalTrackingPath(success?.trackingUrl, success?.id))}
       />
 
       <div className="mb-6 md:mb-8">

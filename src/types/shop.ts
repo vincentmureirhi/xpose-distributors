@@ -103,14 +103,30 @@ export interface CartItem {
 
 export interface Order {
   id: string;
+  order_number?: string;
   status: string;
   order_status?: string;
   payment_status?: string;
+  payment_state?: string;
+  settlement_label?: string;
   total: number;
   total_amount?: number;
+  amount_paid?: number;
+  balance_due?: number;
   items: CartItem[];
+  item_count?: number;
+  total_items?: number;
   created_at: string;
+  updated_at?: string;
   status_changed_at?: string;
+  last_payment_date?: string;
   customer_name?: string;
+  customer_phone_masked?: string;
   delivery_address?: string;
+  current_tracking_stage?: string;
+  tracking_summary?: string;
+  tracking_token?: string;
+  tracking_url?: string;
+  tracking_token_verified?: boolean;
+  access_level?: "secure_link" | "manual_verification" | string;
 }

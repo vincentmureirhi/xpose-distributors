@@ -3,12 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingBag, CheckCircle2,
-  Package, Truck, Home, Loader2, MapPin, XCircle, CreditCard, PhoneCall
+  Package, Truck, Home, Loader2, MapPin, XCircle, CreditCard, PhoneCall, ShieldCheck, KeyRound
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { trackOrder } from "@/lib/api/orders";
+import { trackOrder, trackOrderByToken } from "@/lib/api/orders";
 import {
   CUSTOMER_ORDER_PREPARING_STAGE_KEY,
   CUSTOMER_ORDER_PROGRESS_STAGES,
@@ -35,6 +35,7 @@ const stages = CUSTOMER_ORDER_PROGRESS_STAGES.map((key) => ({
 
 export default function TrackOrder() {
   const [params] = useSearchParams();
+  const secureToken = params.get("t") || "";
   const [orderId, setOrderId] = useState(params.get("id") || "");
   const [phone, setPhone] = useState("");
   const [order, setOrder] = useState<Order | null>(null);
@@ -42,6 +43,25 @@ export default function TrackOrder() {
   const [searched, setSearched] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  const lookupByToken = useCallback(async () => {
+    if (!secureToken) return;
+
+    setValidationError(null);
+    setLoading(true);
+    setSearched(true);
+
+    try {
+      const o = await trackOrderByToken(secureToken);
+      setOrder(o);
+      setLastRefresh(o ? new Date() : null);
+      if (!o) {
+        setValidationError("This tracking link is invalid or has expired. Use manual verification below or contact support.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [secureToken]);
 
   const lookup = useCallback(async (e?: FormEvent) => {
     e?.preventDefault();
@@ -69,11 +89,11 @@ export default function TrackOrder() {
     }
   }, [orderId, phone]);
 
-  // Auto-load when id is in URL
+  // Auto-load only secure links. Plain order numbers still need phone verification.
   useEffect(() => {
-    if (params.get("id")) lookup();
+    if (secureToken) lookupByToken();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [secureToken]);
 
   // Poll every 30 seconds when order is loaded and not in a terminal state
   useEffect(() => {
@@ -81,12 +101,13 @@ export default function TrackOrder() {
     const stageKey = resolveCustomerOrderStage(order.order_status || order.status || "");
     if (stageKey === "completed" || stageKey === "cancelled") return;
     const interval = setInterval(() => {
-      trackOrder(orderId, phone).then((o) => {
+      const request = secureToken ? trackOrderByToken(secureToken) : trackOrder(orderId, phone);
+      request.then((o) => {
         if (o) { setOrder(o); setLastRefresh(new Date()); }
       }).catch(() => {});
     }, 30000);
     return () => clearInterval(interval);
-  }, [order, orderId, phone]);
+  }, [order, orderId, phone, secureToken]);
 
   const rawStatus = order?.order_status || order?.status || "";
   const resolvedKey = resolveCustomerOrderStage(rawStatus);
@@ -114,8 +135,25 @@ export default function TrackOrder() {
           transition={{ delay: 0.1 }}
           className="text-muted-foreground mb-8"
         >
-          Enter your order number and phone number to see the latest status of your order.
+          Use the secure tracking link from your order confirmation. If you do not have it, verify with your order number and phone number.
         </motion.p>
+
+        {secureToken && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+            className="mb-5 flex items-start gap-3 rounded-xl border border-success/20 bg-success/5 p-4 text-sm"
+          >
+            <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-success" />
+            <div>
+              <p className="font-semibold text-foreground">Secure tracking link</p>
+              <p className="text-muted-foreground">
+                This private link verifies your order without asking for your phone number. Keep it private.
+              </p>
+            </div>
+          </motion.div>
+        )}
 
         <motion.form
           initial={{ opacity: 0, y: 16 }}
@@ -124,6 +162,10 @@ export default function TrackOrder() {
           onSubmit={lookup}
           className="rounded-2xl border border-border bg-card p-6 grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end shadow-soft"
         >
+          <div className="sm:col-span-3 mb-1 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <KeyRound className="h-4 w-4" />
+            Manual verification
+          </div>
           <div>
             <Label htmlFor="order">Order number</Label>
             <Input id="order" value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="ORD-XXXXXX" />
@@ -175,7 +217,10 @@ export default function TrackOrder() {
               <div className="flex items-baseline justify-between mb-6 flex-wrap gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-wider text-muted-foreground">Order</p>
-                  <p className="font-display font-bold text-2xl">{order.id}</p>
+                  <p className="font-display font-bold text-2xl">{order.order_number || order.id}</p>
+                  {order.customer_phone_masked && (
+                    <p className="mt-1 text-xs text-muted-foreground">Phone: {order.customer_phone_masked}</p>
+                  )}
                 </div>
                 <motion.span
                   initial={{ scale: 0.6, opacity: 0 }}
