@@ -43,6 +43,7 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
   const [orderCopied, setOrderCopied] = useState(false);
   const isRouteCredit = paymentMode === "route_credit";
   const trackingPath = toLocalTrackingPath(trackingUrl, orderId);
+  const hasPrivateTrackingLink = trackingPath.includes("?t=") || trackingPath.includes("&t=");
   const trackingLabel =
     typeof window !== "undefined" && trackingPath.startsWith("/")
       ? `${window.location.origin}${trackingPath}`
@@ -205,13 +206,13 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
               <div className="mb-2 flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
                 <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                  {trackingUrl ? "Private tracking link ready" : "Tracking page ready"}
+                  {hasPrivateTrackingLink ? "Private tracking link ready" : "Tracking access ready"}
                 </p>
               </div>
               <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-                {trackingUrl
+                {hasPrivateTrackingLink
                   ? "Keep this link private. It opens this order without asking for the phone number again."
-                  : "Use this tracking page with your order reference and checkout phone number."}
+                  : "Use this page with your tracking code, or recover the order with phone, total, and delivery area."}
               </p>
               <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
                 <Link2 className="h-4 w-4 flex-shrink-0 text-accent" />

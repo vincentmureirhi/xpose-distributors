@@ -23,6 +23,7 @@ export interface GuestCheckoutResult {
   status?: string;
   tracking_token?: string;
   tracking_url?: string;
+  tracking_link_mode?: "secure" | "recovery" | string;
   tracking_token_ttl_days?: number;
 }
 

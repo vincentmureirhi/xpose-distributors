@@ -648,9 +648,9 @@ export default function TrackOrder() {
                   <div className="flex gap-3 items-start">
                     <CreditCard className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <p className="font-semibold text-amber-800 dark:text-amber-300 mb-1">Payment Required</p>
+                      <p className="font-semibold text-amber-800 dark:text-amber-300 mb-1">Waiting for payment confirmation</p>
                       <p className="text-sm text-amber-700 dark:text-amber-400 mb-3">
-                        To confirm your order, please complete your M-Pesa payment:
+                        Already paid? Do not worry. Your order will update once M-Pesa or admin reconciliation confirms the payment.
                       </p>
                       <div className="rounded-lg bg-white dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40 p-3 text-sm space-y-1.5">
                         <div className="flex justify-between">
@@ -667,13 +667,13 @@ export default function TrackOrder() {
                         </div>
                         {orderTotal && orderTotal > 0 && (
                           <div className="flex justify-between border-t border-amber-200 dark:border-amber-800/40 pt-2 mt-1">
-                            <span className="text-muted-foreground">Amount Due</span>
+                            <span className="text-muted-foreground">Order Total</span>
                             <span className="font-bold">KES {orderTotal.toLocaleString()}</span>
                           </div>
                         )}
                       </div>
                       <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
-                        Use your order number as the payment reference. Once payment is confirmed, your order will move to {preparingOrderLabel}.
+                        If you have not paid yet, use the Till number above and your order number as reference. Once confirmed, your order will move to {preparingOrderLabel}.
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         <a
@@ -681,7 +681,7 @@ export default function TrackOrder() {
                           className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors"
                         >
                           <PhoneCall className="h-3.5 w-3.5" />
-                          Pay Now via M-Pesa
+                          Need to pay? Open M-Pesa
                         </a>
                         <a
                           href={WHATSAPP_LINK}

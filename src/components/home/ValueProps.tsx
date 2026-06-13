@@ -6,7 +6,7 @@ const promos = [
   {
     icon: BadgePercent,
     title: "Flash deals",
-    text: "Live offers from admin, with sale pricing applied before checkout.",
+    text: "Short-window price cuts on selected items. The deal price is already waiting in the cart.",
     cta: "View deals",
     to: "/flash-sale",
     tone: "bg-accent text-accent-foreground",
@@ -14,7 +14,7 @@ const promos = [
   {
     icon: Boxes,
     title: "Bulk savers",
-    text: "Carton, dozen, and trade-pack rules for shops and resellers.",
+    text: "Better value when you buy by carton, dozen, bale, or approved trade pack.",
     cta: "Shop cartons",
     to: "/products?sort=price-asc",
     tone: "bg-slate-950 text-white",
@@ -22,7 +22,7 @@ const promos = [
   {
     icon: Clock3,
     title: "Limited stock",
-    text: "Fast movers are surfaced while stock is still available.",
+    text: "Low-stock items get a clear hurry-up badge before the shelf runs dry.",
     cta: "Move fast",
     to: "/products",
     tone: "bg-amber-400 text-slate-950",
@@ -30,7 +30,7 @@ const promos = [
   {
     icon: MapPinned,
     title: "Route orders",
-    text: "Sales reps can capture credit customer orders in the field.",
+    text: "Reps can record route customer orders on credit and send them straight to dispatch.",
     cta: "Rep portal",
     to: "/sales-rep/login",
     tone: "bg-emerald-600 text-white",
@@ -42,16 +42,21 @@ export default function ValueProps() {
     <section className="container py-10 md:py-12">
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
         <div className="grid gap-0 lg:grid-cols-[1.1fr_2fr]">
-          <div className="border-b border-border bg-[#0b0f14] p-6 text-white lg:border-b-0 lg:border-r">
-            <p className="mb-3 inline-flex rounded-full border border-white/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white/70">
-              Promo command
-            </p>
-            <h2 className="font-display text-3xl font-black leading-tight md:text-4xl">
-              Deals that push stock, not just decorate the page.
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-white/65">
-              Use flash sales for urgency, bulk savers for trade buyers, and limited-stock prompts to move inventory before it sits.
-            </p>
+          <div className="relative overflow-hidden border-b border-border bg-[#0b0f14] p-6 text-white lg:border-b-0 lg:border-r">
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,91,46,0.14)_0,transparent_38%),linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:auto,42px_42px,42px_42px]" />
+            <div className="absolute -right-10 top-8 h-28 w-48 rotate-[-10deg] rounded-2xl border border-white/10 bg-white/5" />
+            <div className="absolute -right-2 bottom-10 h-24 w-40 rotate-[8deg] rounded-2xl border border-accent/30 bg-accent/10" />
+            <div className="relative">
+              <p className="mb-3 inline-flex rounded-full border border-white/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white/70">
+                Trade deals
+              </p>
+              <h2 className="font-display text-3xl font-black leading-tight md:text-4xl">
+                Offers built to move cartons, bundles, and everyday essentials.
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-white/70">
+                Pick a deal, load the cart, and checkout with the right unit rules already applied.
+              </p>
+            </div>
           </div>
 
           <div className="grid sm:grid-cols-2">
