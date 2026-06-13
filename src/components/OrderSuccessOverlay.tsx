@@ -40,6 +40,7 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
   const [confetti, setConfetti] = useState<{ x: number; r: number; d: number; c: string }[]>([]);
   const [countdown, setCountdown] = useState(REDIRECT_SECONDS);
   const [copied, setCopied] = useState(false);
+  const [orderCopied, setOrderCopied] = useState(false);
   const isRouteCredit = paymentMode === "route_credit";
   const trackingPath = toLocalTrackingPath(trackingUrl, orderId);
   const trackingLabel =
@@ -54,6 +55,17 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
       setCopied(false);
+    }
+  };
+
+  const copyOrderReference = async () => {
+    if (!orderId) return;
+    try {
+      await navigator.clipboard.writeText(orderId);
+      setOrderCopied(true);
+      window.setTimeout(() => setOrderCopied(false), 1800);
+    } catch {
+      setOrderCopied(false);
     }
   };
 
@@ -162,9 +174,20 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
                 {isRouteCredit ? "Route Order Captured" : "Order Placed Successfully!"}
               </h2>
               {orderId && (
-                <p className="mb-1 text-sm text-muted-foreground">
-                  Order reference: <span className="font-bold text-foreground">{orderId}</span>
-                </p>
+                <div className="mb-3 rounded-xl border border-border bg-secondary/45 p-3 text-left">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Order tracking code</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="min-w-0 flex-1 break-all font-display text-lg font-black text-foreground">{orderId}</span>
+                    <button
+                      type="button"
+                      onClick={copyOrderReference}
+                      className="inline-flex h-8 flex-shrink-0 items-center gap-1 rounded-md bg-background px-2 text-xs font-bold text-foreground transition-colors hover:bg-background/80"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      {orderCopied ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                </div>
               )}
               <p className="mb-4 text-sm text-muted-foreground">
                 {isRouteCredit

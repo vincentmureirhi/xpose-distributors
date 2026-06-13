@@ -1,5 +1,5 @@
 import { useState, type FormEvent, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingBag, CheckCircle2,
@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { trackOrder, trackOrderByToken, trackOrderRecovery } from "@/lib/api/orders";
+import { trackOrder, trackOrderByToken, trackOrderByPhoneRecovery, trackOrderRecovery } from "@/lib/api/orders";
 import {
   CUSTOMER_ORDER_PREPARING_STAGE_KEY,
   CUSTOMER_ORDER_PROGRESS_STAGES,
@@ -33,20 +33,54 @@ const stages = CUSTOMER_ORDER_PROGRESS_STAGES.map((key) => ({
   icon: STAGE_ICONS[key],
 }));
 
+interface RecentOrder {
+  orderId: string;
+  trackingUrl?: string | null;
+  savedAt?: string;
+}
+
+function toLocalTrackingPath(trackingUrl?: string | null, fallbackId?: string) {
+  if (trackingUrl) {
+    try {
+      const parsed = new URL(trackingUrl);
+      return `${parsed.pathname}${parsed.search}`;
+    } catch {
+      if (trackingUrl.startsWith("/")) return trackingUrl;
+    }
+  }
+
+  return fallbackId ? `/track-order?id=${encodeURIComponent(fallbackId)}` : "/track-order";
+}
+
 export default function TrackOrder() {
   const [params] = useSearchParams();
   const secureToken = params.get("t") || "";
   const [orderId, setOrderId] = useState(params.get("id") || "");
   const [phone, setPhone] = useState("");
   const [phoneLast3, setPhoneLast3] = useState("");
+  const [recoveryPhone, setRecoveryPhone] = useState("");
+  const [recoveryTotal, setRecoveryTotal] = useState("");
+  const [recoveryLocation, setRecoveryLocation] = useState("");
   const [recoveryStep, setRecoveryStep] = useState<"identity" | "challenge">("identity");
   const [verificationType, setVerificationType] = useState<"total" | "location">("total");
   const [verificationAnswer, setVerificationAnswer] = useState("");
   const [order, setOrder] = useState<Order | null>(null);
+  const [recentOrder, setRecentOrder] = useState<RecentOrder | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("xpose_recent_order");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as RecentOrder;
+      if (parsed?.orderId) setRecentOrder(parsed);
+    } catch {
+      setRecentOrder(null);
+    }
+  }, []);
 
   const lookupByToken = useCallback(async () => {
     if (!secureToken) return;
@@ -158,6 +192,44 @@ export default function TrackOrder() {
     }
   }, [orderId, phoneLast3, verificationAnswer, verificationType]);
 
+  const lookupWithoutOrderNumber = useCallback(async (e?: FormEvent) => {
+    e?.preventDefault();
+    setValidationError(null);
+
+    if (!recoveryPhone.trim()) {
+      setValidationError("Enter the phone number used during checkout.");
+      return;
+    }
+
+    if (!recoveryTotal.trim()) {
+      setValidationError("Enter the order total in Kenya shillings.");
+      return;
+    }
+
+    if (!recoveryLocation.trim()) {
+      setValidationError("Enter the delivery town, estate, or route area used on the order.");
+      return;
+    }
+
+    setLoading(true);
+    setSearched(true);
+    try {
+      const o = await trackOrderByPhoneRecovery({
+        phone: recoveryPhone.trim(),
+        orderTotal: recoveryTotal.trim(),
+        deliveryArea: recoveryLocation.trim(),
+      });
+      setOrder(o);
+      setLastRefresh(o ? new Date() : null);
+      if (o?.order_number) setOrderId(String(o.order_number));
+      if (!o) {
+        setValidationError("We could not verify that order. Check the phone, amount, and delivery area, then try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [recoveryLocation, recoveryPhone, recoveryTotal]);
+
   // Auto-load only secure links. Plain order numbers still need phone verification.
   useEffect(() => {
     if (secureToken) lookupByToken();
@@ -181,6 +253,12 @@ export default function TrackOrder() {
                 verificationType,
                 verificationAnswer,
               })
+            : recoveryPhone.trim() && recoveryTotal.trim() && recoveryLocation.trim()
+              ? trackOrderByPhoneRecovery({
+                  phone: recoveryPhone,
+                  orderTotal: recoveryTotal,
+                  deliveryArea: recoveryLocation,
+                })
             : null;
 
       if (!request) return;
@@ -190,7 +268,7 @@ export default function TrackOrder() {
       }).catch(() => {});
     }, 30000);
     return () => clearInterval(interval);
-  }, [order, orderId, phone, phoneLast3, secureToken, verificationAnswer, verificationType]);
+  }, [order, orderId, phone, phoneLast3, recoveryLocation, recoveryPhone, recoveryTotal, secureToken, verificationAnswer, verificationType]);
 
   const rawStatus = order?.order_status || order?.status || "";
   const resolvedKey = resolveCustomerOrderStage(rawStatus);
@@ -238,6 +316,31 @@ export default function TrackOrder() {
           </motion.div>
         )}
 
+        {!secureToken && recentOrder && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+            className="mb-5 rounded-xl border border-accent/25 bg-accent/5 p-4 text-sm"
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold text-foreground">Recent order on this device</p>
+                <p className="text-muted-foreground">
+                  {recentOrder.orderId}
+                  {recentOrder.savedAt ? ` - saved ${new Date(recentOrder.savedAt).toLocaleDateString()}` : ""}
+                </p>
+              </div>
+              <Link
+                to={toLocalTrackingPath(recentOrder.trackingUrl, recentOrder.orderId)}
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-accent px-4 text-sm font-bold text-accent-foreground"
+              >
+                Open tracking
+              </Link>
+            </div>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -245,17 +348,69 @@ export default function TrackOrder() {
           className="grid gap-4"
         >
           <form
+            onSubmit={lookupWithoutOrderNumber}
+            className="rounded-2xl border border-accent/25 bg-card p-5 shadow-soft md:p-6"
+          >
+            <div className="mb-4 flex items-start gap-3">
+              <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
+                <PhoneCall className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-display text-lg font-bold">I do not have my order number</p>
+                <p className="text-sm text-muted-foreground">
+                  Use the checkout phone, order total, and delivery area. We only show the order when all details match.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <Label htmlFor="recovery-phone">Checkout phone</Label>
+                <Input
+                  id="recovery-phone"
+                  value={recoveryPhone}
+                  onChange={(e) => setRecoveryPhone(e.target.value)}
+                  placeholder="07XX XXX XXX"
+                />
+              </div>
+              <div>
+                <Label htmlFor="recovery-total">Order total</Label>
+                <Input
+                  id="recovery-total"
+                  inputMode="decimal"
+                  value={recoveryTotal}
+                  onChange={(e) => setRecoveryTotal(e.target.value)}
+                  placeholder="1350"
+                />
+              </div>
+              <div>
+                <Label htmlFor="recovery-location">Delivery area</Label>
+                <Input
+                  id="recovery-location"
+                  value={recoveryLocation}
+                  onChange={(e) => setRecoveryLocation(e.target.value)}
+                  placeholder="Westlands"
+                />
+              </div>
+            </div>
+
+            <Button type="submit" disabled={loading} className="mt-4 h-11 w-full bg-foreground text-background">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Find my order securely"}
+            </Button>
+          </form>
+
+          <form
             onSubmit={recoveryStep === "identity" ? beginRecovery : lookupByRecovery}
-            className="rounded-2xl border border-accent/20 bg-card p-5 shadow-soft md:p-6"
+            className="rounded-2xl border border-border bg-card/80 p-5 shadow-soft md:p-6"
           >
             <div className="mb-4 flex items-start gap-3">
               <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-display text-lg font-bold">Recover without the link</p>
+                <p className="font-display text-lg font-bold">I have my order number</p>
                 <p className="text-sm text-muted-foreground">
-                  We ask for the order number, last 3 phone digits, then one order detail. Wrong answers do not reveal order data.
+                  Use the order number, last 3 phone digits, then one order detail. Wrong answers do not reveal order data.
                 </p>
               </div>
             </div>

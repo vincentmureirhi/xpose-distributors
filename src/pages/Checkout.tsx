@@ -84,6 +84,23 @@ function toLocalTrackingPath(trackingUrl?: string, fallbackId?: string) {
   return fallbackId ? `/track-order?id=${encodeURIComponent(fallbackId)}` : "/track-order";
 }
 
+function rememberRecentOrder(orderId: string, trackingUrl?: string) {
+  if (!orderId || typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(
+      "xpose_recent_order",
+      JSON.stringify({
+        orderId,
+        trackingUrl: trackingUrl || null,
+        savedAt: new Date().toISOString(),
+      })
+    );
+  } catch {
+    // Local storage can fail in private browsing; tracking still works through the visible code/link.
+  }
+}
+
 function resolveRepOperationBlockReason(params: {
   isSalesRepAuthenticated: boolean;
   mustChangePassword: boolean;
@@ -608,6 +625,7 @@ export default function Checkout() {
       });
       clearCart();
       const orderId = result.order_number || result.id;
+      if (orderId) rememberRecentOrder(String(orderId), result.tracking_url);
       setSuccess({
         id: orderId ? String(orderId) : "",
         trackingUrl: result.tracking_url,
@@ -777,7 +795,7 @@ export default function Checkout() {
                     </p>
                   </div>
                   {loadingRouteCustomers && (
-                    <p className="text-xs text-muted-foreground">Syncing route customers from backend…</p>
+                    <p className="text-xs text-muted-foreground">Syncing route customers from backend...</p>
                   )}
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -996,7 +1014,7 @@ export default function Checkout() {
                         onFocus={() => {
                           if (locationSuggestions.length > 0) setLocationOpen(true);
                         }}
-                        placeholder="Type a city or area (e.g. Nairobi, Westlands…)"
+                        placeholder="Type a city or area, for example Nairobi or Westlands"
                         autoComplete="off"
                         className={cn("h-12 pr-8", errors.delivery_location && "border-destructive focus-visible:ring-destructive")}
                       />
@@ -1064,7 +1082,7 @@ export default function Checkout() {
                   errors.transport_company && "border-destructive"
                 )}
               >
-                <option value="">Select transport company…</option>
+                <option value="">Select transport company...</option>
                 {TRANSPORT_COMPANIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
@@ -1085,7 +1103,7 @@ export default function Checkout() {
               </Label>
               <Textarea
                 id="notes"
-                placeholder="Any special instructions for your order…"
+                placeholder="Any special instructions for your order..."
                 rows={3}
                 {...register("notes")}
                 className="resize-none"
@@ -1101,7 +1119,7 @@ export default function Checkout() {
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Placing order…
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Placing order...
                   </>
                 ) : repOperationsBlocked ? (
                   "Enable location to capture route order"
@@ -1131,7 +1149,7 @@ export default function Checkout() {
               <div className="mb-4 rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm">
                 <p className="font-semibold">Route customer order</p>
                 <p className="text-muted-foreground">
-                  {selectedRouteCustomer.name} • {selectedRouteCustomer.location}
+                  {selectedRouteCustomer.name} - {selectedRouteCustomer.location}
                 </p>
               </div>
             )}

@@ -83,3 +83,22 @@ export async function trackOrderRecovery(params: {
     return null;
   }
 }
+
+export async function trackOrderByPhoneRecovery(params: {
+  phone: string;
+  orderTotal: string;
+  deliveryArea: string;
+}): Promise<Order | null> {
+  try {
+    const { data } = await apiClient.get("/orders/track", {
+      params: {
+        customer_phone: params.phone,
+        recovery_total: params.orderTotal,
+        recovery_location: params.deliveryArea,
+      },
+    });
+    return data?.data || data;
+  } catch {
+    return null;
+  }
+}
