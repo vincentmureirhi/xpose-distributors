@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, CreditCard, Package, Truck } from "lucide-react";
+import { CheckCircle2, Copy, CreditCard, Link2, Package, ShieldCheck, Truck } from "lucide-react";
 
 const CONFETTI_COLORS = [
   "hsl(14 100% 57%)",
@@ -39,8 +39,23 @@ function toLocalTrackingPath(trackingUrl?: string, fallbackId?: string) {
 export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymentMode = "mpesa", onDone }: Props) {
   const [confetti, setConfetti] = useState<{ x: number; r: number; d: number; c: string }[]>([]);
   const [countdown, setCountdown] = useState(REDIRECT_SECONDS);
+  const [copied, setCopied] = useState(false);
   const isRouteCredit = paymentMode === "route_credit";
   const trackingPath = toLocalTrackingPath(trackingUrl, orderId);
+  const trackingLabel =
+    typeof window !== "undefined" && trackingPath.startsWith("/")
+      ? `${window.location.origin}${trackingPath}`
+      : trackingPath;
+
+  const copyTrackingLink = async () => {
+    try {
+      await navigator.clipboard.writeText(trackingLabel);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   useEffect(() => {
     if (!show) return;
@@ -156,6 +171,37 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
                   ? "The credit order has been recorded for this route customer and is ready for admin review."
                   : "Your order has been received. Complete your M-Pesa payment and we will start preparing it."}
               </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.72 }}
+              className="mb-4 w-full rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-left dark:border-emerald-800/40 dark:bg-emerald-900/10"
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                  {trackingUrl ? "Private tracking link ready" : "Tracking page ready"}
+                </p>
+              </div>
+              <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                {trackingUrl
+                  ? "Keep this link private. It opens this order without asking for the phone number again."
+                  : "Use this tracking page with your order reference and checkout phone number."}
+              </p>
+              <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+                <Link2 className="h-4 w-4 flex-shrink-0 text-accent" />
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">{trackingLabel}</span>
+                <button
+                  type="button"
+                  onClick={copyTrackingLink}
+                  className="inline-flex h-8 flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 text-xs font-bold text-secondary-foreground transition-colors hover:bg-secondary/80"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
             </motion.div>
 
             {isRouteCredit ? (

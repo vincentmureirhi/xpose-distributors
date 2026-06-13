@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, PackageCheck, Search, ShieldCheck, Truck } from "lucide-react";
+import { ArrowRight, KeyRound, PackageCheck, Search, ShieldCheck, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listProducts } from "@/lib/api/products";
 import { formatPrice } from "@/context/CartContext";
@@ -9,6 +9,14 @@ import type { Product } from "@/types/shop";
 
 function getDisplayPrice(product: Product) {
   return Number(product.discounted_price || product.retail_price || product.price || 0);
+}
+
+function isProductAvailable(product: Product) {
+  const status = String(product.stock_status_override || product.stock_status || "").toLowerCase();
+  const stockValue = product.current_stock ?? product.stock;
+  const stockQty = Number(stockValue);
+  const hasStockQty = stockValue !== undefined && stockValue !== null && stockValue !== "" && Number.isFinite(stockQty);
+  return status !== "out_of_stock" && status !== "sold_out" && status !== "unavailable" && (!hasStockQty || stockQty > 0);
 }
 
 export default function Hero() {
@@ -21,7 +29,7 @@ export default function Hero() {
 
   useEffect(() => {
     listProducts()
-      .then((items) => setProducts(items.filter((item) => item.image_url || item.name).slice(0, 7)))
+      .then((items) => setProducts(items.filter((item) => (item.image_url || item.name) && isProductAvailable(item)).slice(0, 7)))
       .catch(() => {});
   }, []);
 
@@ -32,6 +40,12 @@ export default function Hero() {
     { v: productCount > 0 ? `${productCount}+` : "Live", l: "Featured items" },
     { v: "Carton", l: "And piece pricing" },
     { v: "Kenya", l: "Route delivery" },
+  ];
+
+  const trustSignals = [
+    { icon: ShieldCheck, title: "Secure checkout", text: "Private order tracking after purchase." },
+    { icon: PackageCheck, title: "Live stock", text: "Shelf highlights available products first." },
+    { icon: Truck, title: "Route-ready", text: "Built for shops, homes, and sales reps." },
   ];
 
   return (
@@ -100,6 +114,26 @@ export default function Hero() {
               </div>
             ))}
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.62 }}
+            className="mt-5 grid max-w-2xl gap-2 sm:grid-cols-3"
+          >
+            {trustSignals.map((signal) => {
+              const Icon = signal.icon;
+              return (
+                <div key={signal.title} className="rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur">
+                  <div className="mb-2 flex items-center gap-2 text-sm font-bold text-white">
+                    <Icon className="h-4 w-4 text-accent" />
+                    {signal.title}
+                  </div>
+                  <p className="text-xs leading-relaxed text-white/55">{signal.text}</p>
+                </div>
+              );
+            })}
+          </motion.div>
         </motion.div>
 
         <motion.div style={{ y: shelfY }} className="relative min-h-[390px] md:min-h-[520px]">
@@ -159,8 +193,8 @@ export default function Hero() {
 
           <div className="absolute right-0 top-[45%] hidden rounded-xl border border-white/10 bg-white/10 p-3 text-sm text-white/80 backdrop-blur lg:block">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-emerald-300" />
-              Secure checkout
+              <KeyRound className="h-4 w-4 text-emerald-300" />
+              Private tracking link
             </div>
             <div className="mt-2 flex items-center gap-2">
               <Truck className="h-4 w-4 text-accent" />
