@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, KeyRound, PackageCheck, Search, ShieldCheck, Truck } from "lucide-react";
+import { ArrowRight, PackageCheck, Search, ShieldCheck, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listProducts } from "@/lib/api/products";
 import { formatPrice } from "@/context/CartContext";
@@ -102,10 +102,30 @@ export default function Hero() {
           </motion.div>
 
           <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.46 }}
+            className="mt-5 grid max-w-2xl gap-2 sm:grid-cols-3"
+          >
+            {trustSignals.map((signal) => {
+              const Icon = signal.icon;
+              return (
+                <div key={signal.title} className="rounded-xl border border-white/12 bg-[#101820]/95 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.2)]">
+                  <div className="mb-2 flex items-center gap-2 text-sm font-bold text-white">
+                    <Icon className="h-4 w-4 text-accent" />
+                    {signal.title}
+                  </div>
+                  <p className="text-xs leading-relaxed text-white/70">{signal.text}</p>
+                </div>
+              );
+            })}
+          </motion.div>
+
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.52 }}
-            className="mt-10 grid max-w-xl grid-cols-3 gap-3"
+            className="mt-5 grid max-w-xl grid-cols-3 gap-3"
           >
             {stats.map((s) => (
               <div key={s.l} className="rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur">
@@ -113,26 +133,6 @@ export default function Hero() {
                 <p className="mt-1 text-[11px] font-semibold uppercase text-white/55">{s.l}</p>
               </div>
             ))}
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.62 }}
-            className="mt-5 grid max-w-2xl gap-2 sm:grid-cols-3"
-          >
-            {trustSignals.map((signal) => {
-              const Icon = signal.icon;
-              return (
-                <div key={signal.title} className="rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur">
-                  <div className="mb-2 flex items-center gap-2 text-sm font-bold text-white">
-                    <Icon className="h-4 w-4 text-accent" />
-                    {signal.title}
-                  </div>
-                  <p className="text-xs leading-relaxed text-white/55">{signal.text}</p>
-                </div>
-              );
-            })}
           </motion.div>
         </motion.div>
 
@@ -190,17 +190,6 @@ export default function Hero() {
               </div>
             </div>
           )}
-
-          <div className="absolute right-0 top-[45%] hidden rounded-xl border border-white/10 bg-white/10 p-3 text-sm text-white/80 backdrop-blur lg:block">
-            <div className="flex items-center gap-2">
-              <KeyRound className="h-4 w-4 text-emerald-300" />
-              Private tracking link
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <Truck className="h-4 w-4 text-accent" />
-              Route-ready delivery
-            </div>
-          </div>
         </motion.div>
       </div>
     </section>

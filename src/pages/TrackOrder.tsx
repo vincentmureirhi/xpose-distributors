@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { trackOrder, trackOrderByToken } from "@/lib/api/orders";
+import { trackOrder, trackOrderByToken, trackOrderRecovery } from "@/lib/api/orders";
 import {
   CUSTOMER_ORDER_PREPARING_STAGE_KEY,
   CUSTOMER_ORDER_PROGRESS_STAGES,
@@ -38,6 +38,10 @@ export default function TrackOrder() {
   const secureToken = params.get("t") || "";
   const [orderId, setOrderId] = useState(params.get("id") || "");
   const [phone, setPhone] = useState("");
+  const [phoneLast3, setPhoneLast3] = useState("");
+  const [recoveryStep, setRecoveryStep] = useState<"identity" | "challenge">("identity");
+  const [verificationType, setVerificationType] = useState<"total" | "location">("total");
+  const [verificationAnswer, setVerificationAnswer] = useState("");
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -89,6 +93,71 @@ export default function TrackOrder() {
     }
   }, [orderId, phone]);
 
+  const beginRecovery = useCallback((e?: FormEvent) => {
+    e?.preventDefault();
+    setValidationError(null);
+    setOrder(null);
+    setSearched(false);
+
+    if (!orderId.trim()) {
+      setValidationError("Enter your order number first.");
+      return;
+    }
+
+    const digits = phoneLast3.replace(/\D/g, "");
+    if (digits.length !== 3) {
+      setValidationError("Enter exactly the last 3 digits of the phone number used during checkout.");
+      return;
+    }
+
+    setPhoneLast3(digits);
+    setRecoveryStep("challenge");
+  }, [orderId, phoneLast3]);
+
+  const lookupByRecovery = useCallback(async (e?: FormEvent) => {
+    e?.preventDefault();
+    setValidationError(null);
+
+    if (!orderId.trim()) {
+      setValidationError("Enter your order number first.");
+      return;
+    }
+
+    const digits = phoneLast3.replace(/\D/g, "");
+    if (digits.length !== 3) {
+      setValidationError("Enter exactly the last 3 phone digits.");
+      setRecoveryStep("identity");
+      return;
+    }
+
+    if (!verificationAnswer.trim()) {
+      setValidationError(
+        verificationType === "total"
+          ? "Enter the order total in Kenya shillings."
+          : "Enter the delivery town, estate, or route area used on the order."
+      );
+      return;
+    }
+
+    setLoading(true);
+    setSearched(true);
+    try {
+      const o = await trackOrderRecovery({
+        orderNumber: orderId.trim(),
+        phoneLast3: digits,
+        verificationType,
+        verificationAnswer: verificationAnswer.trim(),
+      });
+      setOrder(o);
+      setLastRefresh(o ? new Date() : null);
+      if (!o) {
+        setValidationError("We could not verify that order. Check the order number and answers, then try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [orderId, phoneLast3, verificationAnswer, verificationType]);
+
   // Auto-load only secure links. Plain order numbers still need phone verification.
   useEffect(() => {
     if (secureToken) lookupByToken();
@@ -101,13 +170,27 @@ export default function TrackOrder() {
     const stageKey = resolveCustomerOrderStage(order.order_status || order.status || "");
     if (stageKey === "completed" || stageKey === "cancelled") return;
     const interval = setInterval(() => {
-      const request = secureToken ? trackOrderByToken(secureToken) : trackOrder(orderId, phone);
+      const request = secureToken
+        ? trackOrderByToken(secureToken)
+        : phone.trim()
+          ? trackOrder(orderId, phone)
+          : phoneLast3.trim() && verificationAnswer.trim()
+            ? trackOrderRecovery({
+                orderNumber: orderId,
+                phoneLast3,
+                verificationType,
+                verificationAnswer,
+              })
+            : null;
+
+      if (!request) return;
+
       request.then((o) => {
         if (o) { setOrder(o); setLastRefresh(new Date()); }
       }).catch(() => {});
     }, 30000);
     return () => clearInterval(interval);
-  }, [order, orderId, phone, secureToken]);
+  }, [order, orderId, phone, phoneLast3, secureToken, verificationAnswer, verificationType]);
 
   const rawStatus = order?.order_status || order?.status || "";
   const resolvedKey = resolveCustomerOrderStage(rawStatus);
@@ -135,7 +218,7 @@ export default function TrackOrder() {
           transition={{ delay: 0.1 }}
           className="text-muted-foreground mb-8"
         >
-          Use the secure tracking link from your order confirmation. If you do not have it, verify with your order number and phone number.
+          Use your private tracking link for the fastest access. If you lost it, recover the order with two small checks only the buyer should know.
         </motion.p>
 
         {secureToken && (
@@ -155,29 +238,154 @@ export default function TrackOrder() {
           </motion.div>
         )}
 
-        <motion.form
+        <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          onSubmit={lookup}
-          className="rounded-2xl border border-border bg-card p-6 grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end shadow-soft"
+          className="grid gap-4"
         >
-          <div className="sm:col-span-3 mb-1 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-            <KeyRound className="h-4 w-4" />
-            Manual verification
-          </div>
-          <div>
-            <Label htmlFor="order">Order number</Label>
-            <Input id="order" value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="ORD-XXXXXX" />
-          </div>
-          <div>
-            <Label htmlFor="phone">Phone number</Label>
-            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" />
-          </div>
-          <Button type="submit" disabled={loading} className="bg-foreground text-background h-10 min-w-[110px]">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Track"}
-          </Button>
-        </motion.form>
+          <form
+            onSubmit={recoveryStep === "identity" ? beginRecovery : lookupByRecovery}
+            className="rounded-2xl border border-accent/20 bg-card p-5 shadow-soft md:p-6"
+          >
+            <div className="mb-4 flex items-start gap-3">
+              <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-display text-lg font-bold">Recover without the link</p>
+                <p className="text-sm text-muted-foreground">
+                  We ask for the order number, last 3 phone digits, then one order detail. Wrong answers do not reveal order data.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="recovery-order">Order number</Label>
+                <Input
+                  id="recovery-order"
+                  value={orderId}
+                  onChange={(e) => {
+                    setOrderId(e.target.value);
+                    setRecoveryStep("identity");
+                  }}
+                  placeholder="ORD-XXXXXX"
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone-last3">Last 3 phone digits</Label>
+                <Input
+                  id="phone-last3"
+                  inputMode="numeric"
+                  maxLength={3}
+                  value={phoneLast3}
+                  onChange={(e) => {
+                    setPhoneLast3(e.target.value.replace(/\D/g, "").slice(0, 3));
+                    setRecoveryStep("identity");
+                  }}
+                  placeholder="006"
+                />
+              </div>
+            </div>
+
+            {recoveryStep === "challenge" && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 rounded-xl border border-border bg-secondary/35 p-4"
+              >
+                <p className="mb-3 text-sm font-semibold text-foreground">One more check</p>
+                <div className="mb-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVerificationType("total");
+                      setVerificationAnswer("");
+                    }}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-sm font-semibold transition-colors",
+                      verificationType === "total"
+                        ? "border-accent bg-accent text-accent-foreground"
+                        : "border-border bg-background hover:border-accent/50"
+                    )}
+                  >
+                    Order total
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVerificationType("location");
+                      setVerificationAnswer("");
+                    }}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-sm font-semibold transition-colors",
+                      verificationType === "location"
+                        ? "border-accent bg-accent text-accent-foreground"
+                        : "border-border bg-background hover:border-accent/50"
+                    )}
+                  >
+                    Delivery area
+                  </button>
+                </div>
+                <Label htmlFor="verification-answer">
+                  {verificationType === "total" ? "Approximate order total" : "Delivery town, estate, or route area"}
+                </Label>
+                <Input
+                  id="verification-answer"
+                  value={verificationAnswer}
+                  onChange={(e) => setVerificationAnswer(e.target.value)}
+                  placeholder={verificationType === "total" ? "Example: 1350" : "Example: Westlands"}
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  For totals, KES 1 difference is accepted for rounding. For area, use a place name from the delivery details.
+                </p>
+              </motion.div>
+            )}
+
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <Button type="submit" disabled={loading} className="h-11 flex-1 bg-foreground text-background">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : recoveryStep === "identity" ? "Continue securely" : "Show my order"}
+              </Button>
+              {recoveryStep === "challenge" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11"
+                  onClick={() => {
+                    setRecoveryStep("identity");
+                    setVerificationAnswer("");
+                  }}
+                >
+                  Edit details
+                </Button>
+              )}
+            </div>
+          </form>
+
+          <form
+            onSubmit={lookup}
+            className="rounded-2xl border border-border bg-card/70 p-5 shadow-soft md:p-6"
+          >
+            <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <KeyRound className="h-4 w-4" />
+              Have the full phone number?
+            </div>
+            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <div>
+                <Label htmlFor="order">Order number</Label>
+                <Input id="order" value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="ORD-XXXXXX" />
+              </div>
+              <div>
+                <Label htmlFor="phone">Phone number</Label>
+                <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" />
+              </div>
+              <Button type="submit" disabled={loading} variant="outline" className="h-10 min-w-[110px]">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Track"}
+              </Button>
+            </div>
+          </form>
+        </motion.div>
 
         {validationError && (
           <p className="mt-3 text-sm text-destructive">{validationError}</p>
@@ -199,7 +407,7 @@ export default function TrackOrder() {
                 >
                   <Truck className="h-8 w-8 text-accent" />
                 </motion.div>
-                <span className="text-sm">Locating your order…</span>
+                <span className="text-sm">Locating your order...</span>
               </div>
             </motion.div>
           )}
@@ -262,7 +470,7 @@ export default function TrackOrder() {
                 >
                   <XCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-destructive mb-1">Cancelled — this order will not be fulfilled</p>
+                    <p className="font-semibold text-destructive mb-1">Cancelled - this order will not be fulfilled</p>
                     <p className="text-sm text-muted-foreground">
                       If you believe this is an error or need assistance, please{" "}
                       <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" className="text-accent underline">
@@ -426,7 +634,7 @@ export default function TrackOrder() {
                           )}
                           {done && (
                             <span className="text-xs font-semibold uppercase tracking-wider text-success self-center flex-shrink-0">
-                              Done ✓
+                              Done
                             </span>
                           )}
                         </motion.li>
@@ -438,7 +646,7 @@ export default function TrackOrder() {
 
               {lastRefresh && !isCancelled && (
                 <p className="text-xs text-muted-foreground mt-6 text-right">
-                  Last updated: {lastRefresh.toLocaleTimeString()} · Auto-refreshes every 30s
+                  Last updated: {lastRefresh.toLocaleTimeString()} - Auto-refreshes every 30s
                 </p>
               )}
             </motion.div>

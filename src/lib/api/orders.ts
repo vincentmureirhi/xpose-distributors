@@ -62,3 +62,24 @@ export async function trackOrderByToken(token: string): Promise<Order | null> {
     return null;
   }
 }
+
+export async function trackOrderRecovery(params: {
+  orderNumber: string;
+  phoneLast3: string;
+  verificationType: "total" | "location";
+  verificationAnswer: string;
+}): Promise<Order | null> {
+  try {
+    const { data } = await apiClient.get("/orders/track", {
+      params: {
+        order_number: params.orderNumber,
+        phone_last3: params.phoneLast3,
+        verification_type: params.verificationType,
+        verification_answer: params.verificationAnswer,
+      },
+    });
+    return data?.data || data;
+  } catch {
+    return null;
+  }
+}

@@ -10,6 +10,27 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
+function normalizeSearchText(value: unknown) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getProductSearchText(product: Product) {
+  return [
+    product.name,
+    product.sku,
+    product.description,
+    product.category_name,
+    product.selling_unit_label,
+  ]
+    .map(normalizeSearchText)
+    .filter(Boolean)
+    .join(" ");
+}
+
+function getProductPrice(product: Product) {
+  return Number(product.discounted_price || product.retail_price || product.price || 0);
+}
+
 export default function Products() {
   const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
@@ -31,7 +52,7 @@ export default function Products() {
   };
 
   useEffect(() => {
-    document.title = "Shop — XPOSE";
+    document.title = "Shop - XPOSE";
     listCategories().then(setCategories);
   }, []);
 
@@ -42,10 +63,42 @@ export default function Products() {
       .finally(() => setLoading(false));
   }, [search, category, sort, min, max]);
 
-  const visibleProducts = useMemo(
-    () => (flashOnly ? products.filter((p) => p.is_flash || p.discounted_price != null) : products),
-    [flashOnly, products]
-  );
+  const visibleProducts = useMemo(() => {
+    const query = normalizeSearchText(search);
+    const minPrice = min ? Number(min) : null;
+    const maxPrice = max ? Number(max) : null;
+
+    const filtered = products.filter((product) => {
+      if (flashOnly && !(product.is_flash || product.discounted_price != null)) return false;
+
+      if (query) {
+        const words = query.split(/\s+/).filter(Boolean);
+        const searchable = getProductSearchText(product);
+        if (!words.every((word) => searchable.includes(word))) return false;
+      }
+
+      if (category !== "all" && String(product.category_id || "") !== category) return false;
+
+      const price = getProductPrice(product);
+      if (minPrice != null && Number.isFinite(minPrice) && price < minPrice) return false;
+      if (maxPrice != null && Number.isFinite(maxPrice) && price > maxPrice) return false;
+
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      const priceA = getProductPrice(a);
+      const priceB = getProductPrice(b);
+
+      if (sort === "price-asc") return priceA - priceB;
+      if (sort === "price-desc") return priceB - priceA;
+      if (sort === "name-asc") return String(a.name || "").localeCompare(String(b.name || ""));
+
+      const aBoost = (a.is_flash || a.discounted_price != null ? 2 : 0) + (a.stock_status === "limited_stock" ? 1 : 0);
+      const bBoost = (b.is_flash || b.discounted_price != null ? 2 : 0) + (b.stock_status === "limited_stock" ? 1 : 0);
+      return bBoost - aBoost;
+    });
+  }, [category, flashOnly, max, min, products, search, sort]);
 
   const resultCount = visibleProducts.length;
 

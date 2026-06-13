@@ -107,9 +107,6 @@ export default function SmartProductRail({ products }: Props) {
             Live shelf
           </p>
           <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Moving fast right now</h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Auto-rotating catalogue highlights in-stock movers first, then flash deals and trade packs.
-          </p>
         </div>
         <Link to="/products" className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-background px-4 text-sm font-semibold shadow-soft transition-colors hover:border-accent/50 hover:text-accent">
           Shop all

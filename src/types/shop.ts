@@ -35,6 +35,7 @@ export interface PricingEvaluation {
 export interface Product {
   id: string | number;
   name: string;
+  sku?: string;
   description?: string;
   retail_price?: number;
   wholesale_price?: number;
