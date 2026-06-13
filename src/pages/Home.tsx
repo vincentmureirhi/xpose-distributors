@@ -5,6 +5,7 @@ import ValueProps from "@/components/home/ValueProps";
 import FlashSale from "@/components/home/FlashSale";
 import CategoryRail from "@/components/home/CategoryRail";
 import FeaturedGrid from "@/components/home/FeaturedGrid";
+import SmartProductRail from "@/components/home/SmartProductRail";
 import BlogPreview from "@/components/home/BlogPreview";
 import { listProducts } from "@/lib/api/products";
 import { listCategories } from "@/lib/api/categories";
@@ -30,8 +31,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title =
-      "XPOSE — A Hybrid Company. Everyday Feels Like BLACK FRIDAY";
+    document.title = "XPOSE Distributors | Wholesale and Retail Deals";
 
     Promise.all([listProducts(), listCategories(), getActiveFlashSales()])
       .then(([p, c, flashSales]) => {
@@ -41,7 +41,7 @@ export default function Home() {
           const sale = flashSales[0] as unknown as ActiveSale;
           const saleProducts = Array.isArray(sale.products) ? sale.products : [];
 
-          // Build a map of product_id → discounted_price from the sale's product list
+          // Build a map of product_id to discounted_price from the sale's product list
           const flashMap = new Map<number | string, number>();
           saleProducts.forEach((fp) => {
             if (fp.discounted_price != null) {
@@ -107,6 +107,7 @@ export default function Home() {
       ) : (
         <>
           <CategoryRail categories={categories} />
+          <SmartProductRail products={products} />
           <FeaturedGrid products={products.slice(0, 8)} />
         </>
       )}

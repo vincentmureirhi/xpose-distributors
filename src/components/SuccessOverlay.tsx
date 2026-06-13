@@ -13,7 +13,7 @@ interface SuccessOverlayProps {
 export default function SuccessOverlay({
   show,
   title = "Order placed!",
-  subtitle = "Redirecting to tracking…",
+  subtitle = "Redirecting to tracking...",
   onDone,
   duration = 1800,
 }: SuccessOverlayProps) {

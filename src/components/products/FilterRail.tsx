@@ -77,7 +77,7 @@ export default function FilterRail({ filters, setFilters, categories, resultCoun
           <Input
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            placeholder="Search products…"
+            placeholder="Search products..."
             className="pl-10 h-11"
           />
         </div>

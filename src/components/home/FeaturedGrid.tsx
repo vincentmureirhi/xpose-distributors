@@ -14,7 +14,7 @@ export default function FeaturedGrid({ products, title = "Featured this week", e
           <h2 className="font-display font-bold text-3xl md:text-5xl tracking-tight">{title}</h2>
         </div>
         <Link to="/products" className="text-sm font-medium underline-offset-4 hover:underline hidden sm:inline">
-          See all →
+          See all
         </Link>
       </motion.div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">

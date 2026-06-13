@@ -104,7 +104,7 @@ export default function Products() {
           <Input
             value={search}
             onChange={(e) => setParam("search", e.target.value)}
-            placeholder="Search products…"
+            placeholder="Search products..."
             className="pl-10 h-11"
           />
         </div>

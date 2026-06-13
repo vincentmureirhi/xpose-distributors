@@ -73,7 +73,7 @@ export default function FlashSale({ products, endDate, saleName }: Props) {
             </div>
           ))}
           <Link to="/flash-sale" className="ml-2 text-sm font-medium underline-offset-4 hover:underline">
-            Shop all →
+            Shop all
           </Link>
         </div>
       </div>

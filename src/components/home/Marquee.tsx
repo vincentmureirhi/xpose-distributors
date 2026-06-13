@@ -1,23 +1,21 @@
 const items = [
-  "🔥 Deals Available — Don't Miss Out!",
-  "🚚 Free Shipping for Orders Over KES 75,000",
-  "💰 Wholesale & Retail Pricing",
-  "⚡ Flash Sales Live Now",
-  "🇰🇪 Delivering Across Kenya",
-  "🏷️ Best Prices Guaranteed",
-  "📦 Same-Day Dispatch Available",
-  "💳 Manual Till Payment — 711714",
-  "🛍️ Hybrid Company — BLACK FRIDAY Every Day",
-  "⭐ Quality You Can Trust",
+  "Live catalogue pricing",
+  "Carton, dozen, and piece rules shown clearly",
+  "Secure order tracking links",
+  "Flash deals updated from admin",
+  "Route customer orders supported",
+  "M-Pesa till payment: 711714",
+  "Wholesale and retail checkout",
+  "Kenya-wide delivery coordination",
 ];
 
 export default function Marquee() {
   return (
-    <div className="border-y border-border bg-background py-3 overflow-hidden">
-      <div className="marquee gap-12 text-sm font-medium text-muted-foreground">
-        {[...items, ...items, ...items].map((t, i) => (
-          <span key={i} className="flex items-center gap-12 whitespace-nowrap">
-            {t}
+    <div className="overflow-hidden border-y border-border bg-background py-3">
+      <div className="marquee gap-12 text-sm font-semibold text-muted-foreground">
+        {[...items, ...items, ...items].map((text, index) => (
+          <span key={`${text}-${index}`} className="flex items-center gap-12 whitespace-nowrap">
+            {text}
             <span className="h-1 w-1 rounded-full bg-accent" />
           </span>
         ))}

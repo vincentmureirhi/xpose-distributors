@@ -1,105 +1,172 @@
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef, useEffect, useState } from "react";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, PackageCheck, Search, ShieldCheck, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listProducts } from "@/lib/api/products";
+import { formatPrice } from "@/context/CartContext";
+import type { Product } from "@/types/shop";
+
+function getDisplayPrice(product: Product) {
+  return Number(product.discounted_price || product.retail_price || product.price || 0);
+}
 
 export default function Hero() {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const y1 = useTransform(scrollYProgress, [0, 1], [0, 100]);
-  const y2 = useTransform(scrollYProgress, [0, 1], [0, -80]);
-  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
-  const [productCount, setProductCount] = useState<number | null>(null);
+  const contentY = useTransform(scrollYProgress, [0, 1], [0, 70]);
+  const shelfY = useTransform(scrollYProgress, [0, 1], [0, -50]);
+  const opacity = useTransform(scrollYProgress, [0, 0.86], [1, 0]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    listProducts().then((p) => setProductCount(p.length)).catch(() => {});
+    listProducts()
+      .then((items) => setProducts(items.filter((item) => item.image_url || item.name).slice(0, 7)))
+      .catch(() => {});
   }, []);
 
+  const productCount = products.length;
+  const heroProducts = useMemo(() => products.slice(0, 5), [products]);
+
   const stats = [
-    { v: productCount !== null ? `${productCount}+` : "…", l: "Products" },
-    { v: "24 Hrs", l: "Customer Care" },
-    { v: "Kenya-Wide", l: "Delivery" },
+    { v: productCount > 0 ? `${productCount}+` : "Live", l: "Featured items" },
+    { v: "Carton", l: "And piece pricing" },
+    { v: "Kenya", l: "Route delivery" },
   ];
 
   return (
-    <section ref={ref} className="relative overflow-hidden bg-primary text-primary-foreground">
-      <div className="absolute inset-0 mesh-bg opacity-80" />
-      <motion.div style={{ y: y2 }} className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-accent/30 blur-3xl" />
-      <motion.div style={{ y: y1 }} className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-primary-glow/40 blur-3xl" />
+    <section ref={ref} className="relative overflow-hidden bg-[#0b0f14] text-white">
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.045)_1px,transparent_1px)] bg-[size:56px_56px]" />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(11,15,20,0.98),rgba(11,15,20,0.76)_48%,rgba(16,24,32,0.94))]" />
 
-      <div className="container relative py-20 md:py-32 lg:py-40">
-        <motion.div style={{ opacity }} className="max-w-3xl">
+      <div className="container relative grid min-h-[calc(100vh-5rem)] items-center gap-10 py-16 md:grid-cols-[minmax(0,1fr)_minmax(340px,0.78fr)] md:py-20 lg:py-24">
+        <motion.div style={{ opacity, y: contentY }} className="max-w-3xl">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-foreground/10 backdrop-blur border border-primary-foreground/20 text-xs font-medium mb-6"
+            transition={{ duration: 0.55 }}
+            className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase text-white/75 backdrop-blur"
           >
-            <Sparkles className="h-3.5 w-3.5 text-accent-glow" />
-            New season, new energy
+            <PackageCheck className="h-3.5 w-3.5 text-accent" />
+            XPOSE Distributors
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1 }}
-            className="font-display font-bold text-balance text-5xl md:text-7xl lg:text-8xl leading-[0.95] tracking-tighter"
+            transition={{ duration: 0.7, delay: 0.08 }}
+            className="font-display text-5xl font-black leading-[0.95] text-balance md:text-7xl lg:text-8xl"
           >
-            Shop the<br />
-            <span className="bg-gradient-accent bg-clip-text text-transparent">extraordinary.</span>
+            Wholesale power.
+            <span className="block text-accent">Retail speed.</span>
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-6 text-lg md:text-xl text-primary-foreground/70 max-w-xl leading-relaxed"
+            transition={{ duration: 0.6, delay: 0.22 }}
+            className="mt-6 max-w-2xl text-base leading-relaxed text-white/70 md:text-xl"
           >
-            A Hybrid Company — Everyday Feels Like{" "}
-            <span className="font-bold text-accent-glow">BLACK FRIDAY</span>
-          </motion.p>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-2 text-sm md:text-base text-primary-foreground/50 max-w-lg leading-relaxed italic"
-          >
-            Where Wholesale Meets Retail, Quality Meets Affordability
+            Order trade packs, cartons, everyday essentials, and flash deals from one catalogue built for homes, shops, salons, routes, and resellers.
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.45 }}
-            className="mt-10 flex flex-wrap gap-3"
+            transition={{ duration: 0.6, delay: 0.34 }}
+            className="mt-8 flex flex-wrap gap-3"
           >
-            <Button asChild size="lg" className="h-12 px-7 bg-gradient-accent text-accent-foreground border-0 shadow-glow hover:opacity-95 group">
+            <Button asChild size="lg" className="h-12 rounded-full bg-accent px-7 text-accent-foreground shadow-glow hover:bg-accent/90">
               <Link to="/products">
-                Shop now
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                Start shopping
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="h-12 px-7 bg-transparent border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
-              <Link to="/categories">Browse categories</Link>
+            <Button asChild size="lg" variant="outline" className="h-12 rounded-full border-white/25 bg-white/5 px-7 text-white hover:bg-white/10 hover:text-white">
+              <Link to="/flash-sale">View flash deals</Link>
             </Button>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.7 }}
-            className="mt-14 grid grid-cols-3 gap-6 max-w-lg"
+            transition={{ duration: 0.6, delay: 0.52 }}
+            className="mt-10 grid max-w-xl grid-cols-3 gap-3"
           >
             {stats.map((s) => (
-              <div key={s.l}>
-                <p className="font-display font-bold text-3xl">{s.v}</p>
-                <p className="text-xs text-primary-foreground/60 uppercase tracking-wider mt-1">{s.l}</p>
+              <div key={s.l} className="rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur">
+                <p className="font-display text-2xl font-black md:text-3xl">{s.v}</p>
+                <p className="mt-1 text-[11px] font-semibold uppercase text-white/55">{s.l}</p>
               </div>
             ))}
           </motion.div>
+        </motion.div>
+
+        <motion.div style={{ y: shelfY }} className="relative min-h-[390px] md:min-h-[520px]">
+          <div className="absolute inset-x-4 bottom-7 h-4 rounded-full bg-black/35 blur-xl" />
+          <div className="absolute left-0 top-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-semibold text-white/80 backdrop-blur">
+            Live catalogue
+          </div>
+
+          {heroProducts.length > 0 ? (
+            heroProducts.map((product, index) => {
+              const positions = [
+                "left-[2%] top-[17%] w-[46%] rotate-[-5deg]",
+                "right-[2%] top-[6%] w-[42%] rotate-[4deg]",
+                "left-[18%] bottom-[19%] w-[48%] rotate-[2deg]",
+                "right-[1%] bottom-[10%] w-[38%] rotate-[-3deg]",
+                "left-[0%] bottom-[2%] w-[34%] rotate-[5deg]",
+              ];
+
+              return (
+                <Link
+                  key={product.id}
+                  to={`/products/${product.id}`}
+                  className={`absolute ${positions[index % positions.length]} group block`}
+                >
+                  <div className="overflow-hidden rounded-2xl border border-white/12 bg-white p-3 shadow-[0_28px_80px_rgba(0,0,0,0.32)] transition-transform duration-500 group-hover:-translate-y-2">
+                    <div className="aspect-square overflow-hidden rounded-xl bg-white">
+                      {product.image_url ? (
+                        <img src={product.image_url} alt={product.name} className="h-full w-full object-contain" />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center bg-secondary text-3xl font-black text-accent">
+                          {product.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-3">
+                      <p className="line-clamp-1 text-sm font-black text-slate-950">{product.name}</p>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-semibold text-slate-500">
+                          {product.selling_unit_label || "piece"}
+                        </span>
+                        <span className="text-sm font-black text-slate-950">{formatPrice(getDisplayPrice(product))}</span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })
+          ) : (
+            <div className="absolute inset-0 grid place-items-center rounded-2xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur">
+              <div>
+                <Search className="mx-auto mb-4 h-10 w-10 text-accent" />
+                <p className="font-display text-3xl font-black">Catalogue loading</p>
+                <p className="mt-2 text-sm text-white/60">Live products will appear here.</p>
+              </div>
+            </div>
+          )}
+
+          <div className="absolute right-0 top-[45%] hidden rounded-xl border border-white/10 bg-white/10 p-3 text-sm text-white/80 backdrop-blur lg:block">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-300" />
+              Secure checkout
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <Truck className="h-4 w-4 text-accent" />
+              Route-ready delivery
+            </div>
+          </div>
         </motion.div>
       </div>
     </section>

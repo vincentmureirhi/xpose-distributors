@@ -11,7 +11,7 @@ export default function Footer() {
             <Wordmark size="md" />
           </Link>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            A Hybrid Company — Everyday Feels Like BLACK FRIDAY. Where Wholesale Meets Retail.
+            A hybrid distributor where wholesale meets retail, with sharp pricing for everyday trade.
           </p>
           <div className="flex gap-2 mt-5">
             {[Instagram, Twitter, Facebook].map((Icon, i) => (
@@ -45,14 +45,14 @@ export default function Footer() {
             to="/blog"
             className="inline-flex h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 items-center"
           >
-            Read Blog →
+            Read blog
           </Link>
         </div>
       </div>
       <div className="border-t border-border">
         <div className="container py-5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} XPOSE Distributors. All rights reserved.</p>
-          <p>Manual Till payment available on 711714. Free Shipping for Orders Over KES 75,000.</p>
+          <p>Copyright {new Date().getFullYear()} XPOSE Distributors. All rights reserved.</p>
+          <p>M-Pesa Till 711714. Free shipping for orders over KES 75,000.</p>
         </div>
       </div>
     </footer>

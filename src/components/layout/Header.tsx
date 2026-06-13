@@ -91,7 +91,7 @@ export default function Header() {
         <div className="flex items-center gap-1">
           {isSalesRepAuthenticated ? (
             <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={logout}>
-              {repDisplayName} • Logout
+              {repDisplayName} - Logout
             </Button>
           ) : (
             <Button variant="ghost" size="sm" className="hidden md:inline-flex" asChild>
@@ -141,7 +141,7 @@ export default function Header() {
                 autoFocus
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search products, categories…"
+                placeholder="Search products, categories..."
                 className="h-11"
               />
               <Button type="submit" className="h-11">Search</Button>
@@ -184,7 +184,7 @@ export default function Header() {
                   }}
                   className="px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-secondary text-left"
                 >
-                  {repDisplayName} • Logout
+                  {repDisplayName} - Logout
                 </button>
               ) : (
                 <NavLink

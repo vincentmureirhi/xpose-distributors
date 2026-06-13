@@ -21,7 +21,7 @@ export default function BlogPost() {
     getBlogPost(id)
       .then((p) => {
         setPost(p);
-        if (p) document.title = `${p.title} — XPOSE Blog`;
+        if (p) document.title = `${p.title} - XPOSE Blog`;
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -70,7 +70,7 @@ export default function BlogPost() {
           {formatDate(post.created_at)}
           {post.author && (
             <>
-              <span>·</span>
+              <span>-</span>
               <span>{post.author}</span>
             </>
           )}
@@ -111,7 +111,7 @@ export default function BlogPost() {
             Enjoyed this post? Share it with your network!
           </p>
           <Button asChild variant="outline">
-            <Link to="/blog">More Articles →</Link>
+            <Link to="/blog">More articles</Link>
           </Button>
         </div>
       </motion.article>
