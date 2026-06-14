@@ -15,6 +15,7 @@ const navLinks = [
   { to: "/products", label: "Shop" },
   { to: "/flash-sale", label: "Flash Sale" },
   { to: "/categories", label: "Categories" },
+  { to: "/route-delivery", label: "Routes" },
   { to: "/track-order", label: "Track" },
 ];
 
