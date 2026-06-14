@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   BadgeCheck,
+  BarChart3,
   Box,
   CheckCircle2,
   Clock3,
@@ -9,8 +10,10 @@ import {
   Loader2,
   LockKeyhole,
   LogOut,
+  MessageSquare,
   PackagePlus,
   Store,
+  TrendingUp,
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,8 +27,13 @@ import { listCategories } from "@/lib/api/categories";
 import {
   changeVendorPassword,
   createVendorProduct,
+  fetchVendorAnalytics,
   listMyVendorProducts,
+  listMyVendorMessages,
   updateVendorProfile,
+  updateVendorMessageStatus,
+  type VendorAnalytics,
+  type VendorMessage,
   type VendorProductSubmission,
 } from "@/lib/api/vendor-portal";
 import type { Category } from "@/types/shop";
@@ -91,6 +99,8 @@ export default function VendorDashboard() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [submissions, setSubmissions] = useState<VendorProductSubmission[]>([]);
+  const [analytics, setAnalytics] = useState<VendorAnalytics | null>(null);
+  const [messages, setMessages] = useState<VendorMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -138,11 +148,13 @@ export default function VendorDashboard() {
     let active = true;
     setLoading(true);
 
-    Promise.all([listCategories(), listMyVendorProducts()])
-      .then(([categoryRows, submissionRows]) => {
+    Promise.all([listCategories(), listMyVendorProducts(), fetchVendorAnalytics(30), listMyVendorMessages()])
+      .then(([categoryRows, submissionRows, analyticsData, messageRows]) => {
         if (!active) return;
         setCategories(Array.isArray(categoryRows) ? categoryRows : []);
         setSubmissions(Array.isArray(submissionRows) ? submissionRows : []);
+        setAnalytics(analyticsData || null);
+        setMessages(Array.isArray(messageRows) ? messageRows : []);
       })
       .catch((error) => {
         if (!active) return;
@@ -236,6 +248,30 @@ export default function VendorDashboard() {
     }
   }
 
+  async function markMessage(message: VendorMessage, nextStatus: "read" | "closed") {
+    try {
+      const updated = await updateVendorMessageStatus(message.id, { status: nextStatus });
+      setMessages((rows) => rows.map((row) => (row.id === updated.id ? updated : row)));
+      setAnalytics((current) => {
+        if (!current) return current;
+        const wasNew = message.status === "new";
+        const isNew = updated.status === "new";
+        return {
+          ...current,
+          messages: {
+            ...current.messages,
+            new_messages: Math.max(0, current.messages.new_messages + (isNew ? 1 : 0) - (wasNew ? 1 : 0)),
+          },
+        };
+      });
+      toast.success(nextStatus === "closed" ? "Message closed" : "Message marked as read");
+    } catch (error) {
+      toast.error("Message update failed", {
+        description: getErrorMessage(error, "Please try again."),
+      });
+    }
+  }
+
   if (status === "restoring" || !isVendorAuthenticated || !vendor) {
     return (
       <div className="container grid min-h-[55vh] place-items-center py-16">
@@ -246,6 +282,11 @@ export default function VendorDashboard() {
 
   const verified = vendor.verification_status === "verified";
   const publicStoreUrl = `/vendors/${vendor.store_slug}`;
+  const sales = analytics?.sales;
+  const productStats = analytics?.product_stats;
+  const messageStats = analytics?.messages;
+  const topProducts = analytics?.top_products || [];
+  const recentMessages = messages.slice(0, 6);
 
   return (
     <div className="bg-background">
@@ -306,6 +347,124 @@ export default function VendorDashboard() {
               <p className="mt-1 text-sm">Change it before handing this account to anyone else in your store.</p>
             </div>
           )}
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <VendorSignalCard
+              icon={TrendingUp}
+              label="30-day sales"
+              value={formatPrice(toNumber(sales?.gross_sales))}
+              sub={`${toNumber(sales?.order_count)} orders`}
+            />
+            <VendorSignalCard
+              icon={Box}
+              label="Units ordered"
+              value={toNumber(sales?.units_ordered).toLocaleString()}
+              sub="Across approved listings"
+            />
+            <VendorSignalCard
+              icon={Store}
+              label="Live products"
+              value={toNumber(productStats?.live_products).toLocaleString()}
+              sub={`${toNumber(productStats?.limited_stock_products)} limited stock`}
+            />
+            <VendorSignalCard
+              icon={MessageSquare}
+              label="Customer requests"
+              value={toNumber(messageStats?.new_messages).toLocaleString()}
+              sub={`${toNumber(messageStats?.total_messages)} total messages`}
+            />
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+              <div className="mb-4 flex items-center gap-3">
+                <BarChart3 className="h-5 w-5 text-accent" />
+                <div>
+                  <h2 className="text-xl font-black">Product performance</h2>
+                  <p className="text-sm text-muted-foreground">30-day movement from approved vendor products.</p>
+                </div>
+              </div>
+              {topProducts.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
+                  Product sales will appear here after customer orders include your listings.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {topProducts.map((product) => (
+                    <div key={product.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-secondary">
+                          {product.image_url ? (
+                            <img src={product.image_url} alt="" className="h-full w-full object-contain p-1" />
+                          ) : (
+                            <Box className="h-5 w-5 text-accent" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-bold">{product.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {product.units_ordered.toLocaleString()} units ordered
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-sm font-black">{formatPrice(toNumber(product.gross_sales))}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+              <div className="mb-4 flex items-center gap-3">
+                <MessageSquare className="h-5 w-5 text-accent" />
+                <div>
+                  <h2 className="text-xl font-black">Customer inbox</h2>
+                  <p className="text-sm text-muted-foreground">Requests sent from your public store.</p>
+                </div>
+              </div>
+              {recentMessages.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
+                  No customer messages yet.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentMessages.map((message) => (
+                    <div key={message.id} className="rounded-xl border border-border p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-bold">{message.customer_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {message.customer_phone || message.customer_email || "No contact shown"}
+                          </p>
+                        </div>
+                        <span className={`rounded-full px-2 py-1 text-[11px] font-black ${
+                          message.status === "new" ? "bg-accent text-accent-foreground" : "bg-secondary text-muted-foreground"
+                        }`}>
+                          {message.status}
+                        </span>
+                      </div>
+                      {message.product_name && (
+                        <p className="mt-2 text-xs font-semibold text-muted-foreground">{message.product_name}</p>
+                      )}
+                      <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{message.message}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {message.status === "new" && (
+                          <Button size="sm" variant="outline" onClick={() => markMessage(message, "read")}>
+                            Mark read
+                          </Button>
+                        )}
+                        {message.status !== "closed" && (
+                          <Button size="sm" variant="outline" onClick={() => markMessage(message, "closed")}>
+                            Close
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
           <form onSubmit={saveProduct} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
             <div className="mb-5 flex items-center gap-3">
@@ -528,6 +687,29 @@ function Metric({ label, value }: { label: string; value: string | number }) {
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
       <p className="text-xs font-black uppercase tracking-wider text-white/50">{label}</p>
       <p className="mt-2 text-2xl font-black">{value}</p>
+    </div>
+  );
+}
+
+function VendorSignalCard({
+  icon: Icon,
+  label,
+  value,
+  sub,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string | number;
+  sub: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+      <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-accent/10 text-accent">
+        <Icon className="h-5 w-5" />
+      </div>
+      <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="mt-2 text-2xl font-black">{value}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{sub}</p>
     </div>
   );
 }

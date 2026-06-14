@@ -26,6 +26,7 @@ export default function Hero() {
   const shelfY = useTransform(scrollYProgress, [0, 1], [0, -50]);
   const opacity = useTransform(scrollYProgress, [0, 0.86], [1, 0]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     listProducts()
@@ -35,6 +36,21 @@ export default function Hero() {
 
   const productCount = products.length;
   const heroProducts = useMemo(() => products.slice(0, 5), [products]);
+  const activeProduct = heroProducts[activeIndex % Math.max(heroProducts.length, 1)];
+  const supportingProducts = useMemo(() => {
+    if (heroProducts.length <= 1) return [];
+    return [1, 2]
+      .map((offset) => heroProducts[(activeIndex + offset) % heroProducts.length])
+      .filter(Boolean);
+  }, [activeIndex, heroProducts]);
+
+  useEffect(() => {
+    if (heroProducts.length <= 1) return undefined;
+    const timer = window.setInterval(() => {
+      setActiveIndex((index) => (index + 1) % heroProducts.length);
+    }, 4200);
+    return () => window.clearInterval(timer);
+  }, [heroProducts.length]);
 
   const stats = [
     { v: productCount > 0 ? `${productCount}+` : "Live", l: "Featured items" },
@@ -142,45 +158,68 @@ export default function Hero() {
             Live catalogue
           </div>
 
-          {heroProducts.length > 0 ? (
-            heroProducts.map((product, index) => {
-              const positions = [
-                "left-[2%] top-[17%] w-[46%] rotate-[-5deg]",
-                "right-[2%] top-[6%] w-[42%] rotate-[4deg]",
-                "left-[18%] bottom-[19%] w-[48%] rotate-[2deg]",
-                "right-[1%] bottom-[10%] w-[38%] rotate-[-3deg]",
-                "left-[0%] bottom-[2%] w-[34%] rotate-[5deg]",
-              ];
-
-              return (
+          {activeProduct ? (
+            <div className="absolute inset-0">
+              {supportingProducts.map((product, index) => (
                 <Link
                   key={product.id}
                   to={`/products/${product.id}`}
-                  className={`absolute ${positions[index % positions.length]} group block`}
+                  className={`absolute top-16 hidden w-36 rounded-2xl border border-white/12 bg-white p-3 shadow-[0_28px_80px_rgba(0,0,0,0.22)] transition-transform hover:-translate-y-1 md:block ${
+                    index === 0 ? "right-4 rotate-[5deg] opacity-80" : "left-4 top-48 rotate-[-7deg] opacity-70"
+                  }`}
                 >
-                  <div className="overflow-hidden rounded-2xl border border-white/12 bg-white p-3 shadow-[0_28px_80px_rgba(0,0,0,0.32)] transition-transform duration-500 group-hover:-translate-y-2">
-                    <div className="aspect-square overflow-hidden rounded-xl bg-white">
-                      {product.image_url ? (
-                        <img src={product.image_url} alt={product.name} className="h-full w-full object-contain" />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center bg-secondary text-3xl font-black text-accent">
-                          {product.name.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-3">
-                      <p className="line-clamp-1 text-sm font-black text-slate-950">{product.name}</p>
-                      <div className="mt-1 flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-semibold text-slate-500">
-                          {product.selling_unit_label || "piece"}
-                        </span>
-                        <span className="text-sm font-black text-slate-950">{formatPrice(getDisplayPrice(product))}</span>
+                  <div className="aspect-square rounded-xl bg-slate-50 p-2">
+                    {product.image_url ? (
+                      <img src={product.image_url} alt={product.name} className="h-full w-full object-contain" />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-2xl font-black text-accent">
+                        {product.name.charAt(0).toUpperCase()}
                       </div>
+                    )}
+                  </div>
+                  <p className="mt-2 line-clamp-1 text-xs font-black text-slate-950">{product.name}</p>
+                </Link>
+              ))}
+
+              <Link to={`/products/${activeProduct.id}`} className="group absolute left-1/2 top-1/2 block w-[76%] max-w-[330px] -translate-x-1/2 -translate-y-1/2">
+                <div className="overflow-hidden rounded-[1.35rem] border border-white/12 bg-white p-4 shadow-[0_34px_90px_rgba(0,0,0,0.34)] transition-transform duration-500 group-hover:-translate-y-2">
+                  <div className="aspect-square overflow-hidden rounded-2xl bg-slate-50">
+                    {activeProduct.image_url ? (
+                      <img src={activeProduct.image_url} alt={activeProduct.name} className="h-full w-full object-contain p-4" />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center bg-secondary text-5xl font-black text-accent">
+                        {activeProduct.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-4">
+                    <p className="line-clamp-2 text-lg font-black leading-tight text-slate-950">{activeProduct.name}</p>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-slate-500">
+                        {activeProduct.selling_unit_label || "piece"}
+                      </span>
+                      <span className="text-lg font-black text-slate-950">{formatPrice(getDisplayPrice(activeProduct))}</span>
                     </div>
                   </div>
-                </Link>
-              );
-            })
+                </div>
+              </Link>
+
+              {heroProducts.length > 1 && (
+                <div className="absolute bottom-10 left-1/2 flex -translate-x-1/2 gap-2">
+                  {heroProducts.map((product, index) => (
+                    <button
+                      key={product.id}
+                      type="button"
+                      aria-label={`Show ${product.name}`}
+                      onClick={() => setActiveIndex(index)}
+                      className={`h-2.5 rounded-full transition-all ${
+                        index === activeIndex ? "w-8 bg-accent" : "w-2.5 bg-white/35"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
             <div className="absolute inset-0 grid place-items-center rounded-2xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur">
               <div>

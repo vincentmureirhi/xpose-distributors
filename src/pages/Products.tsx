@@ -73,10 +73,29 @@ function getPrimaryUnit(product: Product) {
 }
 
 function ProductStage({ products }: { products: Product[] }) {
-  const fallbackNames = ["Carton packs", "Tissue stock", "Route-ready"];
-  const cards = products.length
-    ? products
-    : fallbackNames.map((name, index) => ({ id: `fallback-${index}`, name, selling_unit_label: "stock" }) as Product);
+  if (products.length === 0) {
+    return (
+      <div className="relative grid min-h-[310px] place-items-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] p-6 text-center md:min-h-[360px]">
+        <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0_48%,rgba(255,255,255,.1)_49%,transparent_50%)] bg-[size:30px_30px] opacity-25" />
+        <div className="relative max-w-sm">
+          <div className="mx-auto grid h-20 w-20 place-items-center rounded-2xl border border-white/10 bg-white/10">
+            <Boxes className="h-9 w-9 text-accent" />
+          </div>
+          <p className="mt-5 text-2xl font-black">Stock room is empty here</p>
+          <p className="mt-2 text-sm leading-6 text-white/65">
+            Try all products, flash deals, or another category while this shelf is being updated.
+          </p>
+          <div className="mt-5 flex justify-center">
+            <Link to="/products" className="inline-flex h-10 items-center gap-2 rounded-full bg-accent px-4 text-sm font-bold text-accent-foreground">
+              All stock <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const cards = products;
   const center = (cards.length - 1) / 2;
 
   return (
@@ -418,10 +437,32 @@ export default function Products() {
               ))}
             </div>
           ) : visibleProducts.length === 0 ? (
-            <div className="text-center py-20 rounded-2xl border border-dashed border-border">
-              <p className="font-display font-semibold text-lg">No matching stock found</p>
-              <p className="text-sm text-muted-foreground mt-1">Clear filters or try another product name.</p>
-              <Button variant="outline" className="mt-5" onClick={() => setParams({}, { replace: true })}>Clear filters</Button>
+            <div className="overflow-hidden rounded-2xl border border-dashed border-border bg-card">
+              <div className="grid gap-6 p-7 md:grid-cols-[1fr_280px] md:p-8">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-wider text-accent">No live stock matched</p>
+                  <h2 className="mt-2 text-2xl font-black">
+                    {selectedCategory ? `${selectedCategory.name} is waiting on stock` : "Try a sharper search"}
+                  </h2>
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
+                    Search by SKU, product name, category, or selling unit. You can also jump to flash deals or clear filters.
+                  </p>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <Button onClick={() => setParams({}, { replace: true })}>Show all stock</Button>
+                    <Button variant="outline" asChild>
+                      <Link to="/flash-sale">Flash deals</Link>
+                    </Button>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-border bg-secondary p-5">
+                  <p className="text-sm font-black">Quick checks</p>
+                  <div className="mt-4 grid gap-2 text-sm text-muted-foreground">
+                    <span>Ready products: {readyCount.toLocaleString()}</span>
+                    <span>Flash deals: {flashCount.toLocaleString()}</span>
+                    <span>Limited stock: {limitedCount.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 xl:grid-cols-4">

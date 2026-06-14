@@ -95,6 +95,69 @@ export interface VendorProductSubmission {
   created_at: string;
 }
 
+export interface VendorAnalytics {
+  range_days: number;
+  product_stats: {
+    total_products: number;
+    approved_products: number;
+    live_products: number;
+    out_of_stock_products: number;
+    limited_stock_products: number;
+    stock_units: number;
+    stock_value: number;
+  };
+  sales: {
+    order_count: number;
+    units_ordered: number;
+    gross_sales: number;
+    last_order_at?: string | null;
+  };
+  submissions: {
+    drafts: number;
+    submitted: number;
+    changes_requested: number;
+    approved: number;
+    rejected: number;
+  };
+  messages: {
+    total_messages: number;
+    new_messages: number;
+    read_messages: number;
+    closed_messages: number;
+  };
+  top_products: Array<{
+    id: number;
+    name: string;
+    image_url?: string | null;
+    current_stock: number;
+    units_ordered: number;
+    gross_sales: number;
+  }>;
+  trend: Array<{
+    label: string;
+    gross_sales: number;
+    units_ordered: number;
+    orders: number;
+  }>;
+}
+
+export interface VendorMessage {
+  id: number;
+  vendor_id: number;
+  product_id?: number | null;
+  product_name?: string | null;
+  customer_name: string;
+  customer_phone?: string | null;
+  customer_email?: string | null;
+  message: string;
+  source: string;
+  status: "new" | "read" | "closed" | string;
+  vendor_notes?: string | null;
+  admin_notes?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
 export interface VendorProductPayload {
   product_name: string;
   sku?: string;
@@ -145,6 +208,26 @@ export async function fetchVendorWorkspace() {
   return unwrap<VendorWorkspace>(response);
 }
 
+export async function fetchVendorAnalytics(days = 30) {
+  const response = await apiClient.get(`/vendors/me/analytics?days=${encodeURIComponent(String(days))}`);
+  return unwrap<VendorAnalytics>(response);
+}
+
+export async function listMyVendorMessages(status?: string) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  const response = await apiClient.get(`/vendors/me/messages${query}`);
+  const data = unwrap<VendorMessage[]>(response);
+  return Array.isArray(data) ? data : [];
+}
+
+export async function updateVendorMessageStatus(
+  id: number | string,
+  payload: { status: "new" | "read" | "closed" | string; vendor_notes?: string }
+) {
+  const response = await apiClient.patch(`/vendors/me/messages/${id}`, payload);
+  return unwrap<VendorMessage>(response);
+}
+
 export async function changeVendorPassword(payload: { current_password: string; new_password: string }) {
   const response = await apiClient.put("/vendors/me/password", payload);
   return unwrap(response);
@@ -190,4 +273,18 @@ export async function listPublicVendorStores(filters: { search?: string; categor
 export async function getPublicVendorStore(slug: string) {
   const response = await apiClient.get(`/vendors/public/stores/${encodeURIComponent(slug)}`);
   return unwrap<VendorPublicStoreResult>(response);
+}
+
+export async function sendPublicVendorMessage(
+  slug: string,
+  payload: {
+    customer_name: string;
+    customer_phone?: string;
+    customer_email?: string;
+    message: string;
+    product_id?: number | string | null;
+  }
+) {
+  const response = await apiClient.post(`/vendors/public/stores/${encodeURIComponent(slug)}/messages`, payload);
+  return unwrap(response);
 }

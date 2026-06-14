@@ -1,9 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import { BadgeCheck, Loader2, Store, Tags } from "lucide-react";
+import { BadgeCheck, Loader2, MessageSquare, Store, Tags } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import ProductCard from "@/components/products/ProductCard";
-import { getPublicVendorStore, type VendorStore } from "@/lib/api/vendor-portal";
+import { getPublicVendorStore, sendPublicVendorMessage, type VendorStore } from "@/lib/api/vendor-portal";
 import type { Product } from "@/types/shop";
 
 export default function VendorStore() {
@@ -11,7 +15,14 @@ export default function VendorStore() {
   const [store, setStore] = useState<VendorStore | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sendingMessage, setSendingMessage] = useState(false);
   const [error, setError] = useState("");
+  const [messageForm, setMessageForm] = useState({
+    customer_name: "",
+    customer_phone: "",
+    customer_email: "",
+    message: "",
+  });
 
   useEffect(() => {
     if (!slug) return;
@@ -39,6 +50,27 @@ export default function VendorStore() {
       active = false;
     };
   }, [slug]);
+
+  async function submitStoreMessage(event: FormEvent) {
+    event.preventDefault();
+    if (!store) return;
+
+    setSendingMessage(true);
+    try {
+      await sendPublicVendorMessage(store.store_slug, messageForm);
+      setMessageForm({ customer_name: "", customer_phone: "", customer_email: "", message: "" });
+      toast.success("Message sent", {
+        description: `${store.store_name} will see it in their XPOSE vendor inbox.`,
+      });
+    } catch (err) {
+      const error = err as { response?: { data?: { error?: string; message?: string } }; message?: string };
+      toast.error("Message was not sent", {
+        description: error.response?.data?.error || error.response?.data?.message || error.message || "Please try again.",
+      });
+    } finally {
+      setSendingMessage(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -107,6 +139,73 @@ export default function VendorStore() {
       </section>
 
       <section className="container py-8 md:py-10">
+        <div className="mb-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+            <p className="text-sm font-black uppercase tracking-wider text-accent">Verified store</p>
+            <h2 className="mt-2 text-2xl font-black">Products reviewed through XPOSE</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Orders still checkout through XPOSE. Store messages go to the vendor inbox so product questions,
+              stock requests, and trade enquiries stay traceable.
+            </p>
+          </div>
+
+          <form onSubmit={submitStoreMessage} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-accent-foreground">
+                <MessageSquare className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="font-black">Message store</h2>
+                <p className="text-sm text-muted-foreground">Ask about products, bulk packs, or availability.</p>
+              </div>
+            </div>
+            <div className="grid gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="vendor-message-name">Name</Label>
+                <Input
+                  id="vendor-message-name"
+                  required
+                  value={messageForm.customer_name}
+                  onChange={(event) => setMessageForm((form) => ({ ...form, customer_name: event.target.value }))}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="vendor-message-phone">Phone</Label>
+                  <Input
+                    id="vendor-message-phone"
+                    value={messageForm.customer_phone}
+                    onChange={(event) => setMessageForm((form) => ({ ...form, customer_phone: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="vendor-message-email">Email</Label>
+                  <Input
+                    id="vendor-message-email"
+                    type="email"
+                    value={messageForm.customer_email}
+                    onChange={(event) => setMessageForm((form) => ({ ...form, customer_email: event.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="vendor-message-text">Message</Label>
+                <Textarea
+                  id="vendor-message-text"
+                  required
+                  rows={4}
+                  value={messageForm.message}
+                  onChange={(event) => setMessageForm((form) => ({ ...form, message: event.target.value }))}
+                />
+              </div>
+              <Button type="submit" disabled={sendingMessage}>
+                {sendingMessage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Send message
+              </Button>
+            </div>
+          </form>
+        </div>
+
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-sm font-black uppercase tracking-wider text-accent">Live products</p>
