@@ -25,6 +25,7 @@ export default function Footer() {
           <h4 className="font-display font-semibold mb-4 text-sm">Shop</h4>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link to="/products" className="hover:text-foreground">All products</Link></li>
+            <li><Link to="/vendors" className="hover:text-foreground">Verified stores</Link></li>
             <li><Link to="/categories" className="hover:text-foreground">Categories</Link></li>
             <li><Link to="/flash-sale" className="hover:text-foreground">Flash Sales</Link></li>
           </ul>
@@ -41,12 +42,20 @@ export default function Footer() {
         <div>
           <h4 className="font-display font-semibold mb-4 text-sm">Business</h4>
           <p className="text-sm text-muted-foreground mb-3">Apply to sell verified products through XPOSE.</p>
-          <Link
-            to="/sell-on-xpose"
-            className="inline-flex h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 items-center"
-          >
-            Sell on XPOSE
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/sell-on-xpose"
+              className="inline-flex h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 items-center"
+            >
+              Sell on XPOSE
+            </Link>
+            <Link
+              to="/vendor/login"
+              className="inline-flex h-10 px-4 rounded-md border border-border bg-background text-sm font-medium hover:bg-secondary items-center"
+            >
+              Vendor login
+            </Link>
+          </div>
         </div>
       </div>
       <div className="border-t border-border">

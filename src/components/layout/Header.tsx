@@ -13,9 +13,9 @@ import Wordmark from "@/components/brand/Wordmark";
 const navLinks = [
   { to: "/", label: "Home" },
   { to: "/products", label: "Shop" },
+  { to: "/vendors", label: "Stores" },
   { to: "/flash-sale", label: "Flash Sale" },
   { to: "/categories", label: "Categories" },
-  { to: "/route-delivery", label: "Routes" },
   { to: "/track-order", label: "Track" },
 ];
 

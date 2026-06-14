@@ -61,6 +61,13 @@ export interface Product {
   min_order_qty?: number;
   order_qty_step?: number;
   selling_unit_label?: string;
+  vendor_id?: number | string | null;
+  product_owner_type?: "xpose" | "vendor" | string;
+  vendor_store_name?: string | null;
+  vendor_store_slug?: string | null;
+  vendor_verification_status?: string | null;
+  vendor_verification_badge_label?: string | null;
+  vendor_verified?: boolean;
   // Flash sale fields from API
   discounted_price?: number;
   flash_sale_id?: number;

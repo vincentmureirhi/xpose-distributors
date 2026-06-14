@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ShoppingBag, Flame } from "lucide-react";
+import { BadgeCheck, ShoppingBag, Flame } from "lucide-react";
 import { useRef } from "react";
 import type { Product } from "@/types/shop";
 import { useCart, formatPrice } from "@/context/CartContext";
@@ -83,6 +83,7 @@ export default function ProductCard({ product, index = 0 }: Props) {
   const originalPrice = hasFlashDeal ? (localBasePrice || product.retail_price || 0) : null;
   const baseTierLabel = formatPrimaryPriceLabel(baseTier, sellingUnit);
   const tierLabel = (tier: typeof baseTier) => formatTierLabel(tier, sellingUnit);
+  const vendorVerified = Boolean(product.vendor_verified || product.vendor_verification_status === "verified");
 
   const runFlyToCart = () => {
     if (typeof window === "undefined" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -187,6 +188,16 @@ export default function ProductCard({ product, index = 0 }: Props) {
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span className="truncate">{product.category_name}</span>
           </div>
+          {vendorVerified && product.vendor_store_name && product.vendor_store_slug && (
+            <Link
+              to={`/vendors/${product.vendor_store_slug}`}
+              className="inline-flex max-w-full items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100"
+              title={product.vendor_verification_badge_label || "Verified by XPOSE"}
+            >
+              <BadgeCheck className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="truncate">{product.vendor_store_name}</span>
+            </Link>
+          )}
           <Link to={`/products/${product.id}`}>
             <h3 className="font-medium text-sm leading-snug line-clamp-2 hover:text-accent transition-colors min-h-[2.5rem]">{product.name}</h3>
           </Link>
