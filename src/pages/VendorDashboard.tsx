@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock3,
   Eye,
+  ImagePlus,
   Loader2,
   LockKeyhole,
   LogOut,
@@ -37,6 +38,10 @@ import {
   type VendorProductSubmission,
 } from "@/lib/api/vendor-portal";
 import type { Category } from "@/types/shop";
+
+const CLOUDINARY_CLOUD_NAME = "dwvmsjgvd";
+const CLOUDINARY_UPLOAD_PRESET = "ecommerce_products";
+const MAX_VENDOR_IMAGE_MB = 8;
 
 const emptyProductForm = {
   product_name: "",
@@ -77,6 +82,34 @@ function statusTone(status: string) {
   }
 }
 
+async function uploadVendorImage(file: File, folder: string) {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Please choose an image file.");
+  }
+
+  const maxBytes = MAX_VENDOR_IMAGE_MB * 1024 * 1024;
+  if (file.size > maxBytes) {
+    throw new Error(`Image is too large. Keep uploads below ${MAX_VENDOR_IMAGE_MB}MB.`);
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+  formData.append("folder", folder);
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+    method: "POST",
+    body: formData,
+  });
+
+  const result = await response.json();
+  if (!response.ok || !result.secure_url) {
+    throw new Error(result.error?.message || "Image upload failed.");
+  }
+
+  return String(result.secure_url);
+}
+
 function StatusIcon({ status }: { status: string }) {
   if (status === "approved") return <CheckCircle2 className="h-4 w-4" />;
   if (status === "rejected") return <XCircle className="h-4 w-4" />;
@@ -105,6 +138,7 @@ export default function VendorDashboard() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
+  const [uploadingAsset, setUploadingAsset] = useState<null | "product" | "logo" | "banner">(null);
   const [profileForm, setProfileForm] = useState({
     public_description: "",
     support_phone: "",
@@ -245,6 +279,33 @@ export default function VendorDashboard() {
       });
     } finally {
       setSavingProduct(false);
+    }
+  }
+
+  async function handleImageUpload(files: FileList | null, target: "product" | "logo" | "banner") {
+    const file = files?.[0];
+    if (!file) return;
+
+    setUploadingAsset(target);
+    try {
+      const folder = target === "product" ? "ecommerce/vendors/products" : "ecommerce/vendors/stores";
+      const imageUrl = await uploadVendorImage(file, folder);
+
+      if (target === "product") {
+        setProductForm((current) => ({ ...current, image_url: imageUrl }));
+      } else if (target === "logo") {
+        setProfileForm((current) => ({ ...current, logo_url: imageUrl }));
+      } else {
+        setProfileForm((current) => ({ ...current, banner_url: imageUrl }));
+      }
+
+      toast.success("Image uploaded");
+    } catch (error) {
+      toast.error("Image upload failed", {
+        description: error instanceof Error ? error.message : "Please try another image.",
+      });
+    } finally {
+      setUploadingAsset(null);
     }
   }
 
@@ -524,9 +585,17 @@ export default function VendorDashboard() {
               <Field label="Order step" id="vendor-step">
                 <Input id="vendor-step" type="number" min="1" required value={productForm.order_qty_step} onChange={(e) => setProductForm((f) => ({ ...f, order_qty_step: e.target.value }))} />
               </Field>
-              <Field label="Image URL" id="vendor-image">
-                <Input id="vendor-image" value={productForm.image_url} onChange={(e) => setProductForm((f) => ({ ...f, image_url: e.target.value }))} />
-              </Field>
+              <div className="md:col-span-2">
+                <MediaUploadControl
+                  label="Product photo"
+                  inputId="vendor-image"
+                  imageUrl={productForm.image_url}
+                  uploading={uploadingAsset === "product"}
+                  placeholder="Paste product image URL"
+                  onFileChange={(files) => handleImageUpload(files, "product")}
+                  onUrlChange={(value) => setProductForm((f) => ({ ...f, image_url: value }))}
+                />
+              </div>
               <div className="space-y-1.5 md:col-span-2">
                 <Label htmlFor="vendor-description">Description</Label>
                 <Textarea id="vendor-description" rows={3} value={productForm.description} onChange={(e) => setProductForm((f) => ({ ...f, description: e.target.value }))} />
@@ -615,12 +684,25 @@ export default function VendorDashboard() {
               <Field label="Website" id="vendor-website">
                 <Input id="vendor-website" value={profileForm.website_url} onChange={(e) => setProfileForm((f) => ({ ...f, website_url: e.target.value }))} />
               </Field>
-              <Field label="Logo URL" id="vendor-logo">
-                <Input id="vendor-logo" value={profileForm.logo_url} onChange={(e) => setProfileForm((f) => ({ ...f, logo_url: e.target.value }))} />
-              </Field>
-              <Field label="Banner URL" id="vendor-banner">
-                <Input id="vendor-banner" value={profileForm.banner_url} onChange={(e) => setProfileForm((f) => ({ ...f, banner_url: e.target.value }))} />
-              </Field>
+              <MediaUploadControl
+                label="Store logo"
+                inputId="vendor-logo"
+                imageUrl={profileForm.logo_url}
+                uploading={uploadingAsset === "logo"}
+                placeholder="Paste logo URL"
+                onFileChange={(files) => handleImageUpload(files, "logo")}
+                onUrlChange={(value) => setProfileForm((f) => ({ ...f, logo_url: value }))}
+              />
+              <MediaUploadControl
+                label="Store banner"
+                inputId="vendor-banner"
+                imageUrl={profileForm.banner_url}
+                uploading={uploadingAsset === "banner"}
+                placeholder="Paste banner URL"
+                widePreview
+                onFileChange={(files) => handleImageUpload(files, "banner")}
+                onUrlChange={(value) => setProfileForm((f) => ({ ...f, banner_url: value }))}
+              />
               <div className="space-y-1.5">
                 <Label htmlFor="store-visibility">Visibility</Label>
                 <select
@@ -719,6 +801,68 @@ function Field({ label, id, children }: { label: string; id: string; children: R
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function MediaUploadControl({
+  label,
+  inputId,
+  imageUrl,
+  uploading,
+  placeholder,
+  widePreview = false,
+  onFileChange,
+  onUrlChange,
+}: {
+  label: string;
+  inputId: string;
+  imageUrl: string;
+  uploading: boolean;
+  placeholder: string;
+  widePreview?: boolean;
+  onFileChange: (files: FileList | null) => void;
+  onUrlChange: (value: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={`${inputId}-file`}>{label}</Label>
+      <div className="rounded-xl border border-border bg-secondary/35 p-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div
+            className={`grid shrink-0 place-items-center overflow-hidden rounded-lg bg-background ${
+              widePreview ? "h-24 w-full sm:w-40" : "h-24 w-24"
+            }`}
+          >
+            {imageUrl ? (
+              <img src={imageUrl} alt="" className="h-full w-full object-contain p-2" />
+            ) : (
+              <ImagePlus className="h-7 w-7 text-muted-foreground" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1 space-y-2">
+            <Input
+              id={`${inputId}-file`}
+              type="file"
+              accept="image/*"
+              disabled={uploading}
+              onChange={(event) => {
+                onFileChange(event.target.files);
+                event.currentTarget.value = "";
+              }}
+            />
+            <Input
+              id={inputId}
+              value={imageUrl}
+              placeholder={placeholder}
+              onChange={(event) => onUrlChange(event.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              {uploading ? "Uploading image..." : "Upload from this device, or paste an existing image URL."}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
