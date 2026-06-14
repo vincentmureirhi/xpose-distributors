@@ -27,7 +27,6 @@ export default function Footer() {
             <li><Link to="/products" className="hover:text-foreground">All products</Link></li>
             <li><Link to="/categories" className="hover:text-foreground">Categories</Link></li>
             <li><Link to="/flash-sale" className="hover:text-foreground">Flash Sales</Link></li>
-            <li><Link to="/route-delivery" className="hover:text-foreground">Route delivery</Link></li>
           </ul>
         </div>
         <div>
@@ -40,13 +39,13 @@ export default function Footer() {
           </ul>
         </div>
         <div>
-          <h4 className="font-display font-semibold mb-4 text-sm">Latest Blog</h4>
-          <p className="text-sm text-muted-foreground mb-3">Product guides, tips, and deals.</p>
+          <h4 className="font-display font-semibold mb-4 text-sm">Business</h4>
+          <p className="text-sm text-muted-foreground mb-3">Apply to sell verified products through XPOSE.</p>
           <Link
-            to="/blog"
+            to="/sell-on-xpose"
             className="inline-flex h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 items-center"
           >
-            Read blog
+            Sell on XPOSE
           </Link>
         </div>
       </div>

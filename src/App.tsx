@@ -21,9 +21,9 @@ import TrackOrder from "./pages/TrackOrder";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import Terms from "./pages/Terms";
+import VendorApply from "./pages/VendorApply";
 import NotFound from "./pages/NotFound";
 import FlashSalePage from "./pages/FlashSalePage";
-import RouteDeliveryApply from "./pages/RouteDeliveryApply";
 import SalesRepLogin from "./pages/SalesRepLogin";
 import SalesRepChangePassword from "./pages/SalesRepChangePassword";
 import SalesRepLocationAccess from "./pages/SalesRepLocationAccess";
@@ -70,8 +70,8 @@ const App = () => (
                   <Route path="/blog" element={<Blog />} />
                   <Route path="/blog/:id" element={<BlogPost />} />
                   <Route path="/flash-sale" element={<FlashSalePage />} />
-                  <Route path="/route-delivery" element={<RouteDeliveryApply />} />
                   <Route path="/terms" element={<Terms />} />
+                  <Route path="/sell-on-xpose" element={<VendorApply />} />
                   <Route path="/login" element={<Navigate to="/sales-rep/login" replace />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
