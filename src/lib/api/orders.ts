@@ -14,6 +14,8 @@ export interface GuestCheckoutPayload {
   customer_location_id?: string;
   route_area?: string;
   route_notes?: string;
+  requested_credit_limit?: number;
+  credit_limit_request_reason?: string;
   items: { product_id: string | number; quantity: number; unit_price?: number }[];
 }
 

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, CreditCard, FileText, Loader2, MapPin, Phone, Search, User, Truck, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CreditCard, FileText, Loader2, MapPin, Phone, Search, ShieldCheck, User, Truck, X } from "lucide-react";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +71,16 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 type CheckoutWorkflow = "self_service" | "sales_rep";
 
+interface RouteCreditLimitError {
+  credit_limit?: number;
+  current_balance?: number;
+  available_credit?: number;
+  order_amount?: number;
+  projected_balance?: number;
+  shortfall?: number;
+  minimum_required_credit_limit?: number;
+}
+
 function toLocalTrackingPath(trackingUrl?: string, fallbackId?: string) {
   if (trackingUrl) {
     try {
@@ -99,6 +109,30 @@ function rememberRecentOrder(orderId: string, trackingUrl?: string) {
   } catch {
     // Local storage can fail in private browsing; tracking still works through the visible code/link.
   }
+}
+
+function toAmount(value: unknown, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function getRouteCredit(customer?: RouteCustomer | null, orderTotal = 0) {
+  const creditLimit = toAmount(customer?.credit_limit);
+  const currentBalance = toAmount(customer?.current_balance);
+  const availableCredit =
+    customer?.available_credit == null ? Math.max(creditLimit - currentBalance, 0) : toAmount(customer.available_credit);
+  const projectedBalance = currentBalance + orderTotal;
+  const shortfall = Math.max(projectedBalance - creditLimit, 0);
+
+  return {
+    creditLimit,
+    currentBalance,
+    availableCredit,
+    projectedBalance,
+    shortfall,
+    minimumRequiredCreditLimit: projectedBalance,
+    isCreditActive: customer?.is_credit_active !== false,
+  };
 }
 
 function resolveRepOperationBlockReason(params: {
@@ -161,6 +195,12 @@ export default function Checkout() {
     location_id: "",
     notes: "",
   });
+  const [creditIncreaseForm, setCreditIncreaseForm] = useState({
+    requested_limit: "",
+    reason: "",
+  });
+  const [creditIncreaseAccepted, setCreditIncreaseAccepted] = useState(false);
+  const [creditLimitError, setCreditLimitError] = useState<RouteCreditLimitError | null>(null);
 
   const [locationQuery, setLocationQuery] = useState("");
   const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
@@ -315,7 +355,7 @@ export default function Checkout() {
       listRouteCustomers({
         region_id: selectedRegionId,
         location_id: selectedLocationId || undefined,
-        search: query.length >= 2 ? query : undefined,
+        search: query.length >= 1 ? query : undefined,
         limit: 75,
       })
         .then((backendCustomers) => {
@@ -332,7 +372,7 @@ export default function Checkout() {
           if (!active) return;
           setLoadingRouteCustomers(false);
         });
-    }, 300);
+    }, 220);
 
     return () => {
       active = false;
@@ -365,6 +405,7 @@ export default function Checkout() {
   };
 
   const applyRouteCustomer = (customer: RouteCustomer) => {
+    setCreditLimitError(null);
     setSelectedRouteCustomerId(customer.id);
     setValue("customer_name", customer.name, { shouldValidate: true });
     setValue("customer_phone", customer.phone, { shouldValidate: true });
@@ -379,6 +420,23 @@ export default function Checkout() {
   };
 
   const selectedRouteCustomer = routeCustomers.find((c) => c.id === selectedRouteCustomerId);
+  const selectedRouteCredit = useMemo(
+    () => getRouteCredit(selectedRouteCustomer, totalAmount),
+    [selectedRouteCustomer, totalAmount]
+  );
+  const routeCreditInactive =
+    workflow === "sales_rep" && selectedRouteCustomer && !selectedRouteCredit.isCreditActive;
+  const routeCreditExceeded =
+    workflow === "sales_rep" &&
+    selectedRouteCustomer &&
+    selectedRouteCredit.isCreditActive &&
+    selectedRouteCredit.shortfall > 0;
+  const requestedCreditLimit = toAmount(creditIncreaseForm.requested_limit, NaN);
+  const creditIncreaseReady =
+    !routeCreditExceeded ||
+    (creditIncreaseAccepted &&
+      Number.isFinite(requestedCreditLimit) &&
+      requestedCreditLimit >= selectedRouteCredit.minimumRequiredCreditLimit);
   const filteredRouteCustomers = useMemo(() => {
     const q = routeCustomerSearch.trim().toLowerCase();
     if (!q) return routeCustomers;
@@ -388,6 +446,22 @@ export default function Checkout() {
         .some((value) => String(value).toLowerCase().includes(q))
     );
   }, [routeCustomerSearch, routeCustomers]);
+
+  useEffect(() => {
+    setCreditLimitError(null);
+    setCreditIncreaseAccepted(false);
+    setCreditIncreaseForm({
+      requested_limit:
+        selectedRouteCustomer && selectedRouteCredit.shortfall > 0
+          ? String(Math.ceil(selectedRouteCredit.minimumRequiredCreditLimit))
+          : "",
+      reason: "",
+    });
+  }, [
+    selectedRouteCustomer?.id,
+    selectedRouteCredit.minimumRequiredCreditLimit,
+    selectedRouteCredit.shortfall,
+  ]);
 
   useEffect(() => {
     if (workflow !== "sales_rep" || !selectedRouteCustomerId) return;
@@ -483,6 +557,9 @@ export default function Checkout() {
   };
 
   const clearSelectedRouteCustomer = () => {
+    setCreditLimitError(null);
+    setCreditIncreaseAccepted(false);
+    setCreditIncreaseForm({ requested_limit: "", reason: "" });
     setSelectedRouteCustomerId("");
     setValue("customer_name", "", { shouldValidate: true });
     setValue("customer_phone", "", { shouldValidate: true });
@@ -582,6 +659,19 @@ export default function Checkout() {
         navigate("/sales-rep/login");
         return;
       }
+      if (routeCreditInactive) {
+        toast.error("Credit account is inactive", {
+          description: "Ask admin to reactivate this route customer's credit account before taking an order.",
+        });
+        return;
+      }
+      if (routeCreditExceeded && !creditIncreaseReady) {
+        const minimumLimit = formatPrice(selectedRouteCredit.minimumRequiredCreditLimit);
+        toast.error("Credit limit exceeded", {
+          description: `This order needs at least ${minimumLimit}. Reduce the cart or request a temporary limit increase.`,
+        });
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -617,6 +707,12 @@ export default function Checkout() {
             customer_location_id: selectedRouteCustomer.customer_location_id,
             route_area: selectedRouteCustomer.route_area || selectedRouteCustomer.location || selectedRegion?.name || repArea,
             route_notes: selectedRouteCustomer.notes || undefined,
+            ...(routeCreditExceeded && {
+              requested_credit_limit: requestedCreditLimit,
+              credit_limit_request_reason:
+                creditIncreaseForm.reason.trim() ||
+                `Temporary route credit increase requested by ${repDisplayName} during order capture.`,
+            }),
           }),
         items: cartItems.map((i) => {
           const ev = evaluations[i.id];
@@ -631,9 +727,38 @@ export default function Checkout() {
         trackingUrl: result.tracking_url,
       });
     } catch (e) {
-      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      const err = e as {
+        response?: {
+          data?: {
+            message?: string;
+            error?: string;
+            code?: string;
+            details?: RouteCreditLimitError;
+          };
+        };
+        message?: string;
+      };
+      const apiError = err.response?.data;
+      if (apiError?.code === "ROUTE_CREDIT_LIMIT_EXCEEDED" && apiError.details) {
+        setCreditLimitError(apiError.details);
+        setCreditIncreaseAccepted(false);
+        setCreditIncreaseForm((current) => ({
+          ...current,
+          requested_limit: String(Math.ceil(toAmount(apiError.details?.minimum_required_credit_limit))),
+        }));
+        toast.error("Credit limit exceeded", {
+          description: `Available credit is ${formatPrice(toAmount(apiError.details.available_credit))}. Request a temporary increase or reduce the cart.`,
+        });
+        return;
+      }
+      if (apiError?.code === "ROUTE_CREDIT_INACTIVE") {
+        toast.error("Credit account is inactive", {
+          description: "Admin must reactivate this route customer before a route order can be captured.",
+        });
+        return;
+      }
       toast.error("Could not place order", {
-        description: err?.response?.data?.message || err.message || "Please try again.",
+        description: apiError?.message || apiError?.error || err.message || "Please try again.",
       });
     } finally {
       setSubmitting(false);
@@ -915,11 +1040,109 @@ export default function Checkout() {
                   </div>
 
                   {selectedRouteCustomer && (
-                    <div className="min-w-0 rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm">
-                      <p className="font-semibold">Ordering for: {selectedRouteCustomer.name}</p>
-                      <p className="break-words text-muted-foreground">
-                        {selectedRouteCustomer.phone} - {selectedRouteCustomer.location_name || selectedRouteCustomer.location}
-                      </p>
+                    <div className="min-w-0 rounded-xl border border-accent/30 bg-accent/5 p-3 text-sm sm:p-4">
+                      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <ShieldCheck className="h-4 w-4 text-accent" />
+                            <p className="font-semibold">Ordering for {selectedRouteCustomer.name}</p>
+                          </div>
+                          <p className="mt-1 break-words text-muted-foreground">
+                            {selectedRouteCustomer.phone} - {selectedRouteCustomer.location_name || selectedRouteCustomer.location}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            "inline-flex w-fit rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider",
+                            routeCreditInactive
+                              ? "bg-destructive/10 text-destructive"
+                              : routeCreditExceeded
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-emerald-100 text-emerald-700"
+                          )}
+                        >
+                          {routeCreditInactive ? "Credit inactive" : routeCreditExceeded ? "Needs approval" : "Within limit"}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {[
+                          ["Limit", selectedRouteCredit.creditLimit],
+                          ["Available", selectedRouteCredit.availableCredit],
+                          ["Balance", selectedRouteCredit.currentBalance],
+                          ["This order", totalAmount],
+                        ].map(([label, value]) => (
+                          <div key={String(label)} className="rounded-lg border border-border/60 bg-background/80 p-2">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+                            <p className="mt-1 text-sm font-bold">{formatPrice(Number(value))}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {routeCreditInactive && (
+                        <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                          This route customer's credit account is inactive. Admin must reactivate it before a route order can be captured.
+                        </div>
+                      )}
+
+                      {(routeCreditExceeded || creditLimitError) && !routeCreditInactive && (
+                        <div className="mt-3 space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950">
+                          <div className="flex gap-2">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                            <div>
+                              <p className="font-semibold">Credit limit exceeded by {formatPrice(toAmount(creditLimitError?.shortfall, selectedRouteCredit.shortfall))}</p>
+                              <p className="mt-1">
+                                Reduce the cart or request a temporary limit of at least{" "}
+                                <span className="font-semibold">
+                                  {formatPrice(toAmount(creditLimitError?.minimum_required_credit_limit, selectedRouteCredit.minimumRequiredCreditLimit))}
+                                </span>.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
+                            <div className="space-y-1">
+                              <Label htmlFor="requested-credit-limit" className="text-[11px] font-semibold uppercase tracking-wider">
+                                Requested limit
+                              </Label>
+                              <Input
+                                id="requested-credit-limit"
+                                type="number"
+                                min={Math.ceil(selectedRouteCredit.minimumRequiredCreditLimit)}
+                                value={creditIncreaseForm.requested_limit}
+                                onChange={(event) =>
+                                  setCreditIncreaseForm((current) => ({ ...current, requested_limit: event.target.value }))
+                                }
+                                className="h-10 bg-white"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor="credit-request-reason" className="text-[11px] font-semibold uppercase tracking-wider">
+                                Reason
+                              </Label>
+                              <Input
+                                id="credit-request-reason"
+                                value={creditIncreaseForm.reason}
+                                onChange={(event) =>
+                                  setCreditIncreaseForm((current) => ({ ...current, reason: event.target.value }))
+                                }
+                                placeholder="Example: customer has approved shop restock"
+                                className="h-10 bg-white"
+                              />
+                            </div>
+                          </div>
+                          <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-white/70 p-2">
+                            <input
+                              type="checkbox"
+                              checked={creditIncreaseAccepted}
+                              onChange={(event) => setCreditIncreaseAccepted(event.target.checked)}
+                              className="mt-0.5"
+                            />
+                            <span>
+                              Request this temporary limit with the order. Admin will review whether the new limit should remain.
+                            </span>
+                          </label>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1114,7 +1337,7 @@ export default function Checkout() {
               <Button
                 type="submit"
                 size="lg"
-                disabled={submitting || repOperationsBlocked}
+                disabled={submitting || repOperationsBlocked || Boolean(routeCreditInactive) || Boolean(routeCreditExceeded && !creditIncreaseReady)}
                 className="h-auto min-h-14 w-full whitespace-normal bg-gradient-accent px-4 py-3 text-center text-sm font-semibold text-accent-foreground shadow-glow sm:text-base"
               >
                 {submitting ? (
@@ -1123,8 +1346,14 @@ export default function Checkout() {
                   </>
                 ) : repOperationsBlocked ? (
                   "Enable location to capture route order"
+                ) : routeCreditInactive ? (
+                  "Credit account inactive"
+                ) : routeCreditExceeded && !creditIncreaseReady ? (
+                  "Credit limit exceeded"
+                ) : routeCreditExceeded ? (
+                  `Request increase and capture order - ${formatPrice(totalAmount)}`
                 ) : (
-                  `${workflow === "sales_rep" ? "Capture route order" : "Place order"} — ${formatPrice(totalAmount)}`
+                  `${workflow === "sales_rep" ? "Capture route order" : "Place order"} - ${formatPrice(totalAmount)}`
                 )}
               </Button>
             </motion.div>
@@ -1151,6 +1380,16 @@ export default function Checkout() {
                 <p className="text-muted-foreground">
                   {selectedRouteCustomer.name} - {selectedRouteCustomer.location}
                 </p>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-md bg-background/80 p-2">
+                    <span className="block text-muted-foreground">Available credit</span>
+                    <span className="font-semibold">{formatPrice(selectedRouteCredit.availableCredit)}</span>
+                  </div>
+                  <div className="rounded-md bg-background/80 p-2">
+                    <span className="block text-muted-foreground">After this order</span>
+                    <span className="font-semibold">{formatPrice(selectedRouteCredit.projectedBalance)}</span>
+                  </div>
+                </div>
               </div>
             )}
             <div className="mb-4 space-y-3 sm:hidden">

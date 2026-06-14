@@ -18,6 +18,13 @@ interface BackendRouteCustomer {
   region_id?: string | number;
   region_name?: string;
   sales_rep_id?: string | number;
+  credit_limit?: string | number | null;
+  current_balance?: string | number | null;
+  available_credit?: string | number | null;
+  overdue_balance?: string | number | null;
+  is_credit_active?: boolean | null;
+  total_route_orders?: string | number | null;
+  last_route_order_at?: string | null;
   created_at?: string;
 }
 
@@ -38,6 +45,12 @@ export interface ListRouteCustomersOptions {
   location_id?: string;
   search?: string;
   limit?: number;
+}
+
+function toMoneyNumber(value: unknown): number | undefined {
+  if (value == null || value === "") return undefined;
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : undefined;
 }
 
 function normalizeRouteCustomer(input: BackendRouteCustomer): RouteCustomer | null {
@@ -63,6 +76,13 @@ function normalizeRouteCustomer(input: BackendRouteCustomer): RouteCustomer | nu
     region_id: input.region_id ? String(input.region_id) : undefined,
     region_name: input.region_name || undefined,
     sales_rep_id: input.sales_rep_id ? String(input.sales_rep_id) : undefined,
+    credit_limit: toMoneyNumber(input.credit_limit),
+    current_balance: toMoneyNumber(input.current_balance),
+    available_credit: toMoneyNumber(input.available_credit),
+    overdue_balance: toMoneyNumber(input.overdue_balance),
+    is_credit_active: input.is_credit_active == null ? true : Boolean(input.is_credit_active),
+    total_route_orders: toMoneyNumber(input.total_route_orders),
+    last_route_order_at: input.last_route_order_at || undefined,
     created_at: input.created_at || new Date().toISOString(),
   };
 }

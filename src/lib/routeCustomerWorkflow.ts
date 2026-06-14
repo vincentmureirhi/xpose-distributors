@@ -11,6 +11,13 @@ export interface RouteCustomer {
   sales_rep_id?: string;
   route_area?: string;
   notes?: string;
+  credit_limit?: number;
+  current_balance?: number;
+  available_credit?: number;
+  overdue_balance?: number;
+  is_credit_active?: boolean;
+  total_route_orders?: number;
+  last_route_order_at?: string;
   created_at: string;
 }
 
