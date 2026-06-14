@@ -172,7 +172,7 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
                 <CheckCircle2 className="h-8 w-8" />
               </div>
               <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-                {isRouteCredit ? "Route Order Captured" : "Order Placed Successfully!"}
+                {isRouteCredit ? "Route Order Sent to Dispatch" : "Order Placed Successfully!"}
               </h2>
               {orderId && (
                 <div className="mb-3 rounded-xl border border-border bg-secondary/45 p-3 text-left">
@@ -192,7 +192,7 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
               )}
               <p className="mb-4 text-sm text-muted-foreground">
                 {isRouteCredit
-                  ? "The credit order has been recorded for this route customer."
+                  ? "The route customer order has been captured and is now ready for admin dispatch planning."
                   : "Your order has been received. Complete your M-Pesa payment and we will start preparing it."}
               </p>
             </motion.div>
@@ -206,11 +206,17 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
               <div className="mb-2 flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
                 <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                  {hasPrivateTrackingLink ? "Private tracking link ready" : "Tracking access ready"}
+                  {isRouteCredit
+                    ? "Route order reference ready"
+                    : hasPrivateTrackingLink
+                      ? "Private tracking link ready"
+                      : "Tracking access ready"}
                 </p>
               </div>
               <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-                {hasPrivateTrackingLink
+                {isRouteCredit
+                  ? "Keep this order reference for dispatch, delivery confirmation, and route customer settlement."
+                  : hasPrivateTrackingLink
                   ? "Keep this link private. It opens this order without asking for the phone number again."
                   : "Use this page with your tracking code, or recover the order with phone, total, and delivery area."}
               </p>
@@ -240,7 +246,7 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
                   <p className="text-sm font-semibold text-foreground">Route credit order</p>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Payment can be reconciled during route customer settlement.
+                  The customer pays when goods arrive unless their approved credit terms apply.
                 </p>
               </motion.div>
             ) : (

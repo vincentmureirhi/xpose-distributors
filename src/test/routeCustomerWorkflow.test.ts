@@ -21,7 +21,7 @@ describe("routeCustomerWorkflow", () => {
     expect(customer.created_at).toBe("2026-05-10T10:00:00.000Z");
   });
 
-  it("builds auditable route-customer order notes with rep context", () => {
+  it("builds readable route-customer order notes with rep context", () => {
     const notes = buildRouteOrderNotes({
       rep_name: "Jane Rep",
       rep_phone: "0700000000",
@@ -38,12 +38,12 @@ describe("routeCustomerWorkflow", () => {
       captured_at: new Date("2026-05-10T09:30:00.000Z"),
     });
 
-    expect(notes).toContain("[ROUTE_CUSTOMER_ORDER]");
-    expect(notes).toContain("route_customer_id=route-1");
-    expect(notes).toContain("captured_by_rep=Jane Rep");
-    expect(notes).toContain("captured_by_rep_area=Nairobi West");
-    expect(notes).toContain("captured_at=2026-05-10T09:30:00.000Z");
-    expect(notes).toContain("order_notes=Deliver before 3pm");
+    expect(notes).not.toContain("[ROUTE_CUSTOMER_ORDER]");
+    expect(notes).toContain("Route customer: Shop 24 (0711222333)");
+    expect(notes).toContain("Delivery area: South B");
+    expect(notes).toContain("Captured by: Jane Rep (0700000000)");
+    expect(notes).toContain("Rep route: Nairobi West");
+    expect(notes).toContain("Order notes: Deliver before 3pm");
   });
 
   it("prefers backend customer ids for route order linkage", () => {

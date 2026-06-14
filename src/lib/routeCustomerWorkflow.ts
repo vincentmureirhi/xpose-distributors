@@ -11,13 +11,6 @@ export interface RouteCustomer {
   sales_rep_id?: string;
   route_area?: string;
   notes?: string;
-  credit_limit?: number;
-  current_balance?: number;
-  available_credit?: number;
-  overdue_balance?: number;
-  is_credit_active?: boolean;
-  total_route_orders?: number;
-  last_route_order_at?: string;
   created_at: string;
 }
 
@@ -92,26 +85,27 @@ export function mergeRouteCustomers(primary: RouteCustomer[], fallback: RouteCus
 }
 
 export function buildRouteOrderNotes(payload: RouteOrderNotePayload) {
-  const capturedAt = (payload.captured_at || new Date()).toISOString();
+  const repName = payload.rep_name.trim();
+  const repPhone = payload.rep_phone?.trim();
+  const repArea = payload.rep_area?.trim();
+  const customerNotes = payload.route_customer.notes?.trim();
+  const orderNotes = payload.order_notes?.trim();
+
   const lines = [
-    "[ROUTE_CUSTOMER_ORDER]",
-    `route_customer_id=${payload.route_customer.id}`,
-    `route_customer_name=${payload.route_customer.name}`,
-    `route_customer_phone=${payload.route_customer.phone}`,
-    `route_customer_location=${payload.route_customer.location}`,
-    `captured_by_rep=${payload.rep_name.trim()}`,
-    `captured_by_rep_phone=${payload.rep_phone?.trim() || "-"}`,
-    `captured_by_rep_area=${payload.rep_area?.trim() || "-"}`,
-    `captured_at=${capturedAt}`,
+    `Route customer: ${payload.route_customer.name} (${payload.route_customer.phone})`,
+    `Delivery area: ${payload.route_customer.location}`,
+    repName ? `Captured by: ${repName}${repPhone ? ` (${repPhone})` : ""}` : "",
+    repArea ? `Rep route: ${repArea}` : "",
+    "Settlement: pay on delivery or approved route credit.",
   ];
 
-  if (payload.route_customer.notes) {
-    lines.push(`route_customer_notes=${payload.route_customer.notes}`);
+  if (customerNotes) {
+    lines.push(`Customer route notes: ${customerNotes}`);
   }
 
-  if (payload.order_notes?.trim()) {
-    lines.push(`order_notes=${payload.order_notes.trim()}`);
+  if (orderNotes) {
+    lines.push(`Order notes: ${orderNotes}`);
   }
 
-  return lines.join("\n");
+  return lines.filter(Boolean).join("\n");
 }
