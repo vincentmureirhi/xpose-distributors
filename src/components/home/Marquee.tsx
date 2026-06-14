@@ -2,7 +2,7 @@ const items = [
   "Live catalogue pricing",
   "Carton, dozen, and piece rules shown clearly",
   "Secure order tracking links",
-  "Flash deals updated from admin",
+  "Fresh flash deals",
   "Route customer orders supported",
   "M-Pesa till payment: 711714",
   "Wholesale and retail checkout",

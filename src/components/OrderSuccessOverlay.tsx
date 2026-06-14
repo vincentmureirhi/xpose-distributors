@@ -192,7 +192,7 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
               )}
               <p className="mb-4 text-sm text-muted-foreground">
                 {isRouteCredit
-                  ? "The credit order has been recorded for this route customer and is ready for admin review."
+                  ? "The credit order has been recorded for this route customer."
                   : "Your order has been received. Complete your M-Pesa payment and we will start preparing it."}
               </p>
             </motion.div>
@@ -240,7 +240,7 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
                   <p className="text-sm font-semibold text-foreground">Route credit order</p>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Payment can be reconciled later by admin or during route customer settlement.
+                  Payment can be reconciled during route customer settlement.
                 </p>
               </motion.div>
             ) : (

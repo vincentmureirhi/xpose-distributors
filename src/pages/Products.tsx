@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  ArrowRight,
+  BadgePercent,
+  Boxes,
+  Clock3,
+  PackageCheck,
+  Search,
+  SlidersHorizontal,
+  TrendingUp,
+  Truck,
+  X,
+} from "lucide-react";
 import ProductCard from "@/components/products/ProductCard";
 import { listProducts } from "@/lib/api/products";
 import { listCategories } from "@/lib/api/categories";
@@ -31,6 +42,87 @@ function getProductPrice(product: Product) {
   return Number(product.discounted_price || product.retail_price || product.price || 0);
 }
 
+function hasFlashDeal(product: Product) {
+  return Boolean(product.is_flash || product.discounted_price != null);
+}
+
+function getStockState(product: Product) {
+  const rawStockQty = product.current_stock ?? product.stock;
+  const stockQty = Number(rawStockQty);
+  const hasStockQty = rawStockQty !== undefined && rawStockQty !== null && rawStockQty !== "" && Number.isFinite(stockQty);
+  const minQty = Math.max(1, Number(product.min_order_qty || 1));
+  const stockStatus = String(product.stock_status_override || product.stock_status || "").toLowerCase();
+
+  if (stockStatus === "out_of_stock" || (hasStockQty && stockQty <= 0) || (hasStockQty && stockQty > 0 && stockQty < minQty)) {
+    return "out_of_stock";
+  }
+
+  if (
+    stockStatus === "limited_stock" ||
+    stockStatus === "low_stock" ||
+    (hasStockQty && stockQty <= Math.max(minQty, 10))
+  ) {
+    return "limited_stock";
+  }
+
+  return "in_stock";
+}
+
+function getPrimaryUnit(product: Product) {
+  return product.selling_unit_label || product.price_tiers?.[0]?.unit || "piece";
+}
+
+function ProductStage({ products }: { products: Product[] }) {
+  const fallbackNames = ["Carton packs", "Tissue stock", "Route-ready"];
+  const cards = products.length
+    ? products
+    : fallbackNames.map((name, index) => ({ id: `fallback-${index}`, name, selling_unit_label: "stock" }) as Product);
+  const center = (cards.length - 1) / 2;
+
+  return (
+    <div className="relative min-h-[310px] overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] p-4 md:min-h-[360px]">
+      <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0_48%,rgba(255,255,255,.1)_49%,transparent_50%)] bg-[size:30px_30px] opacity-25" />
+      <div className="absolute -right-14 top-8 h-48 w-48 rounded-full border border-accent/25 bg-accent/10 blur-2xl" />
+      <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-xs font-semibold text-white/70">
+        <span className="text-accent">Live shelf:</span> in-stock products stay upfront.
+      </div>
+
+      <div className="relative mx-auto mt-8 h-60 max-w-md md:mt-12">
+        {cards.slice(0, 3).map((product, index) => {
+          const offset = index - center;
+          const limited = getStockState(product) === "limited_stock";
+          return (
+            <Link
+              key={product.id}
+              to={String(product.id).startsWith("fallback") ? "/products" : `/products/${product.id}`}
+              className="absolute left-1/2 top-1/2 block h-52 w-40 overflow-hidden rounded-2xl border border-white/60 bg-white p-3 text-slate-950 shadow-2xl transition-transform hover:-translate-y-1 md:h-60 md:w-44"
+              style={{
+                transform: `translate(-50%, -50%) translateX(${offset * 88}px) rotate(${offset * 6}deg)`,
+                zIndex: 20 - Math.abs(offset),
+              }}
+            >
+              <div className="flex h-32 items-center justify-center rounded-xl bg-slate-50 md:h-36">
+                {product.image_url ? (
+                  <img src={product.image_url} alt={product.name} className="h-full w-full object-contain p-2" />
+                ) : (
+                  <Boxes className="h-12 w-12 text-accent" />
+                )}
+              </div>
+              <p className="mt-3 line-clamp-2 text-sm font-black leading-tight">{product.name}</p>
+              <div className="mt-2 flex items-center justify-between gap-2 text-[11px] font-bold">
+                <span className="truncate text-slate-500">{getPrimaryUnit(product)}</span>
+                <span className={limited ? "text-amber-600" : "text-emerald-600"}>
+                  {limited ? "Limited" : "Ready"}
+                </span>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Products() {
   const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
@@ -43,6 +135,7 @@ export default function Products() {
   const min = params.get("min") || "";
   const max = params.get("max") || "";
   const flashOnly = params.get("flash") === "1";
+  const stockFilter = params.get("stock") || "";
 
   const setParam = (k: string, v: string) => {
     const next = new URLSearchParams(params);
@@ -69,7 +162,9 @@ export default function Products() {
     const maxPrice = max ? Number(max) : null;
 
     const filtered = products.filter((product) => {
-      if (flashOnly && !(product.is_flash || product.discounted_price != null)) return false;
+      if (flashOnly && !hasFlashDeal(product)) return false;
+      if (stockFilter === "limited" && getStockState(product) !== "limited_stock") return false;
+      if (stockFilter === "ready" && getStockState(product) === "out_of_stock") return false;
 
       if (query) {
         const words = query.split(/\s+/).filter(Boolean);
@@ -94,13 +189,58 @@ export default function Products() {
       if (sort === "price-desc") return priceB - priceA;
       if (sort === "name-asc") return String(a.name || "").localeCompare(String(b.name || ""));
 
-      const aBoost = (a.is_flash || a.discounted_price != null ? 2 : 0) + (a.stock_status === "limited_stock" ? 1 : 0);
-      const bBoost = (b.is_flash || b.discounted_price != null ? 2 : 0) + (b.stock_status === "limited_stock" ? 1 : 0);
+      const aBoost = (hasFlashDeal(a) ? 2 : 0) + (getStockState(a) === "limited_stock" ? 1 : 0);
+      const bBoost = (hasFlashDeal(b) ? 2 : 0) + (getStockState(b) === "limited_stock" ? 1 : 0);
       return bBoost - aBoost;
     });
-  }, [category, flashOnly, max, min, products, search, sort]);
+  }, [category, flashOnly, max, min, products, search, sort, stockFilter]);
 
   const resultCount = visibleProducts.length;
+  const selectedCategory = categories.find((item) => String(item.id) === category);
+  const flashCount = products.filter(hasFlashDeal).length;
+  const limitedCount = products.filter((product) => getStockState(product) === "limited_stock").length;
+  const readyCount = products.filter((product) => getStockState(product) !== "out_of_stock").length;
+  const categoryCount = categories.length;
+  const stageProducts = useMemo(() => {
+    const source = visibleProducts.length ? visibleProducts : products;
+    return source
+      .filter((product) => getStockState(product) !== "out_of_stock")
+      .sort((a, b) => {
+        const aScore = (hasFlashDeal(a) ? 3 : 0) + (getStockState(a) === "limited_stock" ? 2 : 0);
+        const bScore = (hasFlashDeal(b) ? 3 : 0) + (getStockState(b) === "limited_stock" ? 2 : 0);
+        return bScore - aScore;
+      })
+      .slice(0, 3);
+  }, [products, visibleProducts]);
+
+  const headline = flashOnly
+    ? "Flash deals ready to order"
+    : search.trim()
+      ? `Stock matching "${search.trim()}"`
+      : selectedCategory
+        ? `${selectedCategory.name} stock`
+        : "Shop trade stock";
+
+  const quickActions = [
+    {
+      label: "Flash deals",
+      icon: BadgePercent,
+      action: () => setParam("flash", flashOnly ? "" : "1"),
+      active: flashOnly,
+    },
+    {
+      label: "Bulk value",
+      icon: Boxes,
+      action: () => setParam("sort", sort === "price-asc" ? "" : "price-asc"),
+      active: sort === "price-asc",
+    },
+    {
+      label: "Limited stock",
+      icon: Clock3,
+      action: () => setParam("stock", stockFilter === "limited" ? "" : "limited"),
+      active: stockFilter === "limited",
+    },
+  ];
 
   const filterFields = (
     <div className="space-y-5">
@@ -143,47 +283,118 @@ export default function Products() {
 
   return (
     <div className="container py-10 md:py-14">
-      <div className="mb-8">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Catalog</p>
-        <h1 className="font-display font-bold text-4xl md:text-6xl tracking-tight">
-          {flashOnly ? "Flash sale products" : "All products"}
-        </h1>
-        <p className="text-muted-foreground mt-2">Discover curated picks across every category.</p>
-      </div>
+      <section className="mb-7 overflow-hidden rounded-3xl border border-border bg-[#0b0f14] text-white shadow-soft">
+        <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="relative overflow-hidden p-6 md:p-8 lg:p-10">
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,91,46,0.18)_0,transparent_36%),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.045)_1px,transparent_1px)] bg-[size:auto,44px_44px,44px_44px]" />
+            <div className="relative">
+              <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-black uppercase tracking-wider text-white/70">
+                <PackageCheck className="h-3.5 w-3.5 text-accent" />
+                XPOSE stock room
+              </p>
+              <h1 className="max-w-2xl font-display text-4xl font-black leading-none tracking-tight md:text-6xl">
+                {headline}
+              </h1>
+              <p className="mt-4 max-w-xl text-base leading-7 text-white/68">
+                Cartons, pieces, hygiene lines, snacks, flash deals, and route-ready packs in one fast catalogue.
+              </p>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setParam("search", e.target.value)}
-            placeholder="Search products..."
-            className="pl-10 h-11"
-          />
+              <div className="mt-6 flex flex-wrap gap-2">
+                {quickActions.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={item.action}
+                      className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold transition-colors ${
+                        item.active
+                          ? "border-accent bg-accent text-accent-foreground"
+                          : "border-white/15 bg-white/5 text-white hover:border-accent/60"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+                <Link
+                  to="/flash-sale"
+                  className="inline-flex h-10 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 text-sm font-bold text-white transition-colors hover:border-accent/60"
+                >
+                  Deal room <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+
+              <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+                {[
+                  { label: "Ready items", value: readyCount, icon: PackageCheck },
+                  { label: "Flash deals", value: flashCount, icon: BadgePercent },
+                  { label: "Limited stock", value: limitedCount, icon: Clock3 },
+                  { label: "Categories", value: categoryCount, icon: Boxes },
+                ].map((stat) => {
+                  const Icon = stat.icon;
+                  return (
+                    <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/[0.055] p-4">
+                      <Icon className="mb-3 h-4 w-4 text-accent" />
+                      <p className="font-display text-2xl font-black leading-none">{stat.value}</p>
+                      <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-white/50">{stat.label}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 p-4 md:p-6 lg:border-l lg:border-t-0">
+            <ProductStage products={stageProducts} />
+          </div>
         </div>
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" className="h-11 lg:hidden">
-              <SlidersHorizontal className="h-4 w-4 mr-2" /> Filters
+      </section>
+
+      <div className="mb-7 rounded-2xl border border-border bg-card p-3 shadow-soft md:p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setParam("search", e.target.value)}
+              placeholder="Search by product, SKU, category, or selling unit"
+              className="h-12 rounded-xl pl-11 text-base"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant={flashOnly ? "default" : "outline"} className="h-12" onClick={() => setParam("flash", flashOnly ? "" : "1")}>
+              <BadgePercent className="mr-2 h-4 w-4" /> Flash
             </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-80">
-            <SheetHeader className="mb-6">
-              <SheetTitle>Filters</SheetTitle>
-              <SheetDescription className="sr-only">
-                Refine products by category, sort order, and price range.
-              </SheetDescription>
-            </SheetHeader>
-            {filterFields}
-          </SheetContent>
-        </Sheet>
+            <Button variant="outline" className="h-12" onClick={() => setParam("sort", "price-asc")}>
+              <TrendingUp className="mr-2 h-4 w-4" /> Value
+            </Button>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="h-12 lg:hidden">
+                  <SlidersHorizontal className="mr-2 h-4 w-4" /> Refine
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-80">
+                <SheetHeader className="mb-6">
+                  <SheetTitle>Refine</SheetTitle>
+                  <SheetDescription className="sr-only">
+                    Filter products by category, sort order, and price range.
+                  </SheetDescription>
+                </SheetHeader>
+                {filterFields}
+              </SheetContent>
+            </Sheet>
+          </div>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-[260px_1fr] gap-8">
         <aside className="hidden lg:block">
           <div className="sticky top-24 rounded-2xl border border-border bg-card p-5">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="font-display font-semibold">Filters</h3>
+              <h3 className="font-display font-semibold">Refine</h3>
               <span className="text-xs text-muted-foreground">{resultCount}</span>
             </div>
             {filterFields}
@@ -191,21 +402,29 @@ export default function Products() {
         </aside>
 
         <div>
-          <p className="text-sm text-muted-foreground mb-4">{resultCount} {resultCount === 1 ? "product" : "products"}</p>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-muted-foreground">
+              {resultCount} {resultCount === 1 ? "product" : "products"}
+            </p>
+            <div className="hidden items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground sm:inline-flex">
+              <Truck className="h-3.5 w-3.5 text-accent" />
+              Route and home orders ready
+            </div>
+          </div>
           {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 xl:grid-cols-4">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="aspect-square rounded-2xl bg-muted animate-pulse" />
               ))}
             </div>
           ) : visibleProducts.length === 0 ? (
             <div className="text-center py-20 rounded-2xl border border-dashed border-border">
-              <p className="font-display font-semibold text-lg">No products match your filters</p>
-              <p className="text-sm text-muted-foreground mt-1">Try clearing them and starting fresh.</p>
+              <p className="font-display font-semibold text-lg">No matching stock found</p>
+              <p className="text-sm text-muted-foreground mt-1">Clear filters or try another product name.</p>
               <Button variant="outline" className="mt-5" onClick={() => setParams({}, { replace: true })}>Clear filters</Button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 xl:grid-cols-4">
               {visibleProducts.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
             </div>
           )}

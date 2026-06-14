@@ -219,7 +219,7 @@ export default function FlashSalePage() {
           <Flame className="h-8 w-8 text-muted-foreground" />
         </div>
         <h1 className="font-display text-4xl font-black tracking-tight">No flash sale is live.</h1>
-        <p className="mx-auto mt-3 max-w-md text-muted-foreground">Fresh deals will appear here as soon as the admin starts a campaign.</p>
+        <p className="mx-auto mt-3 max-w-md text-muted-foreground">No live deal right now. Check back for the next drop.</p>
         <Button asChild className="mt-7">
           <Link to="/products">Browse products</Link>
         </Button>
@@ -290,7 +290,7 @@ export default function FlashSalePage() {
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-border py-16 text-center text-muted-foreground">
-                Products will appear here after they are added to this flash sale.
+                Products will appear here when the next deal is ready.
               </div>
             )}
           </div>

@@ -31,8 +31,8 @@ export function getProductPricingMessages(product: Product) {
     return {
       primary: `Flash price: ${formatPrice(flashPrice)} | Was ${formatPrice(retail)}`,
       secondary: product.flash_sale_end_date
-        ? `Flash sale ends ${new Date(product.flash_sale_end_date).toLocaleString()}`
-        : "Flash sale price applies at checkout",
+        ? `Ends ${new Date(product.flash_sale_end_date).toLocaleString()}`
+        : "Deal price",
     };
   }
 
@@ -42,10 +42,7 @@ export function getProductPricingMessages(product: Product) {
         wholesale > 0 && threshold > 0
           ? `Retail: ${formatPrice(retail)} | Wholesale: ${formatPrice(wholesale)} from ${threshold} pcs`
           : `Retail: ${formatPrice(retail)}`,
-      secondary:
-        threshold > 0
-          ? `Buy ${threshold} or more of this item to qualify for wholesale price`
-          : "Wholesale price applies once quantity requirement is met",
+      secondary: threshold > 0 ? `Wholesale from ${threshold} pcs` : "Wholesale available",
     };
   }
 
@@ -57,34 +54,34 @@ export function getProductPricingMessages(product: Product) {
           : `Retail: ${formatPrice(retail)}`,
       secondary:
         threshold > 0
-          ? `Mix products${groupName ? ` in ${groupName}` : ""} to qualify once total reaches ${threshold}`
-          : "Mix qualifying products to unlock wholesale pricing",
+          ? `${groupName ? `${groupName}: ` : ""}mix ${threshold}+ qualifying items`
+          : "Mix-and-save pricing",
     };
   }
 
   if (isRuleType(ruleType, "SKU_TIERED") || isRuleType(ruleType, "TIERED")) {
     return {
       primary: `Retail from ${formatPrice(retail)}`,
-      secondary: tiers.length > 1 ? "Price depends on quantity band" : "Quantity pricing applies",
+      secondary: tiers.length > 1 ? "Quantity bands available" : "Quantity pricing",
     };
   }
 
   if (isRuleType(ruleType, "GROUP_TIERED")) {
     return {
       primary: `Retail from ${formatPrice(retail)}`,
-      secondary: `Tiered group pricing applies when combined quantity${groupName ? ` in ${groupName}` : ""} increases`,
+      secondary: `${groupName ? `${groupName}: ` : ""}combined quantity bands`,
     };
   }
 
   if (retail > 0 && wholesale > 0 && wholesale < retail && threshold > 0) {
     return {
       primary: `Retail: ${formatPrice(retail)} | Wholesale: ${formatPrice(wholesale)} from ${threshold} pcs`,
-      secondary: `Buy ${threshold} or more of this item to qualify for wholesale price`,
+      secondary: `Wholesale from ${threshold} pcs`,
     };
   }
 
   return {
-    primary: retail > 0 ? `Retail: ${formatPrice(retail)}` : "Price available at checkout",
+    primary: retail > 0 ? `Retail: ${formatPrice(retail)}` : "Ask for price",
     secondary: undefined,
   };
 }
@@ -100,28 +97,28 @@ export function getCartPricingMessage(ev: PricingEvaluation | undefined, quantit
 
   if (ev.flash_sale_id || String(ev.pricing_label || "").toLowerCase() === "flash sale") {
     if (ev.flash_sale_end_date) {
-      return `Flash sale price locked until ${new Date(ev.flash_sale_end_date).toLocaleString()}`;
+      return `Flash price until ${new Date(ev.flash_sale_end_date).toLocaleString()}`;
     }
-    return "Flash sale price applied";
+    return "Flash price";
   }
 
   if (ruleType === "SKU_THRESHOLD") {
     if (eligible) return "Wholesale unlocked";
-    if (threshold > quantity) return `Add ${threshold - quantity} more to unlock wholesale`;
-    return "Retail price applied";
+    if (threshold > quantity) return `Add ${threshold - quantity} more for wholesale`;
+    return "Retail price";
   }
 
   if (ruleType === "GROUP_THRESHOLD") {
-    if (eligible) return "Group threshold reached — wholesale unlocked";
+    if (eligible) return "Group wholesale unlocked";
     if (threshold > 0) {
-      return `Group total: ${effectiveQty} / ${threshold} to qualify${group ? ` (${group})` : ""}`;
+      return `Group total: ${effectiveQty} / ${threshold}${group ? ` (${group})` : ""}`;
     }
-    return "Group threshold not yet reached";
+    return "Group wholesale pending";
   }
 
   if (ruleType === "SKU_TIERED" || ruleType === "GROUP_TIERED" || ruleType === "TIERED") {
-    return `Tiered price applied${group ? ` (${group})` : ""}`;
+    return `Tier price${group ? ` (${group})` : ""}`;
   }
 
-  return eligible ? "Wholesale price applied" : "Retail price applied";
+  return eligible ? "Wholesale price" : "Retail price";
 }

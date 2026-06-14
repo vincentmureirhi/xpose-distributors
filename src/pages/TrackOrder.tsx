@@ -650,7 +650,7 @@ export default function TrackOrder() {
                     <div className="flex-1">
                       <p className="font-semibold text-amber-800 dark:text-amber-300 mb-1">Waiting for payment confirmation</p>
                       <p className="text-sm text-amber-700 dark:text-amber-400 mb-3">
-                        Already paid? Do not worry. Your order will update once M-Pesa or admin reconciliation confirms the payment.
+                        Already paid? Do not worry. Your order will update once the payment is confirmed.
                       </p>
                       <div className="rounded-lg bg-white dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40 p-3 text-sm space-y-1.5">
                         <div className="flex justify-between">

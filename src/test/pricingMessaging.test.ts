@@ -15,7 +15,7 @@ describe("getProductPricingMessages", () => {
 
     const msg = getProductPricingMessages(product);
     expect(msg.primary).toContain("Wholesale");
-    expect(msg.secondary).toContain("Buy 3");
+    expect(msg.secondary).toContain("Wholesale from 3");
   });
 
   it("describes group threshold mix messaging", () => {
@@ -30,7 +30,8 @@ describe("getProductPricingMessages", () => {
     };
 
     const msg = getProductPricingMessages(product);
-    expect(msg.secondary).toContain("Mix products");
+    expect(msg.secondary).toContain("Drinks");
+    expect(msg.secondary).toContain("mix");
     expect(msg.secondary).toContain("6");
   });
 
@@ -44,7 +45,7 @@ describe("getProductPricingMessages", () => {
     };
 
     const msg = getProductPricingMessages(product);
-    expect(msg.secondary).toContain("Tiered group pricing");
+    expect(msg.secondary).toContain("combined quantity bands");
   });
 });
 
@@ -62,7 +63,7 @@ describe("getCartPricingMessage", () => {
       pricing_label: "Retail",
     };
 
-    expect(getCartPricingMessage(ev, 2)).toContain("Add 1 more");
+    expect(getCartPricingMessage(ev, 2)).toContain("Add 1 more for wholesale");
   });
 
   it("shows group progress for GROUP_THRESHOLD", () => {
@@ -95,6 +96,6 @@ describe("getCartPricingMessage", () => {
       pricing_label: "Tier 2",
     };
 
-    expect(getCartPricingMessage(ev, 8)).toContain("Tiered price applied");
+    expect(getCartPricingMessage(ev, 8)).toContain("Tier price");
   });
 });

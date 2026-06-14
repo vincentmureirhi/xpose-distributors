@@ -466,7 +466,7 @@ export default function ProductDetails() {
                   const buttonTitle = needMore
                     ? `Add ${needMore} more to unlock ${tier.unit} pricing`
                     : isRuleDriven
-                      ? "Price is applied automatically from cart quantity rules"
+                      ? "Cart total uses the best eligible unit price"
                       : undefined;
 
                   return (
@@ -499,7 +499,7 @@ export default function ProductDetails() {
 
               {isRuleDriven && (
                 <p className="text-[11px] text-muted-foreground">
-                  Final unit price is applied automatically in cart from quantity rules.
+                  Cart total uses the best eligible unit price.
                 </p>
               )}
             </motion.div>
@@ -519,7 +519,7 @@ export default function ProductDetails() {
               </p>
               {hasFlashDeal && (
                 <p className="text-xs text-accent mt-1 font-semibold">
-                  Flash price applied now. Was {formatPrice(getRetailPrice(product, selectedUnitPrice))}
+                  Flash price. Was {formatPrice(getRetailPrice(product, selectedUnitPrice))}
                 </p>
               )}
             </div>

@@ -6,7 +6,7 @@ const promos = [
   {
     icon: BadgePercent,
     title: "Flash deals",
-    text: "Short-window price cuts on selected items. The deal price is already waiting in the cart.",
+    text: "Short-window price cuts on selected items. Cart totals show the deal price.",
     cta: "View deals",
     to: "/flash-sale",
     tone: "bg-accent text-accent-foreground",
@@ -54,7 +54,7 @@ export default function ValueProps() {
                 Offers built to move cartons, bundles, and everyday essentials.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-white/70">
-                Pick a deal, load the cart, and checkout with the right unit rules already applied.
+                Pick a deal, load the cart, and checkout with the right carton, dozen, or piece price.
               </p>
             </div>
           </div>

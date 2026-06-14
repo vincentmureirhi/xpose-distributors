@@ -454,7 +454,7 @@ export default function Checkout() {
       applyRouteCustomer(customer);
       setNewRouteCustomer({ name: "", phone: "", location_id: locationId, notes: "" });
       toast.success("Route customer saved", {
-        description: `${customer.name} is synced to admin and selected for this order.`,
+        description: `${customer.name} is saved and selected for this order.`,
       });
     } catch (error) {
       const apiError = error as {
@@ -839,7 +839,7 @@ export default function Checkout() {
                   </div>
                   {selectedRegionId && routeCustomerSearch && filteredRouteCustomers.length === 0 && (
                     <p className="text-xs text-muted-foreground">
-                      No matching route customer found. Add the customer below and it will sync to admin.
+                      No matching route customer found. Add the customer below and it will be saved for the route.
                     </p>
                   )}
 

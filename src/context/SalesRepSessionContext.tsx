@@ -154,10 +154,10 @@ function getGpsPositionProblem(position: GeolocationPosition) {
 
 function getLocationSyncSuccessMessage(accuracy: number) {
   if (Number.isFinite(accuracy) && accuracy > PREFERRED_GPS_ACCURACY_METERS) {
-    return `Location synced to admin map. Accuracy is ${Math.round(accuracy)}m; ask the rep to step outside for a tighter pin.`;
+    return `Location synced to live map. Accuracy is ${Math.round(accuracy)}m; step outside for a tighter pin.`;
   }
 
-  return "Location synced to admin live map.";
+  return "Location synced to live map.";
 }
 
 function getOptionalSpeedKph(position: GeolocationPosition) {

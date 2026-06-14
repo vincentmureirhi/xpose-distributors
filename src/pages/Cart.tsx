@@ -259,7 +259,7 @@ export default function Cart() {
 
             {pricingLoading && (
               <p className="text-[11px] text-muted-foreground">
-                Checking the latest pricing before checkout...
+                Refreshing prices...
               </p>
             )}
 
