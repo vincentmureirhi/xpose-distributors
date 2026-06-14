@@ -142,13 +142,15 @@ export default function RouteDeliveryApply() {
         region_id: form.region_id,
         location_id: form.location_id,
         requested_credit_limit: requestedCreditLimit,
-        submitted_via: "email",
+        submitted_via: "manual",
         form_reference: `Storefront route delivery application - ${selectedRegion?.name || "Region"} / ${selectedLocation?.name || "Location"}`,
       });
 
       const applicationId = response?.application?.id;
       setSubmittedRef(applicationId ? `Application #${applicationId}` : "Application received");
-      toast.success("Application received");
+      toast.success("Application received", {
+        description: "Check your email for the company response after review and approval.",
+      });
       setForm({
         applicant_name: "",
         business_name: "",
@@ -232,7 +234,7 @@ export default function RouteDeliveryApply() {
                 <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0" />
                 <div>
                   <p className="font-bold">{submittedRef}</p>
-                  <p>We will review your route and credit request before issuing portal access.</p>
+                  <p>Check your email for our response after review. If approved, admin will issue portal access and route service details.</p>
                 </div>
               </div>
             )}
