@@ -5,3 +5,8 @@ export async function listCategories(): Promise<Category[]> {
   const { data } = await apiClient.get("/categories");
   return data?.data || data?.categories || data || [];
 }
+
+export async function listStorefrontCategories(): Promise<Category[]> {
+  const { data } = await apiClient.get("/v1/storefront/categories");
+  return data?.data || data?.categories || data || [];
+}

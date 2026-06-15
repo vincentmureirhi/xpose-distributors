@@ -15,7 +15,7 @@ import AnimatedPrice from "@/components/AnimatedPrice";
 import ProductCard from "@/components/products/ProductCard";
 import { Button } from "@/components/ui/button";
 import { formatPrice, useCart } from "@/context/CartContext";
-import { getProductById, listProducts } from "@/lib/api/products";
+import { getProductById, listStorefrontProducts } from "@/lib/api/products";
 import { getPriceTiers } from "@/lib/pricing";
 import { getProductPricingMessages, isRuleDrivenType } from "@/lib/pricingMessaging";
 import type { PriceTier, Product } from "@/types/shop";
@@ -150,7 +150,7 @@ export default function ProductDetails() {
         setSelectedUnit("");
         window.scrollTo(0, 0);
 
-        const [productResult, allProducts] = await Promise.all([getProductById(id), listProducts()]);
+        const productResult = await getProductById(id);
         if (cancelled) return;
 
         setProduct(productResult);
@@ -158,8 +158,15 @@ export default function ProductDetails() {
         if (productResult) {
           document.title = `${productResult.name} - XPOSE`;
           setQty(getMinimumOrderQty(productResult));
+          const relatedResult = await listStorefrontProducts({
+            category: productResult.category_id || "all",
+            limit: 5,
+            page: 1,
+            stock: "ready",
+          });
+          if (cancelled) return;
           setRelated(
-            allProducts
+            relatedResult.products
               .filter(
                 (candidate) =>
                   String(candidate.category_id || "") === String(productResult.category_id || "") &&

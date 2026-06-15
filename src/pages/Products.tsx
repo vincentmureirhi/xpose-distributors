@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   BadgePercent,
@@ -13,29 +14,23 @@ import {
   X,
 } from "lucide-react";
 import ProductCard from "@/components/products/ProductCard";
-import { listProducts } from "@/lib/api/products";
-import { listCategories } from "@/lib/api/categories";
-import type { Product, Category } from "@/types/shop";
+import { listStorefrontProducts } from "@/lib/api/products";
+import { listStorefrontCategories } from "@/lib/api/categories";
+import type { Product } from "@/types/shop";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
-function normalizeSearchText(value: unknown) {
-  return String(value || "").trim().toLowerCase();
-}
+function useDebouncedValue<T>(value: T, delayMs = 350) {
+  const [debounced, setDebounced] = useState(value);
 
-function getProductSearchText(product: Product) {
-  return [
-    product.name,
-    product.sku,
-    product.description,
-    product.category_name,
-    product.selling_unit_label,
-  ]
-    .map(normalizeSearchText)
-    .filter(Boolean)
-    .join(" ");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [delayMs, value]);
+
+  return debounced;
 }
 
 function getProductPrice(product: Product) {
@@ -144,77 +139,95 @@ function ProductStage({ products }: { products: Product[] }) {
 
 export default function Products() {
   const [params, setParams] = useSearchParams();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
 
   const search = params.get("search") || "";
+  const [searchInput, setSearchInput] = useState(search);
+  const debouncedSearch = useDebouncedValue(searchInput, 350);
   const category = params.get("category") || "all";
   const sort = params.get("sort") || "featured";
   const min = params.get("min") || "";
   const max = params.get("max") || "";
   const flashOnly = params.get("flash") === "1";
   const stockFilter = params.get("stock") || "";
+  const page = Math.max(1, Number(params.get("page") || 1));
+  const pageSize = 24;
 
-  const setParam = (k: string, v: string) => {
+  const setParam = (k: string, v: string, options: { resetPage?: boolean } = {}) => {
     const next = new URLSearchParams(params);
     if (!v || v === "all" || v === "featured") next.delete(k);
     else next.set(k, v);
+    if (options.resetPage !== false && k !== "page") next.delete("page");
     setParams(next, { replace: true });
   };
 
   useEffect(() => {
     document.title = "Shop - XPOSE";
-    listCategories().then(setCategories);
   }, []);
 
   useEffect(() => {
-    setLoading(true);
-    listProducts({ search, category, sort, min: min ? Number(min) : undefined, max: max ? Number(max) : undefined })
-      .then(setProducts)
-      .finally(() => setLoading(false));
-  }, [search, category, sort, min, max]);
+    setSearchInput(search);
+  }, [search]);
+
+  useEffect(() => {
+    if (debouncedSearch === search) return;
+    setParam("search", debouncedSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+
+  const categoriesQuery = useQuery({
+    queryKey: ["storefront-categories"],
+    queryFn: listStorefrontCategories,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const productsQuery = useQuery({
+    queryKey: [
+      "storefront-products",
+      {
+        search,
+        category,
+        sort,
+        min,
+        max,
+        flash: flashOnly ? "1" : "",
+        stock: stockFilter,
+        page,
+        limit: pageSize,
+      },
+    ],
+    queryFn: () =>
+      listStorefrontProducts({
+        search,
+        category,
+        sort,
+        min: min ? Number(min) : undefined,
+        max: max ? Number(max) : undefined,
+        flash: flashOnly ? "1" : undefined,
+        stock: stockFilter || undefined,
+        page,
+        limit: pageSize,
+      }),
+    staleTime: 20 * 1000,
+  });
+
+  const products = productsQuery.data?.products || [];
+  const categories = categoriesQuery.data || [];
+  const pagination = productsQuery.data?.pagination || {
+    page,
+    limit: pageSize,
+    total: products.length,
+    totalPages: 1,
+    hasNext: false,
+    hasPrev: false,
+  };
+  const loading = productsQuery.isLoading;
+  const isRefreshing = productsQuery.isFetching && !productsQuery.isLoading;
 
   const visibleProducts = useMemo(() => {
-    const query = normalizeSearchText(search);
-    const minPrice = min ? Number(min) : null;
-    const maxPrice = max ? Number(max) : null;
+    return products;
+  }, [products]);
 
-    const filtered = products.filter((product) => {
-      if (flashOnly && !hasFlashDeal(product)) return false;
-      if (stockFilter === "limited" && getStockState(product) !== "limited_stock") return false;
-      if (stockFilter === "ready" && getStockState(product) === "out_of_stock") return false;
-
-      if (query) {
-        const words = query.split(/\s+/).filter(Boolean);
-        const searchable = getProductSearchText(product);
-        if (!words.every((word) => searchable.includes(word))) return false;
-      }
-
-      if (category !== "all" && String(product.category_id || "") !== category) return false;
-
-      const price = getProductPrice(product);
-      if (minPrice != null && Number.isFinite(minPrice) && price < minPrice) return false;
-      if (maxPrice != null && Number.isFinite(maxPrice) && price > maxPrice) return false;
-
-      return true;
-    });
-
-    return [...filtered].sort((a, b) => {
-      const priceA = getProductPrice(a);
-      const priceB = getProductPrice(b);
-
-      if (sort === "price-asc") return priceA - priceB;
-      if (sort === "price-desc") return priceB - priceA;
-      if (sort === "name-asc") return String(a.name || "").localeCompare(String(b.name || ""));
-
-      const aBoost = (hasFlashDeal(a) ? 2 : 0) + (getStockState(a) === "limited_stock" ? 1 : 0);
-      const bBoost = (hasFlashDeal(b) ? 2 : 0) + (getStockState(b) === "limited_stock" ? 1 : 0);
-      return bBoost - aBoost;
-    });
-  }, [category, flashOnly, max, min, products, search, sort, stockFilter]);
-
-  const resultCount = visibleProducts.length;
+  const resultCount = pagination.total || visibleProducts.length;
   const selectedCategory = categories.find((item) => String(item.id) === category);
   const flashCount = products.filter(hasFlashDeal).length;
   const limitedCount = products.filter((product) => getStockState(product) === "limited_stock").length;
@@ -375,9 +388,9 @@ export default function Products() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setParam("search", e.target.value)}
+          <Input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search by product, SKU, category, or selling unit"
               className="h-12 rounded-xl pl-11 text-base"
             />
@@ -423,7 +436,8 @@ export default function Products() {
         <div>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm font-semibold text-muted-foreground">
-              {resultCount} {resultCount === 1 ? "product" : "products"}
+              {resultCount.toLocaleString()} {resultCount === 1 ? "product" : "products"}
+              {isRefreshing ? <span className="ml-2 text-accent">Updating...</span> : null}
             </p>
             <div className="hidden items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground sm:inline-flex">
               <Truck className="h-3.5 w-3.5 text-accent" />
@@ -465,9 +479,34 @@ export default function Products() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 xl:grid-cols-4">
-              {visibleProducts.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 xl:grid-cols-4">
+                {visibleProducts.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+              </div>
+
+              {pagination.totalPages > 1 && (
+                <div className="mt-8 flex flex-col items-center justify-between gap-3 rounded-2xl border border-border bg-card p-3 shadow-soft sm:flex-row">
+                  <p className="text-sm font-semibold text-muted-foreground">
+                    Page {pagination.page.toLocaleString()} of {pagination.totalPages.toLocaleString()}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      disabled={!pagination.hasPrev || productsQuery.isFetching}
+                      onClick={() => setParam("page", String(Math.max(1, pagination.page - 1)), { resetPage: false })}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      disabled={!pagination.hasNext || productsQuery.isFetching}
+                      onClick={() => setParam("page", String(pagination.page + 1), { resetPage: false })}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

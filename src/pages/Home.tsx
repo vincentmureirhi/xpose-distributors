@@ -7,8 +7,8 @@ import CategoryRail from "@/components/home/CategoryRail";
 import FeaturedGrid from "@/components/home/FeaturedGrid";
 import SmartProductRail from "@/components/home/SmartProductRail";
 import BlogPreview from "@/components/home/BlogPreview";
-import { listProducts } from "@/lib/api/products";
-import { listCategories } from "@/lib/api/categories";
+import { listFeaturedStorefrontProducts } from "@/lib/api/products";
+import { listStorefrontCategories } from "@/lib/api/categories";
 import { getActiveFlashSales } from "@/lib/api/flash-sales";
 import type { Product, Category } from "@/types/shop";
 
@@ -33,7 +33,7 @@ export default function Home() {
   useEffect(() => {
     document.title = "XPOSE Distributors | Wholesale and Retail Deals";
 
-    Promise.all([listProducts(), listCategories(), getActiveFlashSales()])
+    Promise.all([listFeaturedStorefrontProducts(20), listStorefrontCategories(), getActiveFlashSales()])
       .then(([p, c, flashSales]) => {
         setCategories(c);
 
