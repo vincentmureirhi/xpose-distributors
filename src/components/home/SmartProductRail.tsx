@@ -92,15 +92,15 @@ export default function SmartProductRail({ products }: Props) {
     .filter((product) => product.image_url || product.name)
     .filter((product) => getStockState(product) !== "out_of_stock")
     .sort((a, b) => getProductScore(b) - getProductScore(a))
-    .slice(0, 12);
+    .slice(0, 10);
 
   if (visible.length < 3) return null;
 
   const railItems = [...visible, ...visible];
 
   return (
-    <section className="overflow-hidden border-y border-border bg-secondary/35 bg-[radial-gradient(circle_at_top_left,rgba(255,91,46,0.13),transparent_34%)] py-10">
-      <div className="container mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <section className="overflow-hidden border-y border-border bg-secondary/35 bg-[radial-gradient(circle_at_top_left,rgba(255,91,46,0.13),transparent_34%)] py-8 sm:py-10">
+      <div className="container mb-5 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="mb-1 inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-accent">
             <Sparkles className="h-3.5 w-3.5" />
@@ -118,7 +118,7 @@ export default function SmartProductRail({ products }: Props) {
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-background to-transparent sm:w-24" />
 
         <motion.div
-          className="flex w-max gap-4 px-4 will-change-transform sm:gap-5"
+          className="flex w-max gap-3 px-4 will-change-transform sm:gap-5"
           animate={{ x: ["0%", "-50%"] }}
           transition={{ duration: Math.max(28, visible.length * 5), ease: "linear", repeat: Infinity }}
         >
@@ -135,10 +135,10 @@ export default function SmartProductRail({ products }: Props) {
               <Link
                 key={`${product.id}-${index}`}
                 to={`/products/${product.id}`}
-                className={`group/card flex w-[280px] flex-none gap-3 rounded-2xl border border-border bg-card p-3 shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/45 hover:shadow-card sm:w-[330px] ${badge.glow}`}
+                className={`group/card flex w-[238px] flex-none gap-3 rounded-2xl border border-border bg-card p-3 shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/45 hover:shadow-card sm:w-[330px] ${badge.glow}`}
                 aria-label={`View ${product.name}`}
               >
-                <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-white shadow-inner sm:h-28 sm:w-28">
+                <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-white shadow-inner sm:h-28 sm:w-28">
                   {product.image_url ? (
                     <img
                       src={product.image_url}
@@ -153,7 +153,7 @@ export default function SmartProductRail({ products }: Props) {
                   )}
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col justify-between">
-                  <span className={`mb-1 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badge.className}`}>
+                  <span className={`mb-1 inline-flex w-fit max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider sm:text-[10px] ${badge.className}`}>
                     <BadgeIcon className="h-3 w-3" />
                     {badge.label}
                   </span>
@@ -164,10 +164,10 @@ export default function SmartProductRail({ products }: Props) {
                     </p>
                   </div>
                   <div className="mt-2 flex items-end justify-between gap-2">
-                    <span className="line-clamp-2 text-xs text-muted-foreground">
+                    <span className="line-clamp-2 text-[11px] text-muted-foreground sm:text-xs">
                       {minQty > 1 ? `Min ${minQty} ${unit}${minQty === 1 ? "" : "s"}` : product.category_name || "XPOSE"}
                     </span>
-                    <span className="shrink-0 font-display text-base font-black">{formatPrice(price)}</span>
+                    <span className="shrink-0 font-display text-sm font-black sm:text-base">{formatPrice(price)}</span>
                   </div>
                 </div>
               </Link>

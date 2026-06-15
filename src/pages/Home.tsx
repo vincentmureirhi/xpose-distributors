@@ -80,7 +80,7 @@ export default function Home() {
 
   return (
     <>
-      <Hero />
+      <Hero products={products} />
       <Marquee />
       <ValueProps />
 

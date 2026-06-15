@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, BookOpen } from "lucide-react";
+import { ArrowLeft, Calendar, BookOpen, ShoppingBag } from "lucide-react";
 import { getBlogPost, type BlogPost } from "@/lib/api/blog";
 import { Button } from "@/components/ui/button";
 
@@ -86,10 +86,10 @@ export default function BlogPost() {
           </p>
         )}
 
-        {post.featured_image && (
+        {(post.featured_image_url || post.featured_image) && (
           <div className="rounded-2xl overflow-hidden mb-8 aspect-video bg-secondary">
             <img
-              src={post.featured_image}
+              src={post.featured_image_url || post.featured_image}
               alt={post.title}
               className="w-full h-full object-cover"
             />
@@ -103,6 +103,35 @@ export default function BlogPost() {
                 {para}
               </p>
             ))}
+          </div>
+        )}
+
+        {post.associated_product_id && (
+          <div className="mt-8 rounded-2xl border border-border bg-card p-4 shadow-soft">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-secondary">
+                  {post.associated_product_image_url ? (
+                    <img
+                      src={post.associated_product_image_url}
+                      alt=""
+                      className="h-full w-full object-contain p-2"
+                    />
+                  ) : (
+                    <ShoppingBag className="h-6 w-6 text-accent" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Featured product</p>
+                  <p className="truncate font-black">{post.associated_product_name || "Shop this product"}</p>
+                </div>
+              </div>
+              <Button asChild className="shrink-0">
+                <Link to={`/products/${post.associated_product_id}`}>
+                  <ShoppingBag className="mr-2 h-4 w-4" /> Buy here
+                </Link>
+              </Button>
+            </div>
           </div>
         )}
 

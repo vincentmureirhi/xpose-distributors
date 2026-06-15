@@ -6,6 +6,11 @@ export interface BlogPost {
   excerpt?: string;
   content?: string;
   featured_image?: string;
+  featured_image_url?: string;
+  associated_product_id?: string | number | null;
+  associated_product_name?: string;
+  associated_product_image_url?: string;
+  associated_product_price?: string | number;
   created_at?: string;
   author?: string;
   slug?: string;

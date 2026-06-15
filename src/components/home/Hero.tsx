@@ -3,7 +3,6 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, PackageCheck, Search, ShieldCheck, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { listProducts } from "@/lib/api/products";
 import { formatPrice } from "@/context/CartContext";
 import type { Product } from "@/types/shop";
 
@@ -19,23 +18,23 @@ function isProductAvailable(product: Product) {
   return status !== "out_of_stock" && status !== "sold_out" && status !== "unavailable" && (!hasStockQty || stockQty > 0);
 }
 
-export default function Hero() {
+interface HeroProps {
+  products?: Product[];
+}
+
+export default function Hero({ products = [] }: HeroProps) {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const contentY = useTransform(scrollYProgress, [0, 1], [0, 70]);
   const shelfY = useTransform(scrollYProgress, [0, 1], [0, -50]);
   const opacity = useTransform(scrollYProgress, [0, 0.86], [1, 0]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  useEffect(() => {
-    listProducts()
-      .then((items) => setProducts(items.filter((item) => (item.image_url || item.name) && isProductAvailable(item)).slice(0, 7)))
-      .catch(() => {});
-  }, []);
-
-  const productCount = products.length;
-  const heroProducts = useMemo(() => products.slice(0, 5), [products]);
+  const heroProducts = useMemo(
+    () => products.filter((item) => (item.image_url || item.name) && isProductAvailable(item)).slice(0, 5),
+    [products]
+  );
+  const productCount = heroProducts.length;
   const activeProduct = heroProducts[activeIndex % Math.max(heroProducts.length, 1)];
   const supportingProducts = useMemo(() => {
     if (heroProducts.length <= 1) return [];
@@ -51,6 +50,10 @@ export default function Hero() {
     }, 4200);
     return () => window.clearInterval(timer);
   }, [heroProducts.length]);
+
+  useEffect(() => {
+    if (activeIndex >= heroProducts.length) setActiveIndex(0);
+  }, [activeIndex, heroProducts.length]);
 
   const stats = [
     { v: productCount > 0 ? `${productCount}+` : "Live", l: "Featured items" },
@@ -69,7 +72,7 @@ export default function Hero() {
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.045)_1px,transparent_1px)] bg-[size:56px_56px]" />
       <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(11,15,20,0.98),rgba(11,15,20,0.76)_48%,rgba(16,24,32,0.94))]" />
 
-      <div className="container relative grid min-h-[calc(100vh-5rem)] items-center gap-10 py-16 md:grid-cols-[minmax(0,1fr)_minmax(340px,0.78fr)] md:py-20 lg:py-24">
+      <div className="container relative grid items-center gap-8 py-10 sm:py-12 md:min-h-[calc(100vh-5rem)] md:grid-cols-[minmax(0,1fr)_minmax(340px,0.78fr)] md:gap-10 md:py-20 lg:py-24">
         <motion.div style={{ opacity, y: contentY }} className="max-w-3xl">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
@@ -85,7 +88,7 @@ export default function Hero() {
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.08 }}
-            className="font-display text-5xl font-black leading-[0.95] text-balance md:text-7xl lg:text-8xl"
+            className="font-display text-4xl font-black leading-[0.95] text-balance sm:text-5xl md:text-7xl lg:text-8xl"
           >
             Wholesale power.
             <span className="block text-accent">Retail speed.</span>
@@ -95,7 +98,7 @@ export default function Hero() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.22 }}
-            className="mt-6 max-w-2xl text-base leading-relaxed text-white/70 md:text-xl"
+            className="mt-5 max-w-2xl text-sm leading-relaxed text-white/70 sm:text-base md:mt-6 md:text-xl"
           >
             Order trade packs, cartons, everyday essentials, and flash deals from one catalogue built for homes, shops, salons, routes, and resellers.
           </motion.p>
@@ -104,7 +107,7 @@ export default function Hero() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.34 }}
-            className="mt-8 flex flex-wrap gap-3"
+            className="mt-7 flex flex-wrap gap-3 md:mt-8"
           >
             <Button asChild size="lg" className="h-12 rounded-full bg-accent px-7 text-accent-foreground shadow-glow hover:bg-accent/90">
               <Link to="/products">
@@ -121,7 +124,7 @@ export default function Hero() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.46 }}
-            className="mt-5 grid max-w-2xl gap-2 sm:grid-cols-3"
+            className="mt-5 hidden max-w-2xl gap-2 sm:grid sm:grid-cols-3"
           >
             {trustSignals.map((signal) => {
               const Icon = signal.icon;
@@ -141,7 +144,7 @@ export default function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.52 }}
-            className="mt-5 grid max-w-xl grid-cols-3 gap-3"
+            className="mt-5 hidden max-w-xl grid-cols-3 gap-3 sm:grid"
           >
             {stats.map((s) => (
               <div key={s.l} className="rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur">
@@ -152,7 +155,30 @@ export default function Hero() {
           </motion.div>
         </motion.div>
 
-        <motion.div style={{ y: shelfY }} className="relative min-h-[390px] md:min-h-[520px]">
+        {activeProduct && (
+          <Link
+            to={`/products/${activeProduct.id}`}
+            className="flex items-center gap-3 rounded-2xl border border-white/12 bg-white/8 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.22)] backdrop-blur md:hidden"
+          >
+            <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-white p-2">
+              {activeProduct.image_url ? (
+                <img src={activeProduct.image_url} alt={activeProduct.name} className="h-full w-full object-contain" />
+              ) : (
+                <div className="grid h-full w-full place-items-center text-2xl font-black text-accent">
+                  {activeProduct.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-wide text-accent">Live catalogue</p>
+              <p className="mt-1 line-clamp-2 text-base font-black leading-tight text-white">{activeProduct.name}</p>
+              <p className="mt-1 text-sm font-semibold text-white/70">{formatPrice(getDisplayPrice(activeProduct))}</p>
+            </div>
+            <ArrowRight className="ml-auto h-4 w-4 flex-shrink-0 text-accent" />
+          </Link>
+        )}
+
+        <motion.div style={{ y: shelfY }} className="relative hidden min-h-[520px] md:block">
           <div className="absolute inset-x-4 bottom-7 h-4 rounded-full bg-black/35 blur-xl" />
           <div className="absolute left-0 top-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-semibold text-white/80 backdrop-blur">
             Live catalogue
