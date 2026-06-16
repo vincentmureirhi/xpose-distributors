@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { listCategories } from "@/lib/api/categories";
+import { listStorefrontCategories } from "@/lib/api/categories";
 import type { Category } from "@/types/shop";
 
 const tones = [
-  "from-accent/30 to-accent/5",
-  "from-primary/20 to-primary/5",
-  "from-success/20 to-success/5",
-  "from-accent-glow/30 to-accent/5",
+  "from-[#ff4f1f]/25 to-[#111827]/5",
+  "from-[#111827]/15 to-[#ff4f1f]/5",
+  "from-[#059669]/20 to-[#111827]/5",
+  "from-[#2563eb]/20 to-[#ff4f1f]/5",
 ];
 
 function overlayClass(hasImage?: string) {
@@ -23,15 +23,15 @@ export default function Categories() {
 
   useEffect(() => {
     document.title = "Categories - XPOSE";
-    listCategories().then(setCategories);
+    listStorefrontCategories().then(setCategories);
   }, []);
 
   return (
     <div className="container py-10 md:py-14">
       <div className="mb-10">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Discover</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Product lines</p>
         <h1 className="font-display font-bold text-4xl md:text-6xl tracking-tight">All categories</h1>
-        <p className="text-muted-foreground mt-2 max-w-xl">Pick a world to explore, from everyday essentials to one-of-a-kind finds.</p>
+        <p className="text-muted-foreground mt-2 max-w-xl">Browse active stock by department, from hygiene and beauty to route-ready trade packs.</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
@@ -45,7 +45,7 @@ export default function Categories() {
           >
             <Link
               to={`/products?category=${category.id}`}
-              className={`group relative block aspect-[4/5] rounded-3xl overflow-hidden bg-gradient-to-br ${tones[index % tones.length]} border border-border hover:shadow-elevated transition-all`}
+              className={`group relative block min-h-[210px] rounded-2xl overflow-hidden bg-gradient-to-br ${tones[index % tones.length]} border border-border hover:shadow-elevated transition-all`}
             >
               {category.image_url && (
                 <img
@@ -56,15 +56,15 @@ export default function Categories() {
                 />
               )}
               <div className={overlayClass(category.image_url)}>
-                <span className={`text-xs font-medium ${category.image_url ? "text-white/75" : "text-muted-foreground"}`}>
+                <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-semibold ${category.image_url ? "bg-black/35 text-white" : "bg-background/70 text-muted-foreground"}`}>
                   {category.product_count ?? 0} items
                 </span>
-                <div>
-                  <h3 className={`font-display font-bold text-2xl tracking-tight ${category.image_url ? "text-white" : ""}`}>
+                <div className="min-w-0">
+                  <h3 className={`font-display text-xl font-black leading-tight tracking-tight sm:text-2xl ${category.image_url ? "text-white drop-shadow-sm" : ""}`}>
                     {category.name}
                   </h3>
-                  <p className={`text-sm mt-2 inline-flex items-center gap-1 group-hover:gap-2 transition-all ${category.image_url ? "text-white/80" : "text-accent"}`}>
-                    Shop now <ArrowRight className="h-4 w-4" />
+                  <p className={`mt-3 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-all group-hover:gap-2 ${category.image_url ? "bg-white/15 text-white" : "bg-background/70 text-accent"}`}>
+                    Open line <ArrowRight className="h-3.5 w-3.5" />
                   </p>
                 </div>
               </div>
