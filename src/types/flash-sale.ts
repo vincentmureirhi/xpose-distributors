@@ -9,6 +9,13 @@ export interface FlashSaleProduct {
   is_active?: boolean;
   stock?: number | null;
   current_stock?: number | null;
+  product_current_stock?: number | null;
+  stock_source?: "product" | "pool" | string;
+  stock_pool_id?: number | string | null;
+  stock_pool_name?: string | null;
+  stock_pool_sku?: string | null;
+  stock_pool_total_stock?: number | null;
+  stock_pool_note?: string | null;
   stock_status?: "in_stock" | "limited_stock" | "low_stock" | "out_of_stock" | "unknown" | string;
   min_order_qty?: number;
   order_qty_step?: number;

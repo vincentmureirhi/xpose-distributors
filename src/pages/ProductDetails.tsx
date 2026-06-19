@@ -219,6 +219,7 @@ export default function ProductDetails() {
   const minOrderQty = getMinimumOrderQty(product);
   const orderStep = getOrderStep(product);
   const sellingUnit = cleanUnit(product.selling_unit_label);
+  const usesSharedPool = String(product.stock_source || "").toLowerCase() === "pool";
   const rawStockQty = product.current_stock ?? product.stock;
   const stockQty = Number(rawStockQty);
   const hasStockQty = rawStockQty !== undefined && rawStockQty !== null && rawStockQty !== "" && Number.isFinite(stockQty);
@@ -232,14 +233,22 @@ export default function ProductDetails() {
       normalizedStockStatus === "low_stock" ||
       (hasStockQty && stockQty > 0 && stockQty <= Math.max(minOrderQty, 10)));
   const stockLabel = isOutOfStock
-    ? "Out of stock"
+    ? usesSharedPool
+      ? "Shared stock sold out"
+      : "Out of stock"
     : cannotMeetMinimum
-      ? `${stockQty} available; minimum ${minOrderQty}`
+      ? usesSharedPool
+        ? `Shared stock below minimum ${minOrderQty}`
+        : `${stockQty} available; minimum ${minOrderQty}`
       : isLimitedStock
-        ? hasStockQty
+        ? usesSharedPool
+          ? "Hurry, limited assorted stock"
+          : hasStockQty
           ? `Limited stock - ${stockQty} left`
           : "Limited stock"
-        : "In stock";
+        : usesSharedPool
+          ? `Available from ${product.stock_pool_name || "assorted stock"}`
+          : "In stock";
   const selectedTier = tiersList.find((tier) => tier.unit === selectedUnit) || tiersList[0];
   const selectedTierLabel = getTierLabel(selectedTier, sellingUnit);
   const piecePrice = tiersList.find((tier) => Number(tier.qty_per_unit || 1) === 1)?.price || 0;
