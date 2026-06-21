@@ -1,67 +1,159 @@
 import { Link } from "react-router-dom";
-import { Instagram, Twitter, Facebook } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  ExternalLink,
+  MessageCircle,
+  Music2,
+  PhoneCall,
+  ShieldCheck,
+  Store,
+  Truck,
+} from "lucide-react";
 import Wordmark from "@/components/brand/Wordmark";
+
+const TIKTOK_URL = "https://www.tiktok.com/@xposebeautyshopvo?is_from_webapp=1&sender_device=pc";
+const WHATSAPP_URL = "https://wa.me/254701377869";
+const DEVELOPER_PHONE = "0701377869";
+
+const shopLinks = [
+  ["All products", "/products"],
+  ["Verified stores", "/vendors"],
+  ["Categories", "/categories"],
+  ["Flash sale", "/flash-sale"],
+];
+
+const supportLinks = [
+  ["Track order", "/track-order"],
+  ["Blog", "/blog"],
+  ["Terms", "/terms"],
+  ["Sell on XPOSE", "/sell-on-xpose"],
+];
 
 export default function Footer() {
   return (
-    <footer className="mt-24 border-t border-border bg-secondary/30">
-      <div className="container py-16 grid gap-12 md:grid-cols-4">
-        <div>
-          <Link to="/" className="inline-flex mb-4">
-            <Wordmark size="md" />
-          </Link>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            A hybrid distributor where wholesale meets retail, with sharp pricing for everyday trade.
-          </p>
-          <div className="flex gap-2 mt-5">
-            {[Instagram, Twitter, Facebook].map((Icon, i) => (
-              <a key={i} href="#" className="h-9 w-9 rounded-full grid place-items-center bg-background hover:bg-accent hover:text-accent-foreground transition-colors">
-                <Icon className="h-4 w-4" />
-              </a>
-            ))}
+    <footer className="mt-24 overflow-hidden border-t border-border bg-[#070b10] text-white">
+      <div className="relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(255,91,46,0.23),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(34,197,94,0.16),transparent_24%)]" />
+        <div className="container relative py-12 md:py-16">
+          <div className="mb-10 grid gap-3 md:grid-cols-3">
+            {[
+              [ShieldCheck, "Secure checkout", "Private tracking and verified order flow."],
+              [Truck, "Route-ready delivery", "Built for shops, salons, homes, and sales reps."],
+              [BadgeCheck, "Verified marketplace", "Vendor stores are reviewed before products go live."],
+            ].map(([Icon, title, text]) => {
+              const RealIcon = Icon as typeof ShieldCheck;
+              return (
+                <div key={String(title)} className="rounded-2xl border border-white/10 bg-white/[0.055] p-5 backdrop-blur">
+                  <RealIcon className="mb-4 h-5 w-5 text-accent" />
+                  <p className="font-black">{title as string}</p>
+                  <p className="mt-2 text-sm leading-6 text-white/62">{text as string}</p>
+                </div>
+              );
+            })}
           </div>
-        </div>
-        <div>
-          <h4 className="font-display font-semibold mb-4 text-sm">Shop</h4>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li><Link to="/products" className="hover:text-foreground">All products</Link></li>
-            <li><Link to="/vendors" className="hover:text-foreground">Verified stores</Link></li>
-            <li><Link to="/categories" className="hover:text-foreground">Categories</Link></li>
-            <li><Link to="/flash-sale" className="hover:text-foreground">Flash Sales</Link></li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="font-display font-semibold mb-4 text-sm">Support</h4>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li><Link to="/track-order" className="hover:text-foreground">Track order</Link></li>
-            <li><Link to="/blog" className="hover:text-foreground">Blog</Link></li>
-            <li><Link to="/terms" className="hover:text-foreground">Terms &amp; Conditions</Link></li>
-            <li><a href="https://wa.me/254701377869" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">Contact via WhatsApp</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="font-display font-semibold mb-4 text-sm">Business</h4>
-          <p className="text-sm text-muted-foreground mb-3">Apply to sell verified products through XPOSE.</p>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              to="/sell-on-xpose"
-              className="inline-flex h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 items-center"
-            >
-              Sell on XPOSE
-            </Link>
-            <Link
-              to="/vendor/login"
-              className="inline-flex h-10 px-4 rounded-md border border-border bg-background text-sm font-medium hover:bg-secondary items-center"
-            >
-              Vendor login
-            </Link>
+
+          <div className="grid gap-10 lg:grid-cols-[1.25fr_0.75fr_0.75fr_1fr]">
+            <div>
+              <Link to="/" className="inline-flex rounded-xl bg-white px-3 py-2">
+                <Wordmark size="md" />
+              </Link>
+              <p className="mt-5 max-w-sm text-sm leading-7 text-white/65">
+                XPOSE Distributors connects retail speed with wholesale discipline: live stock, flash deals, route orders, and verified stores in one catalogue.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <a
+                  href={TIKTOK_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-white text-sm font-black text-slate-950 px-4 transition-transform hover:-translate-y-0.5"
+                >
+                  <Music2 className="h-4 w-4 text-accent" />
+                  TikTok
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+                <a
+                  href={WHATSAPP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-11 items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/12 px-4 text-sm font-black text-emerald-200 transition-transform hover:-translate-y-0.5"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
+                </a>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="mb-4 text-sm font-black uppercase tracking-wider text-white/90">Shop</h4>
+              <ul className="space-y-3 text-sm text-white/62">
+                {shopLinks.map(([label, to]) => (
+                  <li key={to}>
+                    <Link to={to} className="transition-colors hover:text-accent">{label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="mb-4 text-sm font-black uppercase tracking-wider text-white/90">Support</h4>
+              <ul className="space-y-3 text-sm text-white/62">
+                {supportLinks.map(([label, to]) => (
+                  <li key={to}>
+                    <Link to={to} className="transition-colors hover:text-accent">{label}</Link>
+                  </li>
+                ))}
+                <li>
+                  <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-accent">
+                    Contact support
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.055] p-5">
+              <div className="flex items-start gap-3">
+                <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
+                  <Store className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="font-black">Sell through XPOSE</h4>
+                  <p className="mt-2 text-sm leading-6 text-white/62">
+                    Vendors apply, get reviewed, choose a monthly plan, and pay commission on confirmed marketplace sales.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Link
+                  to="/sell-on-xpose"
+                  className="inline-flex h-10 items-center gap-2 rounded-full bg-accent px-4 text-sm font-black text-accent-foreground hover:bg-accent/90"
+                >
+                  Vendor application
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  to="/vendor/login"
+                  className="inline-flex h-10 items-center rounded-full border border-white/15 px-4 text-sm font-black text-white hover:border-accent/70 hover:text-accent"
+                >
+                  Vendor login
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div className="border-t border-border">
-        <div className="container py-5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-          <p>Copyright {new Date().getFullYear()} XPOSE Distributors. All rights reserved.</p>
-          <p>M-Pesa Till 711714. Free shipping for orders over KES 75,000.</p>
+
+      <div className="border-t border-white/10 bg-black/20">
+        <div className="container flex flex-col gap-4 py-5 text-xs text-white/55 md:flex-row md:items-center md:justify-between">
+          <p>Copyright {new Date().getFullYear()} XPOSE Distributors. Registered business: XPOSE Beauty Shop.</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            <span>M-Pesa Till 711714</span>
+            <a href="tel:+254701377869" className="inline-flex items-center gap-1 hover:text-accent">
+              <PhoneCall className="h-3.5 w-3.5" />
+              {DEVELOPER_PHONE}
+            </a>
+            <span>Developed by Dreams &amp; Visions - AURA Studio</span>
+          </div>
         </div>
       </div>
     </footer>
