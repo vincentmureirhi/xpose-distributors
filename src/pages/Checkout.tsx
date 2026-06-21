@@ -198,8 +198,8 @@ export default function Checkout() {
 
   useEffect(() => {
     document.title = "Checkout — XPOSE";
-    if (cartItems.length === 0) navigate("/cart", { replace: true });
-  }, [cartItems.length, navigate]);
+    if (cartItems.length === 0 && !success) navigate("/cart", { replace: true });
+  }, [cartItems.length, navigate, success]);
 
   useEffect(() => {
     if (!salesRep) return;
@@ -624,7 +624,6 @@ export default function Checkout() {
           return { product_id: i.id, quantity: i.quantity, unit_price: ev ? ev.unit_price : i.price };
         }),
       });
-      clearCart();
       const orderId = result.order_number || result.id;
       if (orderId) rememberRecentOrder(String(orderId), result.tracking_url);
       setSuccess({
@@ -632,6 +631,7 @@ export default function Checkout() {
         trackingUrl: result.tracking_url,
         amountDue: amountDueAtSubmit,
       });
+      clearCart();
     } catch (e) {
       const err = e as { response?: { data?: { message?: string } }; message?: string };
       toast.error("Could not place order", {

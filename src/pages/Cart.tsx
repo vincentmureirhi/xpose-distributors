@@ -154,11 +154,6 @@ export default function Cart() {
                           {pricingLabel}
                         </span>
                       )}
-                      {pricingLoading && !ev && (
-                        <span className="text-[10px] text-muted-foreground animate-pulse">
-                          evaluating...
-                        </span>
-                      )}
                     </div>
 
                     {isGroupThreshold && (
@@ -256,12 +251,6 @@ export default function Cart() {
                 <span>{formatPrice(totalAmount)}</span>
               </div>
             </div>
-
-            {pricingLoading && (
-              <p className="text-[11px] text-muted-foreground">
-                Refreshing prices...
-              </p>
-            )}
 
             <Button
               asChild

@@ -155,11 +155,6 @@ export default function CartDrawer() {
                               {ev.pricing_label}
                             </span>
                           )}
-                          {pricingLoading && !ev && (
-                            <span className="text-[10px] text-muted-foreground animate-pulse">
-                              checking...
-                            </span>
-                          )}
                         </div>
 
                         {pricingMessage && (
@@ -235,11 +230,6 @@ export default function CartDrawer() {
                 <span>Total</span>
                 <span>{formatPrice(totalAmount)}</span>
               </div>
-              {pricingLoading && (
-                <p className="text-[11px] text-muted-foreground">
-                  Checking the latest pricing...
-                </p>
-              )}
             </div>
 
             <div className="grid gap-2">
