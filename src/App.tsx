@@ -35,6 +35,16 @@ import SalesRepLocationAccess from "./pages/SalesRepLocationAccess";
 
 const queryClient = new QueryClient();
 
+function ScrollToTop() {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname, location.search]);
+
+  return null;
+}
+
 function SalesRepPasswordRedirector() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -55,6 +65,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <ScrollToTop />
         <SalesRepSessionProvider>
           <VendorSessionProvider>
             <SalesRepPasswordRedirector />
