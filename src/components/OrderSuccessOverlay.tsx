@@ -19,8 +19,16 @@ interface Props {
   show: boolean;
   orderId: string;
   trackingUrl?: string;
+  amountDue?: number;
   paymentMode?: "mpesa" | "route_credit";
   onDone?: () => void;
+}
+
+function formatMoney(value?: number) {
+  return Number(value || 0).toLocaleString("en-KE", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
 }
 
 function toLocalTrackingPath(trackingUrl?: string, fallbackId?: string) {
@@ -36,11 +44,12 @@ function toLocalTrackingPath(trackingUrl?: string, fallbackId?: string) {
   return fallbackId ? `/track-order?id=${encodeURIComponent(fallbackId)}` : "/track-order";
 }
 
-export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymentMode = "mpesa", onDone }: Props) {
+export default function OrderSuccessOverlay({ show, orderId, trackingUrl, amountDue = 0, paymentMode = "mpesa", onDone }: Props) {
   const [confetti, setConfetti] = useState<{ x: number; r: number; d: number; c: string }[]>([]);
   const [countdown, setCountdown] = useState(REDIRECT_SECONDS);
   const [copied, setCopied] = useState(false);
   const [orderCopied, setOrderCopied] = useState(false);
+  const [copiedPaymentField, setCopiedPaymentField] = useState<string | null>(null);
   const isRouteCredit = paymentMode === "route_credit";
   const trackingPath = toLocalTrackingPath(trackingUrl, orderId);
   const hasPrivateTrackingLink = trackingPath.includes("?t=") || trackingPath.includes("&t=");
@@ -70,6 +79,16 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
     }
   };
 
+  const copyPaymentValue = async (field: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedPaymentField(field);
+      window.setTimeout(() => setCopiedPaymentField(null), 1800);
+    } catch {
+      setCopiedPaymentField(null);
+    }
+  };
+
   useEffect(() => {
     if (!show) return;
 
@@ -84,16 +103,19 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
 
     setCountdown(REDIRECT_SECONDS);
     const cd = window.setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
-    const t = window.setTimeout(() => {
-      window.clearInterval(cd);
-      onDone?.();
-    }, REDIRECT_SECONDS * 1000);
+    let t: number | undefined;
+    if (isRouteCredit) {
+      t = window.setTimeout(() => {
+        window.clearInterval(cd);
+        onDone?.();
+      }, REDIRECT_SECONDS * 1000);
+    }
 
     return () => {
-      window.clearTimeout(t);
+      if (t) window.clearTimeout(t);
       window.clearInterval(cd);
     };
-  }, [show, onDone]);
+  }, [show, onDone, isRouteCredit]);
 
   return (
     <AnimatePresence>
@@ -193,7 +215,7 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
               <p className="mb-4 text-sm text-muted-foreground">
                 {isRouteCredit
                   ? "The route customer order has been captured and is now ready for admin dispatch planning."
-                  : "Your order has been received. Complete your M-Pesa payment and we will start preparing it."}
+                  : "Your order has been received. Pay the exact amount below using M-Pesa Buy Goods."}
               </p>
             </motion.div>
 
@@ -254,21 +276,47 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8 }}
-                className="mb-4 w-full rounded-xl border border-amber-200 bg-amber-50 p-4 text-left dark:border-amber-800/40 dark:bg-amber-900/10"
+                className="mb-4 w-full overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-white text-left shadow-soft dark:border-amber-800/40 dark:from-amber-950/30 dark:via-orange-950/15 dark:to-card"
               >
-                <div className="mb-2 flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
-                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                    Pay via M-Pesa to confirm your order
-                  </p>
+                <div className="border-b border-amber-200/70 px-4 py-3 dark:border-amber-800/40">
+                  <div className="flex items-start gap-3">
+                    <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground shadow-glow">
+                      <CreditCard className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-foreground">Complete payment manually</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Automatic M-Pesa confirmation is currently under maintenance. Please pay with Buy Goods, then keep this order reference.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
-                  <span className="text-muted-foreground">Till Number</span>
-                  <span className="font-bold tracking-widest text-foreground">{TILL_NUMBER}</span>
-                  <span className="text-muted-foreground">Business</span>
-                  <span className="font-semibold">XPOSE</span>
-                  <span className="text-muted-foreground">Reference</span>
-                  <span className="break-words font-semibold">{orderId || "Your order number"}</span>
+
+                <div className="grid gap-2 p-4">
+                  {[
+                    { label: "Amount to pay", value: `KES ${formatMoney(amountDue)}`, copy: String(Math.round(Number(amountDue || 0))), key: "amount" },
+                    { label: "Till number", value: TILL_NUMBER, copy: TILL_NUMBER, key: "till" },
+                    { label: "Account / reference", value: orderId || "Your order number", copy: orderId || "", key: "reference" },
+                  ].map((item) => (
+                    <div key={item.key} className="flex items-center gap-2 rounded-xl border border-border bg-background/85 px-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                        <p className="truncate font-display text-lg font-black text-foreground">{item.value}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => item.copy && copyPaymentValue(item.key, item.copy)}
+                        className="inline-flex h-9 flex-shrink-0 items-center gap-1 rounded-lg bg-secondary px-3 text-xs font-black text-secondary-foreground transition-colors hover:bg-secondary/80"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        {copiedPaymentField === item.key ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mx-4 mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-900/10 dark:text-emerald-300">
+                  Already paid? You are okay. Your order will update once our team confirms the M-Pesa receipt.
                 </div>
               </motion.div>
             )}
@@ -284,9 +332,19 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, paymen
                 className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-accent px-8 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90"
               >
                 <Truck className="h-4 w-4" />
-                Track Order Status
+                {isRouteCredit ? "Open Route Order" : "Paid? Check Order Status"}
               </Link>
-              <p className="text-xs text-muted-foreground">Redirecting in {countdown}s...</p>
+              {!isRouteCredit && (
+                <Link
+                  to="/products"
+                  className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-border bg-background px-8 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
+                >
+                  Continue Shopping
+                </Link>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {isRouteCredit ? `Redirecting in ${countdown}s...` : "This window stays here so you can copy the payment details."}
+              </p>
             </motion.div>
           </div>
         </motion.div>
