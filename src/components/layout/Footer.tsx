@@ -144,15 +144,17 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-white/10 bg-black/20">
-        <div className="container flex flex-col gap-4 py-5 text-xs text-white/55 md:flex-row md:items-center md:justify-between">
-          <p>Copyright {new Date().getFullYear()} XPOSE Distributors. Registered business: XPOSE Beauty Shop.</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
-            <span>M-Pesa Till 711714</span>
+        <div className="container grid gap-3 py-5 text-xs text-white/55 md:grid-cols-3 md:items-center">
+          <p className="md:text-left">Copyright {new Date().getFullYear()} XPOSE Distributors. Registered business: XPOSE Beauty Shop.</p>
+          <p className="text-center font-semibold text-white/65">
+            Developed by Dreams &amp; Visions. Contact developer:{" "}
             <a href="tel:+254701377869" className="inline-flex items-center gap-1 hover:text-accent">
               <PhoneCall className="h-3.5 w-3.5" />
               {DEVELOPER_PHONE}
             </a>
-            <span>Developed by Dreams &amp; Visions - AURA Studio</span>
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-2 md:justify-end">
+            <span>M-Pesa Till 711714</span>
           </div>
         </div>
       </div>
