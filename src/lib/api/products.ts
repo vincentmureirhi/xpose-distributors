@@ -153,7 +153,7 @@ export async function searchStorefrontProducts(q: string, limit = 12): Promise<P
 }
 
 export async function getProductById(id: string | number): Promise<Product | null> {
-  const { data } = await apiClient.get(`/products/${id}`);
+  const { data } = await apiClient.get(`/v1/storefront/products/${id}`);
   const product = data?.data || data || null;
   return product ? normalizeProduct(product) : null;
 }

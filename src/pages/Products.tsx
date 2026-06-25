@@ -90,7 +90,7 @@ function ProductStage({ products }: { products: Product[] }) {
     );
   }
 
-  const cards = products;
+  const cards = products.slice(0, 3);
   const center = (cards.length - 1) / 2;
 
   return (
@@ -102,7 +102,7 @@ function ProductStage({ products }: { products: Product[] }) {
       </div>
 
       <div className="relative mx-auto mt-8 h-60 max-w-md md:mt-12">
-        {cards.slice(0, 3).map((product, index) => {
+        {cards.map((product, index) => {
           const offset = index - center;
           const limited = getStockState(product) === "limited_stock";
           return (

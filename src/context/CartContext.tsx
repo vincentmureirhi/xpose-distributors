@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CartItem, PricingEvaluation, Product } from "@/types/shop";
 import { evaluatePricing } from "@/lib/api/pricing";
 
@@ -58,12 +58,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [evaluations, setEvaluations] = useState<Record<string | number, PricingEvaluation>>({});
   const [pricingLoading, setPricingLoading] = useState(false);
+  const pricingRequestSeq = useRef(0);
 
   useEffect(() => {
     localStorage.setItem(CART_KEY, JSON.stringify(cartItems));
   }, [cartItems]);
 
-  // Stable key based on ids+quantities only — re-evaluate backend pricing when this changes
+  // Stable key based on ids and quantities only. Backend pricing is verified after the user stops changing quantities.
   const qtySignature = useMemo(
     () => cartItems.map((i) => `${i.id}:${i.quantity}`).join("|"),
     [cartItems]
@@ -71,37 +72,44 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!qtySignature) {
+      pricingRequestSeq.current += 1;
       setEvaluations({});
+      setPricingLoading(false);
       return;
     }
 
-    // Derive the API payload from the signature so we don't need cartItems in the dep array
     const items = qtySignature.split("|").map((seg) => {
       const [id, qty] = seg.split(":");
       return { product_id: id, quantity: Number(qty) };
     });
 
     let cancelled = false;
-    setPricingLoading(true);
+    const requestId = ++pricingRequestSeq.current;
 
-    evaluatePricing(items)
-      .then((results) => {
-        if (cancelled) return;
-        const map: Record<string | number, PricingEvaluation> = {};
-        results.forEach((r) => {
-          map[r.product_id] = r;
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      setPricingLoading(true);
+
+      evaluatePricing(items)
+        .then((results) => {
+          if (cancelled || requestId !== pricingRequestSeq.current) return;
+          const map: Record<string | number, PricingEvaluation> = {};
+          results.forEach((r) => {
+            map[r.product_id] = r;
+          });
+          setEvaluations(map);
+        })
+        .catch(() => {
+          // Keep existing evaluations and fall back to local prices if the pricing service is busy.
+        })
+        .finally(() => {
+          if (!cancelled && requestId === pricingRequestSeq.current) setPricingLoading(false);
         });
-        setEvaluations(map);
-      })
-      .catch(() => {
-        // Backend unavailable — keep existing evaluations, fall back to local prices
-      })
-      .finally(() => {
-        if (!cancelled) setPricingLoading(false);
-      });
+    }, 300);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [qtySignature]);
 
@@ -148,7 +156,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
     setCartItems((prev) => prev.map((i) => (i.id === id ? { ...i, quantity: alignQuantity(quantity, i) } : i)));
   }, []);
-
 
   const removeFromCart = useCallback((id: string | number) => {
     setCartItems((prev) => prev.filter((i) => i.id !== id));
