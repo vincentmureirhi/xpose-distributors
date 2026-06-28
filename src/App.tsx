@@ -29,6 +29,7 @@ import VendorStores from "./pages/VendorStores";
 import VendorStore from "./pages/VendorStore";
 import NotFound from "./pages/NotFound";
 import FlashSalePage from "./pages/FlashSalePage";
+import RouteDeliveryApply from "./pages/RouteDeliveryApply";
 import SalesRepLogin from "./pages/SalesRepLogin";
 import SalesRepChangePassword from "./pages/SalesRepChangePassword";
 import SalesRepLocationAccess from "./pages/SalesRepLocationAccess";
@@ -87,6 +88,7 @@ const App = () => (
                     <Route path="/blog" element={<Blog />} />
                     <Route path="/blog/:id" element={<BlogPost />} />
                     <Route path="/flash-sale" element={<FlashSalePage />} />
+                    <Route path="/route-delivery" element={<RouteDeliveryApply />} />
                     <Route path="/vendors" element={<VendorStores />} />
                     <Route path="/vendors/:slug" element={<VendorStore />} />
                     <Route path="/vendor/login" element={<VendorLogin />} />

@@ -11,6 +11,8 @@ export interface RouteCustomerApplicationPayload {
   requested_credit_limit?: number;
   submitted_via?: "email" | "upload" | "manual";
   form_reference?: string;
+  referral_code?: string;
+  marketing_sms_opt_in?: boolean;
 }
 
 export async function submitRouteCustomerApplication(payload: RouteCustomerApplicationPayload) {

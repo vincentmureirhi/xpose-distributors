@@ -103,6 +103,7 @@ export interface Category {
 
 export interface CartItem {
   id: string | number;
+  category_id?: string | number;
   name: string;
   price: number;
   image_url: string;

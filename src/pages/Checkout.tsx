@@ -399,7 +399,14 @@ export default function Checkout() {
     () =>
       cartItems.map((item) => {
         const ev = evaluations[item.id];
-        return { product_id: item.id, quantity: item.quantity, unit_price: ev ? ev.unit_price : item.price };
+        const unitPrice = ev ? ev.unit_price : item.price;
+        return {
+          product_id: item.id,
+          category_id: item.category_id || null,
+          quantity: item.quantity,
+          unit_price: unitPrice,
+          line_total: ev ? ev.line_total : unitPrice * item.quantity,
+        };
       }),
     [cartItems, evaluations]
   );

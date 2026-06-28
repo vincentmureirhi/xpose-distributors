@@ -6,13 +6,14 @@ import FlashSale from "@/components/home/FlashSale";
 import CategoryRail from "@/components/home/CategoryRail";
 import FeaturedGrid from "@/components/home/FeaturedGrid";
 import SmartProductRail from "@/components/home/SmartProductRail";
+import CampaignSpotlight from "@/components/home/CampaignSpotlight";
 import BlogPreview from "@/components/home/BlogPreview";
 import { listFeaturedStorefrontProducts } from "@/lib/api/products";
 import { listStorefrontCategories } from "@/lib/api/categories";
 import { getActiveFlashSales } from "@/lib/api/flash-sales";
+import { listPublicCampaigns, type PublicCampaign } from "@/lib/api/marketing";
 import type { Product, Category } from "@/types/shop";
 
-// Inline type so we don't depend on ../types/flash-sale having the right fields
 interface ActiveSale {
   id: number;
   name: string;
@@ -28,54 +29,51 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeSale, setActiveSale] = useState<ActiveSale | null>(null);
+  const [campaigns, setCampaigns] = useState<PublicCampaign[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     document.title = "XPOSE Distributors | Wholesale and Retail Deals";
 
-    Promise.all([listFeaturedStorefrontProducts(20), listStorefrontCategories(), getActiveFlashSales()])
-      .then(([p, c, flashSales]) => {
-        setCategories(c);
+    Promise.all([
+      listFeaturedStorefrontProducts(20),
+      listStorefrontCategories(),
+      getActiveFlashSales(),
+      listPublicCampaigns(8).catch(() => []),
+    ])
+      .then(([featuredProducts, categoryRows, flashSales, activeCampaigns]) => {
+        setCategories(categoryRows);
+        setCampaigns(activeCampaigns);
 
         if (flashSales.length > 0) {
           const sale = flashSales[0] as unknown as ActiveSale;
-          const saleProducts = Array.isArray(sale.products) ? sale.products : [];
-
-          // Build a map of product_id to discounted_price from the sale's product list
           const flashMap = new Map<number | string, number>();
-          saleProducts.forEach((fp) => {
-            if (fp.discounted_price != null) {
-              flashMap.set(fp.id, fp.discounted_price as number);
-            }
+          (Array.isArray(sale.products) ? sale.products : []).forEach((product) => {
+            if (product.discounted_price != null) flashMap.set(product.id, product.discounted_price);
           });
 
           if (flashMap.size > 0 && sale.end_date) {
             setActiveSale(sale);
-            setProducts(
-              p.map((prod) => {
-                const discounted = flashMap.get(prod.id);
-                return discounted != null
-                  ? { ...prod, discounted_price: discounted, is_flash: true }
-                  : prod;
-              })
-            );
+            setProducts(featuredProducts.map((product) => {
+              const discountedPrice = flashMap.get(product.id);
+              return discountedPrice == null
+                ? product
+                : { ...product, discounted_price: discountedPrice, is_flash: true };
+            }));
             return;
           }
         }
 
-        setProducts(p);
+        setProducts(featuredProducts);
       })
       .catch((error) => {
-        console.error("Failed loading homepage data:", error);
+        if (import.meta.env.DEV) console.error("Failed loading homepage data:", error);
       })
-      .finally(() => {
-        setLoading(false);
-      });
+      .finally(() => setLoading(false));
   }, []);
 
-  // Only products tagged by the flash map above are shown in the sale section
-  const flashProducts: Product[] = activeSale
-    ? products.filter((p) => p.is_flash === true || p.discounted_price != null)
+  const flashProducts = activeSale
+    ? products.filter((product) => product.is_flash === true || product.discounted_price != null)
     : [];
 
   return (
@@ -83,24 +81,18 @@ export default function Home() {
       <Hero products={products} />
       <Marquee />
       <ValueProps />
+      <CampaignSpotlight campaigns={campaigns} />
 
-      {activeSale && activeSale.end_date && flashProducts.length > 0 && (
-        <FlashSale
-          products={flashProducts}
-          endDate={activeSale.end_date}
-          saleName={activeSale.name}
-        />
+      {activeSale?.end_date && flashProducts.length > 0 && (
+        <FlashSale products={flashProducts} endDate={activeSale.end_date} saleName={activeSale.name} />
       )}
 
       {loading ? (
         <section className="container py-16 md:py-24">
-          <div className="h-8 w-48 bg-muted animate-pulse rounded mb-8" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="aspect-[4/5] md:aspect-square rounded-2xl bg-muted animate-pulse"
-              />
+          <div className="mb-8 h-8 w-48 animate-pulse rounded bg-muted" />
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div key={index} className="aspect-[4/5] animate-pulse rounded-lg bg-muted md:aspect-square" />
             ))}
           </div>
         </section>

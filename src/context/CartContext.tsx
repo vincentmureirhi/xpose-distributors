@@ -136,6 +136,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         ...prev,
         {
           id: product.id,
+          category_id: product.category_id,
           name: product.name,
           price,
           image_url: product.image_url || "",

@@ -28,6 +28,8 @@ export default function RouteDeliveryApply() {
     region_id: "",
     location_id: "",
     requested_credit_limit: "",
+    referral_code: new URLSearchParams(window.location.search).get("ref")?.toUpperCase() || "",
+    marketing_sms_opt_in: false,
   });
 
   useEffect(() => {
@@ -142,6 +144,8 @@ export default function RouteDeliveryApply() {
         region_id: form.region_id,
         location_id: form.location_id,
         requested_credit_limit: requestedCreditLimit,
+        referral_code: form.referral_code.trim() || undefined,
+        marketing_sms_opt_in: form.marketing_sms_opt_in,
         submitted_via: "manual",
         form_reference: `Storefront route delivery application - ${selectedRegion?.name || "Region"} / ${selectedLocation?.name || "Location"}`,
       });
@@ -160,6 +164,8 @@ export default function RouteDeliveryApply() {
         region_id: "",
         location_id: "",
         requested_credit_limit: "",
+        referral_code: "",
+        marketing_sms_opt_in: false,
       });
     } catch (error) {
       const err = error as { response?: { data?: { message?: string; error?: string } }; message?: string };
@@ -306,7 +312,25 @@ export default function RouteDeliveryApply() {
                   placeholder="Example: 5000"
                 />
               </div>
-              <div className="flex items-end">
+              <div className="space-y-1.5">
+                <Label htmlFor="referral-code">Sales rep referral code</Label>
+                <Input
+                  id="referral-code"
+                  value={form.referral_code}
+                  onChange={(e) => updateField("referral_code", e.target.value.toUpperCase())}
+                  placeholder="Optional"
+                />
+              </div>
+              <label className="flex items-start gap-3 rounded-lg border border-border bg-secondary/30 p-3 text-sm sm:col-span-2">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4"
+                  checked={form.marketing_sms_opt_in}
+                  onChange={(e) => setForm((current) => ({ ...current, marketing_sms_opt_in: e.target.checked }))}
+                />
+                <span>Send me occasional XPOSE route offers by SMS. I can opt out through the company at any time.</span>
+              </label>
+              <div className="flex items-end sm:col-span-2">
                 <Button type="submit" disabled={submitting} className="h-11 w-full">
                   {submitting ? (
                     <>

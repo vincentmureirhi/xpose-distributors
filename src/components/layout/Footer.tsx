@@ -25,6 +25,7 @@ const shopLinks = [
 
 const supportLinks = [
   ["Track order", "/track-order"],
+  ["Route delivery", "/route-delivery"],
   ["Blog", "/blog"],
   ["Terms", "/terms"],
   ["Sell on XPOSE", "/sell-on-xpose"],
