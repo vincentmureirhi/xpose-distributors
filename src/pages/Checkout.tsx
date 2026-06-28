@@ -4,13 +4,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, CreditCard, FileText, Loader2, MapPin, Phone, Search, User, Truck, X } from "lucide-react";
+import { ArrowLeft, BadgePercent, CreditCard, FileText, Loader2, MapPin, Phone, Search, User, Truck, X } from "lucide-react";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { guestCheckout } from "@/lib/api/orders";
+import { validateCoupon, type CouponValidationResult } from "@/lib/api/marketing";
 import { listLocations, listRegions, type LocationOption, type RegionOption } from "@/lib/api/geography";
 import { listRouteCustomers, upsertRouteCustomer } from "@/lib/api/route-customers";
 import { toast } from "sonner";
@@ -141,6 +142,10 @@ export default function Checkout() {
   } = useSalesRepSession();
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<{ id: string; trackingUrl?: string; amountDue?: number } | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
   const workflow: CheckoutWorkflow = isSalesRepAuthenticated ? "sales_rep" : "self_service";
   const [routeCustomers, setRouteCustomers] = useState<RouteCustomer[]>([]);
   const [loadingRouteCustomers, setLoadingRouteCustomers] = useState(false);
@@ -171,6 +176,7 @@ export default function Checkout() {
     register,
     handleSubmit,
     control,
+    watch,
     setValue,
     setError,
     clearErrors,
@@ -389,6 +395,26 @@ export default function Checkout() {
     );
   }, [routeCustomerSearch, routeCustomers]);
 
+  const orderItems = useMemo(
+    () =>
+      cartItems.map((item) => {
+        const ev = evaluations[item.id];
+        return { product_id: item.id, quantity: item.quantity, unit_price: ev ? ev.unit_price : item.price };
+      }),
+    [cartItems, evaluations]
+  );
+
+  const couponDiscount = workflow === "self_service" ? Number(appliedCoupon?.discount_amount || 0) : 0;
+  const checkoutTotal = Math.max(0, totalAmount - couponDiscount);
+  const watchedCustomerPhone = watch("customer_phone") || "";
+  const couponSignature = `${workflow}|${totalAmount}|${orderItems.map((item) => `${item.product_id}:${item.quantity}:${item.unit_price || 0}`).join("|")}`;
+
+  useEffect(() => {
+    if (!appliedCoupon) return;
+    setAppliedCoupon(null);
+    setCouponError("Cart changed. Apply the coupon again before checkout.");
+  }, [couponSignature]);
+
   useEffect(() => {
     if (workflow !== "sales_rep" || !selectedRouteCustomerId) return;
     const selectedExists = routeCustomers.some((customer) => customer.id === selectedRouteCustomerId);
@@ -550,11 +576,55 @@ export default function Checkout() {
 
     return true;
   };
+  const clearCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError("");
+    setCouponCode("");
+  };
+
+  const applyCoupon = async () => {
+    if (workflow !== "self_service") return;
+    const code = couponCode.trim().toUpperCase();
+    if (!code) {
+      setCouponError("Enter a coupon code first.");
+      return;
+    }
+    if (!orderItems.length || totalAmount <= 0) {
+      setCouponError("Add products to cart before applying a coupon.");
+      return;
+    }
+
+    try {
+      setCouponLoading(true);
+      setCouponError("");
+      const validation = await validateCoupon({
+        couponCode: code,
+        orderType: "normal",
+        customerPhone: watchedCustomerPhone.trim() || undefined,
+        subtotalAmount: totalAmount,
+        items: orderItems,
+      });
+      setAppliedCoupon(validation);
+      setCouponCode(validation.coupon_code || code);
+      toast.success("Coupon applied", {
+        description: `${validation.coupon_code || code} saved ${formatPrice(Number(validation.discount_amount || 0))}.`,
+      });
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string; error?: string } }; message?: string };
+      setAppliedCoupon(null);
+      setCouponError(err.response?.data?.message || err.response?.data?.error || err.message || "Coupon could not be applied.");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
 
   const onSubmit = async (values: FormValues) => {
     if (workflow === "self_service" && !validateSelfServiceCheckout(values)) return;
-
-    if (workflow === "sales_rep") {
+    if (workflow === "self_service" && couponCode.trim() && !appliedCoupon) {
+      toast.error("Apply coupon first", { description: "Press Apply or clear the coupon field before placing the order." });
+      return;
+    }
+if (workflow === "sales_rep") {
       if (mustChangePassword) {
         toast.error("Password change required", {
           description: "Change your password before capturing route orders.",
@@ -600,7 +670,7 @@ export default function Checkout() {
       const { customerName, customerPhone, deliveryLocation } = resolveCheckoutCustomerData(values);
       const transportCompany = values.transport_company?.trim();
 
-      const amountDueAtSubmit = totalAmount;
+      const amountDueAtSubmit = workflow === "self_service" ? checkoutTotal : totalAmount;
       const result = await guestCheckout({
         customer_name: customerName,
         customer_phone: customerPhone,
@@ -619,10 +689,8 @@ export default function Checkout() {
             route_area: selectedRouteCustomer.route_area || selectedRouteCustomer.location || selectedRegion?.name || repArea,
             route_notes: selectedRouteCustomer.notes || undefined,
           }),
-        items: cartItems.map((i) => {
-          const ev = evaluations[i.id];
-          return { product_id: i.id, quantity: i.quantity, unit_price: ev ? ev.unit_price : i.price };
-        }),
+        ...(workflow === "self_service" && appliedCoupon?.coupon_code ? { coupon_code: appliedCoupon.coupon_code } : {}),
+        items: orderItems,
       });
       const orderId = result.order_number || result.id;
       if (orderId) rememberRecentOrder(String(orderId), result.tracking_url);
@@ -1127,7 +1195,7 @@ export default function Checkout() {
                 ) : repOperationsBlocked ? (
                   "Enable location to capture route order"
                 ) : (
-                  `${workflow === "sales_rep" ? "Capture route order" : "Place order"} — ${formatPrice(totalAmount)}`
+                  `${workflow === "sales_rep" ? "Capture route order" : "Place order"} — ${formatPrice(workflow === "self_service" ? checkoutTotal : totalAmount)}`
                 )}
               </Button>
             </motion.div>
@@ -1257,18 +1325,73 @@ export default function Checkout() {
                 </tbody>
               </table>
             </div>
+            {workflow === "self_service" && (
+              <div className="mb-4 rounded-xl border border-border bg-secondary/30 p-3 sm:p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <BadgePercent className="h-4 w-4 text-accent" />
+                  <p className="text-sm font-semibold">Promo code</p>
+                </div>
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
+                  <Input
+                    value={couponCode}
+                    onChange={(event) => {
+                      setCouponCode(event.target.value.toUpperCase());
+                      setCouponError("");
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        if (!appliedCoupon) void applyCoupon();
+                      }
+                    }}
+                    placeholder="Enter code"
+                    autoComplete="off"
+                    disabled={couponLoading || Boolean(appliedCoupon)}
+                    className="min-w-0 flex-1 uppercase"
+                    aria-label="Promo code"
+                  />
+                  {appliedCoupon ? (
+                    <Button type="button" variant="outline" onClick={clearCoupon} className="sm:w-auto">
+                      Remove
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={() => void applyCoupon()}
+                      disabled={couponLoading || !couponCode.trim()}
+                      className="sm:w-auto"
+                    >
+                      {couponLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Apply
+                    </Button>
+                  )}
+                </div>
+                {appliedCoupon && (
+                  <p className="mt-2 text-xs font-semibold text-emerald-700">
+                    {appliedCoupon.coupon_code} applied. You save {formatPrice(couponDiscount)}.
+                  </p>
+                )}
+                {couponError && <p className="mt-2 text-xs text-destructive">{couponError}</p>}
+              </div>
+            )}
             <div className="space-y-1 text-sm pt-3 border-t border-border">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
                 <span>{formatPrice(totalAmount)}</span>
               </div>
+              {workflow === "self_service" && couponDiscount > 0 && (
+                <div className="flex justify-between font-medium text-emerald-700">
+                  <span>Promo discount</span>
+                  <span>-{formatPrice(couponDiscount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-muted-foreground">
                 <span>Shipping</span>
                 <span>{totalAmount >= 75000 ? "Free" : "Calculated at dispatch"}</span>
               </div>
               <div className="flex justify-between font-display font-bold text-xl pt-2 border-t border-border">
                 <span>Total</span>
-                <span>{formatPrice(totalAmount)}</span>
+                <span>{formatPrice(workflow === "self_service" ? checkoutTotal : totalAmount)}</span>
               </div>
             </div>
 
