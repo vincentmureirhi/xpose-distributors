@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, BadgePercent, PackageCheck, Search } from "lucide-react";
+import { ArrowRight, BadgePercent, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/context/CartContext";
 import type { Product } from "@/types/shop";
@@ -32,12 +32,6 @@ export default function Hero({ products = [] }: HeroProps) {
     [products]
   );
   const activeProduct = heroProducts[activeIndex % Math.max(heroProducts.length, 1)];
-  const supportingProducts = useMemo(() => {
-    if (heroProducts.length <= 1) return [];
-    return [1, 2]
-      .map((offset) => heroProducts[(activeIndex + offset) % heroProducts.length])
-      .filter(Boolean);
-  }, [activeIndex, heroProducts]);
 
   useEffect(() => {
     if (heroProducts.length <= 1) return undefined;
@@ -59,77 +53,72 @@ export default function Hero({ products = [] }: HeroProps) {
 
   return (
     <section className="relative overflow-hidden bg-[#0b0f14] text-white">
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:52px_52px]" />
-      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(11,15,20,0.99),rgba(11,15,20,0.8)_48%,rgba(16,24,32,0.96))]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:52px_52px]" />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(11,15,20,0.99),rgba(11,15,20,0.84)_54%,rgba(16,24,32,0.97))]" />
 
-      <div className="container relative grid items-center gap-8 py-9 sm:py-11 md:min-h-[640px] md:grid-cols-[minmax(0,1.05fr)_minmax(330px,0.75fr)] md:gap-10 md:py-14">
+      <div className="container relative grid items-center gap-7 py-8 sm:py-10 md:min-h-[520px] md:grid-cols-[minmax(0,1.12fr)_minmax(280px,0.58fr)] md:gap-10 md:py-10">
         <div className="max-w-3xl">
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45 }}
-            className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-bold uppercase text-white/75"
+            transition={{ duration: 0.4 }}
+            className="mb-3 text-[11px] font-bold uppercase tracking-wider text-accent sm:text-xs"
           >
-            <PackageCheck className="h-3.5 w-3.5 text-accent" />
-            XPOSE Distributors
-          </motion.div>
+            Beauty / Hair / Baby care / Household
+          </motion.p>
 
           <motion.h1
-            initial={{ opacity: 0, y: 22 }}
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.06 }}
-            className="max-w-4xl font-display text-4xl font-black leading-[0.98] text-balance sm:text-5xl md:text-6xl lg:text-7xl"
+            transition={{ duration: 0.55, delay: 0.05 }}
+            className="max-w-3xl font-display text-4xl font-black leading-[1.02] text-balance sm:text-5xl md:text-5xl lg:text-6xl"
           >
-            Beauty, hair, baby care
-            <span className="block text-accent">and household supplies.</span>
+            Wholesale &amp; retail
+            <span className="block text-accent">essentials.</span>
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 14 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.16 }}
-            className="mt-5 max-w-2xl text-sm leading-6 text-white/70 sm:text-base md:text-lg"
+            transition={{ duration: 0.45, delay: 0.14 }}
+            className="mt-4 max-w-2xl text-sm leading-6 text-white/70 sm:text-base md:text-lg"
           >
-            Shop retail pieces, wholesale packs, flash deals and route-ready stock from one live catalogue.
+            Single items, trade packs and cartons from XPOSE Distributors, with live prices and stock.
           </motion.p>
 
           <motion.form
-            initial={{ opacity: 0, y: 14 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.24 }}
+            transition={{ duration: 0.45, delay: 0.21 }}
             onSubmit={submitSearch}
-            className="mt-6 flex max-w-2xl items-center gap-2 rounded-lg border border-white/15 bg-white p-1.5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]"
+            className="mt-5 flex max-w-xl items-center gap-2 rounded-lg border border-white/15 bg-white p-1 shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
           >
-            <Search className="ml-3 h-5 w-5 flex-shrink-0 text-slate-500" />
+            <Search className="ml-3 h-4 w-4 flex-shrink-0 text-slate-500" />
             <input
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search products, brands or categories"
-              className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-base text-slate-950 outline-none placeholder:text-slate-500"
+              placeholder="Search the catalogue"
+              className="h-10 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-slate-950 outline-none placeholder:text-slate-500 sm:text-base"
               aria-label="Search the XPOSE catalogue"
             />
-            <Button type="submit" className="h-11 rounded-md bg-accent px-4 text-accent-foreground hover:bg-accent/90 sm:px-6">
+            <Button type="submit" className="h-10 rounded-md bg-accent px-4 text-accent-foreground hover:bg-accent/90">
               <span className="hidden sm:inline">Search</span>
               <ArrowRight className="h-4 w-4" />
             </Button>
           </motion.form>
 
           <motion.div
-            initial={{ opacity: 0, y: 14 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.32 }}
-            className="mt-5 flex flex-wrap gap-3"
+            transition={{ duration: 0.45, delay: 0.28 }}
+            className="mt-4 flex flex-wrap gap-2"
           >
-            <Button asChild size="lg" className="h-11 rounded-md bg-accent px-6 text-accent-foreground shadow-glow hover:bg-accent/90">
-              <Link to="/products">
-                Shop products <ArrowRight className="h-4 w-4" />
-              </Link>
+            <Button asChild className="h-10 rounded-md bg-accent px-5 text-accent-foreground shadow-glow hover:bg-accent/90">
+              <Link to="/products">Shop products <ArrowRight className="h-4 w-4" /></Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="h-11 rounded-md border-white/25 bg-white/5 px-6 text-white hover:bg-white/10 hover:text-white">
-              <Link to="/flash-sale">
-                <BadgePercent className="h-4 w-4" /> Flash deals
-              </Link>
+            <Button asChild variant="outline" className="h-10 rounded-md border-white/25 bg-white/5 px-5 text-white hover:bg-white/10 hover:text-white">
+              <Link to="/flash-sale"><BadgePercent className="h-4 w-4" /> Flash deals</Link>
             </Button>
           </motion.div>
         </div>
@@ -140,53 +129,34 @@ export default function Hero({ products = [] }: HeroProps) {
               to={`/products/${activeProduct.id}`}
               className="flex items-center gap-3 rounded-lg border border-white/12 bg-white/8 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.22)] md:hidden"
             >
-              <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-white p-2">
+              <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-white p-2">
                 {activeProduct.image_url ? (
                   <img src={activeProduct.image_url} alt={activeProduct.name} className="h-full w-full object-contain" />
                 ) : (
-                  <div className="grid h-full w-full place-items-center text-2xl font-black text-accent">{activeProduct.name.charAt(0)}</div>
+                  <div className="grid h-full w-full place-items-center text-xl font-black text-accent">{activeProduct.name.charAt(0)}</div>
                 )}
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Available now</p>
-                <p className="mt-1 line-clamp-2 text-sm font-black leading-tight text-white">{activeProduct.name}</p>
-                {getDisplayPrice(activeProduct) > 0 && (
-                  <p className="mt-1 text-sm font-semibold text-white/75">{formatPrice(getDisplayPrice(activeProduct))}</p>
-                )}
+                <p className="mt-1 line-clamp-1 text-sm font-black text-white">{activeProduct.name}</p>
+                {getDisplayPrice(activeProduct) > 0 && <p className="mt-1 text-xs font-semibold text-white/75">{formatPrice(getDisplayPrice(activeProduct))}</p>}
               </div>
               <ArrowRight className="ml-auto h-4 w-4 flex-shrink-0 text-accent" />
             </Link>
 
-            <div className="relative hidden h-[440px] md:block">
-              <div className="absolute left-2 top-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80">
-                Live catalogue
+            <div className="relative hidden h-[360px] items-center justify-center md:flex">
+              <div className="absolute left-1/2 top-0 -translate-x-1/2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80">
+                Available now
               </div>
-              {supportingProducts.map((product, index) => (
-                <Link
-                  key={product.id}
-                  to={`/products/${product.id}`}
-                  className={`absolute w-32 rounded-lg border border-white/12 bg-white p-2.5 shadow-[0_24px_70px_rgba(0,0,0,0.25)] transition-transform hover:-translate-y-1 ${index === 0 ? "right-1 top-12 rotate-[5deg] opacity-80" : "bottom-14 left-0 rotate-[-6deg] opacity-70"}`}
-                >
-                  <div className="aspect-square rounded-md bg-slate-50 p-2">
-                    {product.image_url ? (
-                      <img src={product.image_url} alt={product.name} className="h-full w-full object-contain" />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center text-2xl font-black text-accent">{product.name.charAt(0)}</div>
-                    )}
-                  </div>
-                  <p className="mt-2 line-clamp-1 text-xs font-black text-slate-950">{product.name}</p>
-                </Link>
-              ))}
-
               <motion.div
                 key={activeProduct.id}
-                initial={{ opacity: 0, y: 14, rotate: -1 }}
-                animate={{ opacity: 1, y: 0, rotate: 0 }}
-                transition={{ duration: 0.4 }}
-                className="absolute left-1/2 top-1/2 w-[74%] max-w-[285px] -translate-x-1/2 -translate-y-1/2"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35 }}
+                className="w-full max-w-[250px]"
               >
-                <Link to={`/products/${activeProduct.id}`} className="group block overflow-hidden rounded-lg border border-white/15 bg-white p-3 shadow-[0_32px_90px_rgba(0,0,0,0.36)] transition-transform duration-300 hover:-translate-y-1">
-                  <div className="aspect-square overflow-hidden rounded-md bg-slate-50">
+                <Link to={`/products/${activeProduct.id}`} className="group block overflow-hidden rounded-lg border border-white/15 bg-white p-3 shadow-[0_28px_80px_rgba(0,0,0,0.34)] transition-transform duration-300 hover:-translate-y-1">
+                  <div className="flex h-52 items-center justify-center overflow-hidden rounded-md bg-slate-50">
                     {activeProduct.image_url ? (
                       <img src={activeProduct.image_url} alt={activeProduct.name} className="h-full w-full object-contain p-3 transition-transform duration-500 group-hover:scale-105" />
                     ) : (
@@ -204,7 +174,7 @@ export default function Hero({ products = [] }: HeroProps) {
               </motion.div>
 
               {heroProducts.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
+                <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 gap-2">
                   {heroProducts.map((product, index) => (
                     <button
                       key={product.id}
@@ -219,11 +189,10 @@ export default function Hero({ products = [] }: HeroProps) {
             </div>
           </div>
         ) : (
-          <div className="hidden h-[360px] place-items-center rounded-lg border border-white/10 bg-white/5 text-center md:grid">
+          <div className="hidden h-[300px] place-items-center rounded-lg border border-white/10 bg-white/5 text-center md:grid">
             <div>
-              <Search className="mx-auto h-9 w-9 text-accent" />
-              <p className="mt-3 text-xl font-black">Find what you need</p>
-              <p className="mt-1 text-sm text-white/60">Search the live catalogue above.</p>
+              <Search className="mx-auto h-8 w-8 text-accent" />
+              <p className="mt-3 text-lg font-black">Search the catalogue</p>
             </div>
           </div>
         )}

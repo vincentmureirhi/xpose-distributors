@@ -57,7 +57,7 @@ export default function Header() {
       )}
     >
       <div className="border-b border-white/10 bg-[#0b0f14] text-white">
-        <div className="container flex h-8 items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wide sm:text-[11px]">
+        <div className="container flex h-7 items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wide sm:text-[11px]">
           <span className="truncate">M-Pesa till 711714</span>
           <div className="hidden items-center gap-5 sm:flex">
             <span>Retail and wholesale</span>
@@ -67,7 +67,7 @@ export default function Header() {
           <span className="sm:hidden">Retail + wholesale</span>
         </div>
       </div>
-      <div className="container flex h-16 items-center justify-between gap-4 md:h-20">
+      <div className="container flex h-16 items-center justify-between gap-4 md:h-[72px]">
         <Link to="/" className="flex items-center" aria-label="XPOSE Distributors home">
           <Wordmark size="md" />
         </Link>
