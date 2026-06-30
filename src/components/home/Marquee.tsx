@@ -1,25 +1,26 @@
-const items = [
-  "Live catalogue pricing",
-  "Carton, dozen, and piece rules shown clearly",
-  "Secure order tracking links",
-  "Fresh flash deals",
-  "Route customer orders supported",
-  "M-Pesa till payment: 711714",
-  "Wholesale and retail checkout",
-  "Kenya-wide delivery coordination",
+import { BadgePercent, CreditCard, PackageCheck, ShieldCheck } from "lucide-react";
+
+const signals = [
+  { icon: CreditCard, label: "M-Pesa till 711714" },
+  { icon: PackageCheck, label: "Retail and wholesale prices" },
+  { icon: BadgePercent, label: "Live deals and stock" },
+  { icon: ShieldCheck, label: "Private order tracking" },
 ];
 
 export default function Marquee() {
   return (
-    <div className="overflow-hidden border-y border-border bg-background py-3">
-      <div className="marquee gap-12 text-sm font-semibold text-muted-foreground">
-        {[...items, ...items, ...items].map((text, index) => (
-          <span key={`${text}-${index}`} className="flex items-center gap-12 whitespace-nowrap">
-            {text}
-            <span className="h-1 w-1 rounded-full bg-accent" />
-          </span>
+    <section className="border-y border-border bg-background" aria-label="Store benefits">
+      <div className="container grid grid-cols-2 md:grid-cols-4">
+        {signals.map(({ icon: Icon, label }, index) => (
+          <div
+            key={label}
+            className={`flex min-h-14 items-center gap-2 px-2 py-3 text-xs font-bold text-foreground sm:px-4 sm:text-sm ${index % 2 === 0 ? "border-r border-border" : ""} md:border-r md:last:border-r-0`}
+          >
+            <Icon className="h-4 w-4 flex-shrink-0 text-accent" />
+            <span className="leading-5">{label}</span>
+          </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

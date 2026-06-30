@@ -56,6 +56,17 @@ export default function Header() {
         scrolled ? "glass shadow-soft" : "bg-background"
       )}
     >
+      <div className="border-b border-white/10 bg-[#0b0f14] text-white">
+        <div className="container flex h-8 items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wide sm:text-[11px]">
+          <span className="truncate">M-Pesa till 711714</span>
+          <div className="hidden items-center gap-5 sm:flex">
+            <span>Retail and wholesale</span>
+            <span>Live stock</span>
+            <span>Private order tracking</span>
+          </div>
+          <span className="sm:hidden">Retail + wholesale</span>
+        </div>
+      </div>
       <div className="container flex h-16 items-center justify-between gap-4 md:h-20">
         <Link to="/" className="flex items-center" aria-label="XPOSE Distributors home">
           <Wordmark size="md" />
@@ -69,7 +80,7 @@ export default function Header() {
               end={l.to === "/"}
               className={({ isActive }) =>
                 cn(
-                  "text-sm font-medium transition-colors relative py-1",
+                  "relative py-1 text-sm font-medium transition-colors focus-visible:rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent",
                   isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                 )
               }

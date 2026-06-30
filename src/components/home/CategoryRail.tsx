@@ -21,11 +21,11 @@ function overlayClass(hasImage?: string) {
 
 export default function CategoryRail({ categories }: Props) {
   return (
-    <section className="container py-16 md:py-24">
-      <div className="flex items-end justify-between mb-8">
+    <section className="container py-10 md:py-14">
+      <div className="mb-6 flex items-end justify-between">
         <div>
           <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Browse</p>
-          <h2 className="font-display font-bold text-3xl md:text-5xl tracking-tight">Shop by category</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Shop by category</h2>
         </div>
         <Link to="/categories" className="text-sm font-medium underline-offset-4 hover:underline hidden sm:inline">
           View all
@@ -43,7 +43,7 @@ export default function CategoryRail({ categories }: Props) {
           >
             <Link
               to={`/products?category=${category.id}`}
-              className={`group relative block aspect-[4/5] md:aspect-square rounded-2xl overflow-hidden bg-gradient-to-br ${tones[index % tones.length]} border border-border hover:border-foreground/20 transition-all hover:shadow-elevated`}
+              className={`group relative block aspect-[5/4] rounded-lg md:aspect-square overflow-hidden bg-gradient-to-br ${tones[index % tones.length]} border border-border hover:border-foreground/20 transition-all hover:shadow-elevated`}
             >
               {category.image_url && (
                 <img
@@ -58,7 +58,7 @@ export default function CategoryRail({ categories }: Props) {
                   {category.product_count ?? 0} items
                 </span>
                 <div>
-                  <h3 className={`font-display font-bold text-xl md:text-2xl tracking-tight transition-colors ${category.image_url ? "text-white" : "group-hover:text-accent"}`}>
+                  <h3 className={`line-clamp-2 font-display text-base font-bold leading-tight tracking-tight transition-colors sm:text-xl ${category.image_url ? "text-white" : "group-hover:text-accent"}`}>
                     {category.name}
                   </h3>
                   <p className={`text-xs mt-1 transition-colors ${category.image_url ? "text-white/75" : "text-muted-foreground group-hover:text-foreground"}`}>

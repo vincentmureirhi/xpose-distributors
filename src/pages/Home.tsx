@@ -33,7 +33,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "XPOSE Distributors | Wholesale and Retail Deals";
+    document.title = "XPOSE Distributors | Beauty, Hair and Household Supplies";
 
     Promise.all([
       listFeaturedStorefrontProducts(20),
@@ -56,9 +56,7 @@ export default function Home() {
             setActiveSale(sale);
             setProducts(featuredProducts.map((product) => {
               const discountedPrice = flashMap.get(product.id);
-              return discountedPrice == null
-                ? product
-                : { ...product, discounted_price: discountedPrice, is_flash: true };
+              return discountedPrice == null ? product : { ...product, discounted_price: discountedPrice, is_flash: true };
             }));
             return;
           }
@@ -80,26 +78,30 @@ export default function Home() {
     <>
       <Hero products={products} />
       <Marquee />
-      <ValueProps />
-      <CampaignSpotlight campaigns={campaigns} />
-
-      {activeSale?.end_date && flashProducts.length > 0 && (
-        <FlashSale products={flashProducts} endDate={activeSale.end_date} saleName={activeSale.name} />
-      )}
 
       {loading ? (
-        <section className="container py-16 md:py-24">
-          <div className="mb-8 h-8 w-48 animate-pulse rounded bg-muted" />
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <section className="container py-10 md:py-14">
+          <div className="mb-6 h-8 w-48 animate-pulse rounded bg-muted" />
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {Array.from({ length: 8 }).map((_, index) => (
               <div key={index} className="aspect-[4/5] animate-pulse rounded-lg bg-muted md:aspect-square" />
             ))}
           </div>
         </section>
       ) : (
+        <CategoryRail categories={categories} />
+      )}
+
+      <CampaignSpotlight campaigns={campaigns} />
+
+      {activeSale?.end_date && flashProducts.length > 0 && (
+        <FlashSale products={flashProducts} endDate={activeSale.end_date} saleName={activeSale.name} />
+      )}
+
+      {!loading && (
         <>
-          <CategoryRail categories={categories} />
           <SmartProductRail products={products} />
+          <ValueProps />
           <FeaturedGrid products={products.slice(0, 8)} />
         </>
       )}

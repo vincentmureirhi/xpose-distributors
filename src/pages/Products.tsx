@@ -96,9 +96,8 @@ function ProductStage({ products }: { products: Product[] }) {
   return (
     <div className="relative min-h-[310px] overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] p-4 md:min-h-[360px]">
       <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0_48%,rgba(255,255,255,.1)_49%,transparent_50%)] bg-[size:30px_30px] opacity-25" />
-      <div className="absolute -right-14 top-8 h-48 w-48 rounded-full border border-accent/25 bg-accent/10 blur-2xl" />
       <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-xs font-semibold text-white/70">
-        <span className="text-accent">Live shelf:</span> in-stock products stay upfront.
+        <span className="text-accent">Available now</span>
       </div>
 
       <div className="relative mx-auto mt-8 h-60 max-w-md md:mt-12">
@@ -261,7 +260,7 @@ export default function Products() {
       active: flashOnly,
     },
     {
-      label: "Bulk value",
+      label: "Best value",
       icon: Boxes,
       action: () => setParam("sort", sort === "price-asc" ? "" : "price-asc"),
       active: sort === "price-asc",
@@ -273,6 +272,13 @@ export default function Products() {
       active: stockFilter === "limited",
     },
   ];
+
+  const visibleStats = [
+    readyCount > 0 ? { label: "Ready items", value: readyCount, icon: PackageCheck } : null,
+    flashCount > 0 ? { label: "Flash deals", value: flashCount, icon: BadgePercent } : null,
+    limitedCount > 0 ? { label: "Limited stock", value: limitedCount, icon: Clock3 } : null,
+    categoryCount > 0 ? { label: "Categories", value: categoryCount, icon: Boxes } : null,
+  ].filter((stat): stat is { label: string; value: number; icon: typeof PackageCheck } => stat !== null);
 
   const filterFields = (
     <div className="space-y-5">
@@ -314,24 +320,24 @@ export default function Products() {
   );
 
   return (
-    <div className="container py-10 md:py-14">
-      <section className="mb-7 overflow-hidden rounded-3xl border border-border bg-[#0b0f14] text-white shadow-soft">
-        <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="relative overflow-hidden p-6 md:p-8 lg:p-10">
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,91,46,0.18)_0,transparent_36%),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.045)_1px,transparent_1px)] bg-[size:auto,44px_44px,44px_44px]" />
+    <div className="container py-6 md:py-8">
+      <section className="mb-5 overflow-hidden rounded-xl border border-border bg-[#0b0f14] text-white shadow-soft">
+        <div className="grid gap-0 lg:grid-cols-[1.35fr_0.65fr]">
+          <div className="relative overflow-hidden p-5 sm:p-6 lg:p-8">
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,91,46,0.18)_0,transparent_36%),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:auto,42px_42px,42px_42px]" />
             <div className="relative">
-              <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-black uppercase tracking-wider text-white/70">
+              <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white/70">
                 <PackageCheck className="h-3.5 w-3.5 text-accent" />
-                XPOSE stock room
+                XPOSE catalogue
               </p>
-              <h1 className="max-w-2xl font-display text-4xl font-black leading-none tracking-tight md:text-6xl">
+              <h1 className="max-w-2xl font-display text-3xl font-black leading-none sm:text-4xl md:text-5xl">
                 {headline}
               </h1>
-              <p className="mt-4 max-w-xl text-base leading-7 text-white/68">
-                Cartons, pieces, hygiene lines, snacks, flash deals, and route-ready packs in one fast catalogue.
+              <p className="mt-3 max-w-xl text-sm leading-6 text-white/70 sm:text-base">
+                Retail pieces, wholesale packs and live deal prices.
               </p>
 
-              <div className="mt-6 flex flex-wrap gap-2">
+              <div className="mt-5 flex flex-wrap gap-2">
                 {quickActions.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -339,7 +345,7 @@ export default function Products() {
                       key={item.label}
                       type="button"
                       onClick={item.action}
-                      className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold transition-colors ${
+                      className={`inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-bold transition-colors ${
                         item.active
                           ? "border-accent bg-accent text-accent-foreground"
                           : "border-white/15 bg-white/5 text-white hover:border-accent/60"
@@ -352,39 +358,36 @@ export default function Products() {
                 })}
                 <Link
                   to="/flash-sale"
-                  className="inline-flex h-10 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 text-sm font-bold text-white transition-colors hover:border-accent/60"
+                  className="inline-flex h-9 items-center gap-2 rounded-md border border-white/15 bg-white/5 px-3 text-sm font-bold text-white transition-colors hover:border-accent/60"
                 >
                   Deal room <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
 
-              <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-                {[
-                  { label: "Ready items", value: readyCount, icon: PackageCheck },
-                  { label: "Flash deals", value: flashCount, icon: BadgePercent },
-                  { label: "Limited stock", value: limitedCount, icon: Clock3 },
-                  { label: "Categories", value: categoryCount, icon: Boxes },
-                ].map((stat) => {
-                  const Icon = stat.icon;
-                  return (
-                    <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/[0.055] p-4">
-                      <Icon className="mb-3 h-4 w-4 text-accent" />
-                      <p className="font-display text-2xl font-black leading-none">{stat.value}</p>
-                      <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-white/50">{stat.label}</p>
-                    </div>
-                  );
-                })}
-              </div>
+              {visibleStats.length > 0 && (
+                <div className="mt-5 grid max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4">
+                  {visibleStats.map((stat) => {
+                    const Icon = stat.icon;
+                    return (
+                      <div key={stat.label} className="rounded-lg border border-white/10 bg-white/[0.055] p-3">
+                        <Icon className="mb-2 h-4 w-4 text-accent" />
+                        <p className="font-display text-xl font-black leading-none">{stat.value}</p>
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/55">{stat.label}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="border-t border-white/10 p-4 md:p-6 lg:border-l lg:border-t-0">
+          <div className="hidden border-l border-white/10 p-4 lg:block">
             <ProductStage products={stageProducts} />
           </div>
         </div>
       </section>
 
-      <div className="mb-7 rounded-2xl border border-border bg-card p-3 shadow-soft md:p-4">
+      <div className="sticky top-24 z-30 mb-5 rounded-xl border border-border bg-card/95 p-3 shadow-soft backdrop-blur md:p-4 lg:static">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
