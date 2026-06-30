@@ -58,14 +58,6 @@ export default function Hero({ products = [] }: HeroProps) {
 
       <div className="container relative grid items-center gap-7 py-8 sm:py-10 md:min-h-[520px] md:grid-cols-[minmax(0,1.12fr)_minmax(280px,0.58fr)] md:gap-10 md:py-10">
         <div className="max-w-3xl">
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="mb-3 text-[11px] font-bold uppercase tracking-wider text-accent sm:text-xs"
-          >
-            Beauty / Hair / Baby care / Household
-          </motion.p>
 
           <motion.h1
             initial={{ opacity: 0, y: 18 }}
@@ -137,25 +129,54 @@ export default function Hero({ products = [] }: HeroProps) {
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Available now</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Live shelf</p>
                 <p className="mt-1 line-clamp-1 text-sm font-black text-white">{activeProduct.name}</p>
                 {getDisplayPrice(activeProduct) > 0 && <p className="mt-1 text-xs font-semibold text-white/75">{formatPrice(getDisplayPrice(activeProduct))}</p>}
               </div>
               <ArrowRight className="ml-auto h-4 w-4 flex-shrink-0 text-accent" />
             </Link>
 
-            <div className="relative hidden h-[360px] items-center justify-center md:flex">
-              <div className="absolute left-1/2 top-0 -translate-x-1/2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80">
-                Available now
+            <div className="relative hidden h-[360px] items-center justify-center overflow-hidden md:flex">
+              <motion.div
+                aria-hidden="true"
+                className="absolute h-[276px] w-[218px] rounded-lg border border-white/10 bg-white/[0.025]"
+                animate={{ y: [4, -7, 4], rotate: [-7, -4, -7] }}
+                transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <motion.div
+                aria-hidden="true"
+                className="absolute h-[248px] w-[270px] rounded-lg border border-accent/20"
+                animate={{ y: [-4, 7, -4], rotate: [6, 3, 6] }}
+                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <motion.div
+                aria-hidden="true"
+                className="absolute left-1/2 top-8 h-px w-[300px] -translate-x-1/2 bg-accent/55"
+                animate={{ y: [0, 280, 0], opacity: [0, 0.7, 0] }}
+                transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut" }}
+              />
+
+              <div className="absolute left-1/2 top-0 z-20 inline-flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-[#111820] px-3 py-1.5 text-xs font-semibold text-white/85">
+                <motion.span
+                  className="h-2 w-2 rounded-full bg-emerald-400"
+                  animate={{ opacity: [0.4, 1, 0.4], scale: [0.85, 1.15, 0.85] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                />
+                Live shelf
               </div>
+
               <motion.div
                 key={activeProduct.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35 }}
-                className="w-full max-w-[250px]"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, y: [0, -8, 0], rotate: [-1, 1, -1] }}
+                transition={{
+                  opacity: { duration: 0.35 },
+                  y: { duration: 5.2, repeat: Infinity, ease: "easeInOut" },
+                  rotate: { duration: 5.2, repeat: Infinity, ease: "easeInOut" },
+                }}
+                className="relative z-10 w-full max-w-[250px]"
               >
-                <Link to={`/products/${activeProduct.id}`} className="group block overflow-hidden rounded-lg border border-white/15 bg-white p-3 shadow-[0_28px_80px_rgba(0,0,0,0.34)] transition-transform duration-300 hover:-translate-y-1">
+                <Link to={`/products/${activeProduct.id}`} className="group block overflow-hidden rounded-lg border border-white/15 bg-white p-3 shadow-[0_28px_80px_rgba(0,0,0,0.34)]">
                   <div className="flex h-52 items-center justify-center overflow-hidden rounded-md bg-slate-50">
                     {activeProduct.image_url ? (
                       <img src={activeProduct.image_url} alt={activeProduct.name} className="h-full w-full object-contain p-3 transition-transform duration-500 group-hover:scale-105" />
@@ -174,7 +195,7 @@ export default function Hero({ products = [] }: HeroProps) {
               </motion.div>
 
               {heroProducts.length > 1 && (
-                <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 gap-2">
+                <div className="absolute bottom-0 left-1/2 z-20 flex -translate-x-1/2 gap-2">
                   {heroProducts.map((product, index) => (
                     <button
                       key={product.id}
