@@ -68,65 +68,36 @@ function getPrimaryUnit(product: Product) {
 }
 
 function ProductStage({ products }: { products: Product[] }) {
-  if (products.length === 0) {
-    return (
-      <div className="relative grid min-h-[310px] place-items-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] p-6 text-center md:min-h-[360px]">
-        <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0_48%,rgba(255,255,255,.1)_49%,transparent_50%)] bg-[size:30px_30px] opacity-25" />
-        <div className="relative max-w-sm">
-          <div className="mx-auto grid h-20 w-20 place-items-center rounded-2xl border border-white/10 bg-white/10">
-            <Boxes className="h-9 w-9 text-accent" />
-          </div>
-          <p className="mt-5 text-2xl font-black">Stock room is empty here</p>
-          <p className="mt-2 text-sm leading-6 text-white/65">
-            Try all products, flash deals, or another category while this shelf is being updated.
-          </p>
-          <div className="mt-5 flex justify-center">
-            <Link to="/products" className="inline-flex h-10 items-center gap-2 rounded-full bg-accent px-4 text-sm font-bold text-accent-foreground">
-              All stock <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (products.length === 0) return null;
 
   const cards = products.slice(0, 3);
-  const center = (cards.length - 1) / 2;
 
   return (
-    <div className="relative min-h-[310px] overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] p-4 md:min-h-[360px]">
-      <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0_48%,rgba(255,255,255,.1)_49%,transparent_50%)] bg-[size:30px_30px] opacity-25" />
-      <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-xs font-semibold text-white/70">
-        <span className="text-accent">Available now</span>
-      </div>
-
-      <div className="relative mx-auto mt-8 h-60 max-w-md md:mt-12">
+    <div className="relative h-[190px] overflow-hidden">
+      <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0_48%,rgba(255,255,255,.09)_49%,transparent_50%)] bg-[size:30px_30px] opacity-25" />
+      <p className="absolute left-3 top-2 text-[10px] font-black uppercase tracking-wider text-accent">
+        Available now
+      </p>
+      <div className="absolute inset-x-3 bottom-3 flex items-end justify-center gap-2">
         {cards.map((product, index) => {
-          const offset = index - center;
           const limited = getStockState(product) === "limited_stock";
           return (
             <Link
               key={product.id}
-              to={String(product.id).startsWith("fallback") ? "/products" : `/products/${product.id}`}
-              className="absolute left-1/2 top-1/2 block h-52 w-40 overflow-hidden rounded-2xl border border-white/60 bg-white p-3 text-slate-950 shadow-2xl transition-transform hover:-translate-y-1 md:h-60 md:w-44"
-              style={{
-                transform: `translate(-50%, -50%) translateX(${offset * 88}px) rotate(${offset * 6}deg)`,
-                zIndex: 20 - Math.abs(offset),
-              }}
+              to={`/products/${product.id}`}
+              className={`group w-[112px] flex-none rounded-lg bg-white p-2 text-slate-950 shadow-[0_16px_45px_rgba(0,0,0,0.28)] transition-transform hover:-translate-y-1 ${index === 1 ? "-translate-y-2" : ""}`}
             >
-              <div className="flex h-32 items-center justify-center rounded-xl bg-slate-50 md:h-36">
+              <div className="flex h-20 items-center justify-center rounded-md bg-slate-50">
                 {product.image_url ? (
-                  <img src={product.image_url} alt={product.name} className="h-full w-full object-contain p-2" />
+                  <img src={product.image_url} alt={product.name} className="h-full w-full object-contain p-1.5" />
                 ) : (
-                  <Boxes className="h-12 w-12 text-accent" />
+                  <Boxes className="h-8 w-8 text-accent" />
                 )}
               </div>
-              <p className="mt-3 line-clamp-2 text-sm font-black leading-tight">{product.name}</p>
-              <div className="mt-2 flex items-center justify-between gap-2 text-[11px] font-bold">
+              <p className="mt-2 line-clamp-1 text-xs font-black">{product.name}</p>
+              <div className="mt-1 flex items-center justify-between gap-1 text-[9px] font-bold">
                 <span className="truncate text-slate-500">{getPrimaryUnit(product)}</span>
-                <span className={limited ? "text-amber-600" : "text-emerald-600"}>
-                  {limited ? "Limited" : "Ready"}
-                </span>
+                <span className={limited ? "text-amber-600" : "text-emerald-600"}>{limited ? "Limited" : "Ready"}</span>
               </div>
             </Link>
           );
@@ -250,7 +221,7 @@ export default function Products() {
       ? `Stock matching "${search.trim()}"`
       : selectedCategory
         ? `${selectedCategory.name} stock`
-        : "Shop trade stock";
+        : "Shop XPOSE stock";
 
   const quickActions = [
     {
@@ -273,12 +244,6 @@ export default function Products() {
     },
   ];
 
-  const visibleStats = [
-    readyCount > 0 ? { label: "Ready items", value: readyCount, icon: PackageCheck } : null,
-    flashCount > 0 ? { label: "Flash deals", value: flashCount, icon: BadgePercent } : null,
-    limitedCount > 0 ? { label: "Limited stock", value: limitedCount, icon: Clock3 } : null,
-    categoryCount > 0 ? { label: "Categories", value: categoryCount, icon: Boxes } : null,
-  ].filter((stat): stat is { label: string; value: number; icon: typeof PackageCheck } => stat !== null);
 
   const filterFields = (
     <div className="space-y-5">
@@ -321,23 +286,23 @@ export default function Products() {
 
   return (
     <div className="container py-6 md:py-8">
-      <section className="mb-5 overflow-hidden rounded-xl border border-border bg-[#0b0f14] text-white shadow-soft">
-        <div className="grid gap-0 lg:grid-cols-[1.35fr_0.65fr]">
-          <div className="relative overflow-hidden p-5 sm:p-6 lg:p-8">
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,91,46,0.18)_0,transparent_36%),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:auto,42px_42px,42px_42px]" />
+      <section className="mb-4 overflow-hidden rounded-xl border border-border bg-[#0b0f14] text-white shadow-soft">
+        <div className="grid items-stretch lg:grid-cols-[minmax(0,1.35fr)_390px]">
+          <div className="relative overflow-hidden p-5 sm:p-6">
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,91,46,0.16)_0,transparent_34%),linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:auto,42px_42px,42px_42px]" />
             <div className="relative">
-              <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white/70">
-                <PackageCheck className="h-3.5 w-3.5 text-accent" />
+              <p className="mb-2 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-accent">
+                <PackageCheck className="h-3.5 w-3.5" />
                 XPOSE catalogue
               </p>
-              <h1 className="max-w-2xl font-display text-3xl font-black leading-none sm:text-4xl md:text-5xl">
+              <h1 className="max-w-2xl font-display text-3xl font-black leading-none sm:text-4xl">
                 {headline}
               </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-white/70 sm:text-base">
-                Retail pieces, wholesale packs and live deal prices.
+              <p className="mt-2 max-w-xl text-sm leading-6 text-white/70">
+                Search retail items, wholesale packs and current deals.
               </p>
 
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
                 {quickActions.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -363,25 +328,10 @@ export default function Products() {
                   Deal room <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
-
-              {visibleStats.length > 0 && (
-                <div className="mt-5 grid max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4">
-                  {visibleStats.map((stat) => {
-                    const Icon = stat.icon;
-                    return (
-                      <div key={stat.label} className="rounded-lg border border-white/10 bg-white/[0.055] p-3">
-                        <Icon className="mb-2 h-4 w-4 text-accent" />
-                        <p className="font-display text-xl font-black leading-none">{stat.value}</p>
-                        <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/55">{stat.label}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           </div>
 
-          <div className="hidden border-l border-white/10 p-4 lg:block">
+          <div className="hidden border-l border-white/10 bg-white/[0.025] px-3 lg:block">
             <ProductStage products={stageProducts} />
           </div>
         </div>
