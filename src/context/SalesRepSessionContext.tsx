@@ -22,8 +22,8 @@ import { resolveSessionActor, type SessionActor } from "@/lib/salesRepSession";
 const SALES_REP_TOKEN_KEY = "salesRepAuthToken";
 const GEOLOCATION_PERMISSION_DENIED = 1;
 
-const PREFERRED_GPS_ACCURACY_METERS = 100;
-const MAX_UPLOAD_GPS_ACCURACY_METERS = 5000;
+const PREFERRED_GPS_ACCURACY_METERS = 50;
+const MAX_UPLOAD_GPS_ACCURACY_METERS = 250;
 const LOCATION_UPLOAD_INTERVAL_MS = 5_000;
 const LOCATION_STATIONARY_HEARTBEAT_MS = 30_000;
 const MINIMUM_MOVEMENT_DISTANCE_METERS = 5;
@@ -192,6 +192,7 @@ export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
   const restoredOnceRef = useRef(false);
   const lastUploadTimeRef = useRef(0);
   const lastPositionRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const locationRequestRef = useRef<Promise<boolean> | null>(null);
 
   const [status, setStatus] = useState<SessionStatus>("restoring");
   const [token, setToken] = useState<string | null>(null);
@@ -381,40 +382,37 @@ export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
+    if (locationRequestRef.current) return locationRequestRef.current;
+    if (locationPermission === "granted") return true;
+
     setLocationPermission("prompt");
 
-    return new Promise<boolean>((resolve) => {
-      let settled = false;
-      let watchId: number | null = null;
-
-      const finish = (granted: boolean) => {
-        if (settled) return;
-        settled = true;
-        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-        setLocationPermission(granted ? "granted" : "denied");
-        resolve(granted);
-      };
-
-      try {
-        watchId = watchSalesRepPosition(
-          async (position) => {
-            await sendLocationUpdate(position);
-            finish(true);
-          },
-          (error) => {
-            if (error.code === GEOLOCATION_PERMISSION_DENIED) {
-              finish(false);
-            } else {
-              setLocationPermission("prompt");
-              finish(false);
-            }
-          }
-        );
-      } catch {
-        finish(false);
-      }
+    const request = new Promise<boolean>((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          setLocationPermission("granted");
+          await sendLocationUpdate(position);
+          resolve(true);
+        },
+        (error) => {
+          setLocationPermission(error.code === GEOLOCATION_PERMISSION_DENIED ? "denied" : "prompt");
+          resolve(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 60_000,
+          maximumAge: 0,
+        }
+      );
     });
-  }, [sendLocationUpdate]);
+
+    locationRequestRef.current = request;
+    try {
+      return await request;
+    } finally {
+      if (locationRequestRef.current === request) locationRequestRef.current = null;
+    }
+  }, [locationPermission, sendLocationUpdate]);
 
   useEffect(() => {
     if (!salesRep || salesRep.must_change_password || locationPermission !== "granted") {

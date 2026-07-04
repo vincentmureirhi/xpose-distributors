@@ -10,15 +10,11 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { formatPrice, useCart } from "@/context/CartContext";
-import { getCartPricingMessage, isWholesaleEligible } from "@/lib/pricingMessaging";
+import { isWholesaleEligible } from "@/lib/pricingMessaging";
 
 function toMoneyNumber(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function normalizeLabel(value?: string | null) {
-  return String(value || "").trim().toLowerCase();
 }
 
 function getQuantityMeta(item: {
@@ -43,52 +39,45 @@ export default function CartDrawer() {
     totalAmount,
     itemCount,
     evaluations,
-    pricingLoading,
   } = useCart();
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => (!open ? closeCart() : undefined)}>
-      <SheetContent className="w-full sm:max-w-md p-0 flex flex-col">
-        <SheetHeader className="px-6 py-5 border-b border-border">
+      <SheetContent className="flex w-full max-w-full flex-col p-0 sm:max-w-md">
+        <SheetHeader className="border-b border-border px-4 py-4 sm:px-5">
           <SheetTitle className="flex items-center gap-2 font-display">
             <ShoppingBag className="h-5 w-5" />
-            Your Cart
+            Cart
             {itemCount > 0 && (
               <span className="ml-auto text-sm font-normal text-muted-foreground">
                 {itemCount} item{itemCount === 1 ? "" : "s"}
               </span>
             )}
           </SheetTitle>
-          <SheetDescription className="sr-only">
-            Review cart items, adjust quantities, remove products, or continue to checkout.
-          </SheetDescription>
+          <SheetDescription className="sr-only">Review and update cart items.</SheetDescription>
         </SheetHeader>
 
-        <div className="relative flex-1 overflow-y-auto px-6 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-5">
           {cartItems.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center py-16">
-              <div className="h-20 w-20 rounded-full bg-secondary grid place-items-center mb-4">
-                <ShoppingBag className="h-8 w-8 text-muted-foreground" />
+            <div className="flex h-full flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 grid h-16 w-16 place-items-center rounded-full bg-secondary">
+                <ShoppingBag className="h-7 w-7 text-muted-foreground" />
               </div>
-              <h3 className="font-display font-semibold text-lg">Your cart is empty</h3>
-              <p className="text-sm text-muted-foreground mt-1 mb-6">
-                Discover products you will love.
-              </p>
-              <Button onClick={closeCart} asChild>
-                <Link to="/products">Browse products</Link>
+              <h3 className="font-display text-lg font-semibold">Your cart is empty</h3>
+              <Button onClick={closeCart} asChild className="mt-5">
+                <Link to="/products">Shop products</Link>
               </Button>
             </div>
           ) : (
-            <ul className="space-y-3">
+            <ul className="space-y-2.5">
               <AnimatePresence initial={false}>
                 {cartItems.map((item) => {
-                  const ev = evaluations[item.id];
-                  const unitPrice = toMoneyNumber(ev?.unit_price ?? item.price);
-                  const lineTotal = toMoneyNumber(ev?.line_total ?? unitPrice * item.quantity);
-                  const pricingMessage = getCartPricingMessage(ev, item.quantity);
-                  const wholesaleEligible = isWholesaleEligible(ev);
-                  const flashSaleApplied = Boolean(
-                    ev?.flash_sale_id || normalizeLabel(ev?.pricing_label) === "flash sale"
+                  const evaluation = evaluations[item.id];
+                  const unitPrice = toMoneyNumber(evaluation?.unit_price ?? item.price);
+                  const lineTotal = toMoneyNumber(evaluation?.line_total ?? unitPrice * item.quantity);
+                  const wholesale = isWholesaleEligible(evaluation);
+                  const flash = Boolean(
+                    evaluation?.flash_sale_id || String(evaluation?.pricing_label || "").toLowerCase() === "flash sale"
                   );
                   const { minQty, step, sellingUnit } = getQuantityMeta(item);
 
@@ -96,115 +85,76 @@ export default function CartDrawer() {
                     <motion.li
                       key={item.id}
                       layout
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: 40, height: 0, marginTop: 0 }}
-                      transition={{ duration: 0.25 }}
-                      className="flex gap-3 p-3 rounded-xl bg-secondary/50 border border-border"
+                      exit={{ opacity: 0, x: 30, height: 0 }}
+                      className="grid grid-cols-[72px_minmax(0,1fr)] gap-3 rounded-xl border border-border bg-card p-3"
                     >
                       <Link
                         to={`/products/${item.id}`}
                         onClick={closeCart}
-                        className="h-20 w-20 rounded-lg overflow-hidden bg-background flex-shrink-0"
+                        className="h-[72px] w-[72px] overflow-hidden rounded-lg bg-white"
                       >
                         {item.image_url ? (
-                          <img
-                            src={item.image_url}
-                            alt={item.name}
-                            className="h-full w-full object-contain bg-white p-2"
-                            loading="lazy"
-                          />
+                          <img src={item.image_url} alt={item.name} className="h-full w-full object-contain p-1.5" loading="lazy" />
                         ) : (
-                          <div className="h-full w-full grid place-items-center text-muted-foreground">
-                            <ShoppingBag className="h-6 w-6" />
+                          <div className="grid h-full w-full place-items-center text-muted-foreground">
+                            <ShoppingBag className="h-5 w-5" />
                           </div>
                         )}
                       </Link>
 
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0">
                         <div className="flex items-start gap-2">
-                          <Link
-                            to={`/products/${item.id}`}
-                            onClick={closeCart}
-                            className="flex-1"
-                          >
-                            <h4 className="text-sm font-medium leading-snug line-clamp-2 hover:text-accent transition-colors">
-                              {item.name}
-                            </h4>
+                          <Link to={`/products/${item.id}`} onClick={closeCart} className="min-w-0 flex-1">
+                            <h4 className="line-clamp-2 text-sm font-semibold leading-snug">{item.name}</h4>
                           </Link>
                           <button
                             type="button"
                             onClick={() => removeFromCart(item.id)}
-                            className="text-muted-foreground hover:text-destructive transition-colors p-0.5"
+                            className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-destructive"
                             aria-label={`Remove ${item.name}`}
                           >
                             <X className="h-4 w-4" />
                           </button>
                         </div>
 
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <p className="text-sm font-semibold">{formatPrice(unitPrice)}</p>
-                          {ev?.pricing_label && (
-                            <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
-                                wholesaleEligible || flashSaleApplied
-                                  ? "bg-accent/15 text-accent"
-                                  : "bg-secondary text-muted-foreground"
-                              }`}
-                            >
-                              {ev.pricing_label}
+                        <div className="mt-1 flex min-w-0 items-center gap-2">
+                          <span className="font-display text-sm font-bold">{formatPrice(unitPrice)}</span>
+                          {(flash || wholesale) && (
+                            <span className="truncate rounded-full bg-accent/12 px-2 py-0.5 text-[10px] font-bold uppercase text-accent">
+                              {flash ? "Flash" : "Wholesale"}
                             </span>
                           )}
                         </div>
-
-                        {pricingMessage && (
-                          <p
-                            className={`text-[11px] mt-1 ${
-                              wholesaleEligible || flashSaleApplied
-                                ? "text-accent"
-                                : "text-muted-foreground"
-                            }`}
-                          >
-                            {pricingMessage}
-                          </p>
-                        )}
-
-                        {(minQty > 1 || step > 1) && (
-                          <p className="text-[11px] mt-1 text-muted-foreground">
-                            Sold as {sellingUnit}; min {minQty}, step {step}.
-                          </p>
-                        )}
+                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                          {sellingUnit}{minQty > 1 || step > 1 ? ` · min ${minQty} · +${step}` : ""}
+                        </p>
 
                         <div className="mt-2 flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1 bg-background border border-border rounded-full p-0.5">
+                          <div className="flex h-8 items-center rounded-lg border border-border bg-background">
                             <button
                               type="button"
                               onClick={() => updateQuantity(item.id, item.quantity - step)}
                               disabled={item.quantity <= minQty}
-                              className="h-7 w-7 rounded-full grid place-items-center hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="grid h-8 w-8 place-items-center disabled:opacity-35"
                               aria-label={`Decrease ${item.name} quantity`}
                             >
-                              <Minus className="h-3 w-3" />
+                              <Minus className="h-3.5 w-3.5" />
                             </button>
-                            <motion.span
-                              key={item.quantity}
-                              initial={{ scale: 0.7 }}
-                              animate={{ scale: 1 }}
-                              className="text-sm font-semibold w-8 text-center tabular-nums"
-                            >
+                            <motion.span key={item.quantity} initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="w-9 text-center text-sm font-bold tabular-nums">
                               {item.quantity}
                             </motion.span>
                             <button
                               type="button"
                               onClick={() => updateQuantity(item.id, item.quantity + step)}
-                              className="h-7 w-7 rounded-full grid place-items-center hover:bg-secondary transition-colors"
+                              className="grid h-8 w-8 place-items-center"
                               aria-label={`Increase ${item.name} quantity`}
                             >
-                              <Plus className="h-3 w-3" />
+                              <Plus className="h-3.5 w-3.5" />
                             </button>
                           </div>
-
-                          <span className="text-sm font-semibold">{formatPrice(lineTotal)}</span>
+                          <span className="whitespace-nowrap font-display text-sm font-bold">{formatPrice(lineTotal)}</span>
                         </div>
                       </div>
                     </motion.li>
@@ -216,33 +166,17 @@ export default function CartDrawer() {
         </div>
 
         {cartItems.length > 0 && (
-          <div className="border-t border-border px-6 py-5 space-y-4 bg-background">
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-muted-foreground">
-                <span>Subtotal</span>
-                <span>{formatPrice(totalAmount)}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Shipping</span>
-                <span>Calculated at checkout</span>
-              </div>
-              <div className="flex justify-between font-display font-bold text-lg pt-2 border-t border-border">
-                <span>Total</span>
-                <span>{formatPrice(totalAmount)}</span>
-              </div>
+          <div className="border-t border-border bg-background px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5">
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <span className="text-sm text-muted-foreground">Subtotal</span>
+              <span className="font-display text-xl font-bold">{formatPrice(totalAmount)}</span>
             </div>
-
             <div className="grid gap-2">
-              <Button
-                asChild
-                size="lg"
-                className="w-full bg-gradient-accent hover:opacity-90 text-accent-foreground border-0 shadow-glow"
-                onClick={closeCart}
-              >
+              <Button asChild size="lg" className="w-full" onClick={closeCart}>
                 <Link to="/checkout">Checkout</Link>
               </Button>
               <Button variant="ghost" size="sm" onClick={closeCart} asChild>
-                <Link to="/cart">View full cart</Link>
+                <Link to="/cart">Open cart</Link>
               </Button>
             </div>
           </div>

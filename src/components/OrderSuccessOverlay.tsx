@@ -103,19 +103,42 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, amount
 
     setCountdown(REDIRECT_SECONDS);
     const cd = window.setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
-    let t: number | undefined;
-    if (isRouteCredit) {
-      t = window.setTimeout(() => {
-        window.clearInterval(cd);
-        onDone?.();
-      }, REDIRECT_SECONDS * 1000);
-    }
+    return () => window.clearInterval(cd);
+  }, [show, isRouteCredit]);
 
-    return () => {
-      if (t) window.clearTimeout(t);
-      window.clearInterval(cd);
-    };
-  }, [show, onDone, isRouteCredit]);
+  if (isRouteCredit) {
+    return (
+      <AnimatePresence>
+        {show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] grid place-items-center bg-background/90 px-4 backdrop-blur-xl"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center shadow-elevated"
+            >
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-success/10 text-success">
+                <CheckCircle2 className="h-9 w-9" />
+              </div>
+              <h2 className="mt-4 font-display text-2xl font-bold">Route order captured</h2>
+              <p className="mt-2 text-sm text-muted-foreground">The order has been sent to XPOSE for fulfilment.</p>
+              <button
+                type="button"
+                onClick={onDone}
+                className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                Continue
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  }
 
   return (
     <AnimatePresence>

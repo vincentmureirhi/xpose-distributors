@@ -71,6 +71,12 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 type CheckoutWorkflow = "self_service" | "sales_rep";
+type RouteCreditIssue = {
+  currentLimit: number;
+  availableCredit: number;
+  minimumRequired: number;
+  shortfall: number;
+};
 
 function toLocalTrackingPath(trackingUrl?: string, fallbackId?: string) {
   if (trackingUrl) {
@@ -138,7 +144,6 @@ export default function Checkout() {
     locationPermission,
     lastLocationSync,
     repOperationalReady,
-    requestLocationPermission,
   } = useSalesRepSession();
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<{ id: string; trackingUrl?: string; amountDue?: number } | null>(null);
@@ -151,6 +156,9 @@ export default function Checkout() {
   const [loadingRouteCustomers, setLoadingRouteCustomers] = useState(false);
   const [selectedRouteCustomerId, setSelectedRouteCustomerId] = useState("");
   const [routeCustomerSearch, setRouteCustomerSearch] = useState("");
+  const [routeCreditIssue, setRouteCreditIssue] = useState<RouteCreditIssue | null>(null);
+  const [requestedCreditLimit, setRequestedCreditLimit] = useState("");
+  const [creditRequestReason, setCreditRequestReason] = useState("Initial or temporary route order limit");
   const [regions, setRegions] = useState<RegionOption[]>([]);
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [selectedRegionId, setSelectedRegionId] = useState("");
@@ -371,6 +379,8 @@ export default function Checkout() {
   };
 
   const applyRouteCustomer = (customer: RouteCustomer) => {
+    setRouteCreditIssue(null);
+    setRequestedCreditLimit("");
     setSelectedRouteCustomerId(customer.id);
     setValue("customer_name", customer.name, { shouldValidate: true });
     setValue("customer_phone", customer.phone, { shouldValidate: true });
@@ -516,6 +526,8 @@ export default function Checkout() {
   };
 
   const clearSelectedRouteCustomer = () => {
+    setRouteCreditIssue(null);
+    setRequestedCreditLimit("");
     setSelectedRouteCustomerId("");
     setValue("customer_name", "", { shouldValidate: true });
     setValue("customer_phone", "", { shouldValidate: true });
@@ -695,12 +707,18 @@ if (workflow === "sales_rep") {
             customer_location_id: selectedRouteCustomer.customer_location_id,
             route_area: selectedRouteCustomer.route_area || selectedRouteCustomer.location || selectedRegion?.name || repArea,
             route_notes: selectedRouteCustomer.notes || undefined,
+            ...(routeCreditIssue && {
+              requested_credit_limit: Math.max(Number(requestedCreditLimit || 0), routeCreditIssue.minimumRequired),
+              credit_limit_request_reason: creditRequestReason.trim() || "Temporary route order credit increase",
+            }),
           }),
         ...(workflow === "self_service" && appliedCoupon?.coupon_code ? { coupon_code: appliedCoupon.coupon_code } : {}),
         items: orderItems,
       });
       const orderId = result.order_number || result.id;
-      if (orderId) rememberRecentOrder(String(orderId), result.tracking_url);
+      if (workflow === "self_service" && orderId) {
+        rememberRecentOrder(String(orderId), result.tracking_url);
+      }
       setSuccess({
         id: orderId ? String(orderId) : "",
         trackingUrl: result.tracking_url,
@@ -708,9 +726,36 @@ if (workflow === "sales_rep") {
       });
       clearCart();
     } catch (e) {
-      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      const err = e as {
+        response?: {
+          data?: {
+            message?: string;
+            error?: string;
+            code?: string;
+            details?: Record<string, unknown>;
+          };
+        };
+        message?: string;
+      };
+      const response = err.response?.data;
+
+      if (workflow === "sales_rep" && response?.code === "ROUTE_CREDIT_LIMIT_EXCEEDED") {
+        const details = response.details || {};
+        const minimumRequired = Number(details.minimum_required_credit_limit || totalAmount);
+        const currentLimit = Number(details.credit_limit || 0);
+        const availableCredit = Number(details.available_credit || 0);
+        const shortfall = Number(details.shortfall || Math.max(minimumRequired - currentLimit, 0));
+
+        setRouteCreditIssue({ currentLimit, availableCredit, minimumRequired, shortfall });
+        setRequestedCreditLimit(String(Math.ceil(minimumRequired)));
+        toast.error("Credit approval needed", {
+          description: `Available: ${formatPrice(availableCredit)}. Confirm a temporary limit below to capture this order.`,
+        });
+        return;
+      }
+
       toast.error("Could not place order", {
-        description: err?.response?.data?.message || err.message || "Please try again.",
+        description: response?.message || response?.error || err.message || "Please try again.",
       });
     } finally {
       setSubmitting(false);
@@ -725,7 +770,13 @@ if (workflow === "sales_rep") {
         trackingUrl={success?.trackingUrl}
         amountDue={success?.amountDue || 0}
         paymentMode={workflow === "sales_rep" ? "route_credit" : "mpesa"}
-        onDone={() => navigate(toLocalTrackingPath(success?.trackingUrl, success?.id))}
+        onDone={() =>
+          navigate(
+            workflow === "sales_rep"
+              ? "/products"
+              : toLocalTrackingPath(success?.trackingUrl, success?.id)
+          )
+        }
       />
 
       <div className="mb-6 md:mb-8">
@@ -735,8 +786,9 @@ if (workflow === "sales_rep") {
           </Link>
         </Button>
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          <h1 className="font-display font-bold text-3xl sm:text-4xl md:text-5xl tracking-tight">Checkout</h1>
-          <p className="text-muted-foreground mt-2">Fill in your details and we'll handle the rest.</p>
+          <h1 className="font-display font-bold text-3xl sm:text-4xl md:text-5xl tracking-tight">
+            {workflow === "sales_rep" ? "Route order" : "Checkout"}
+          </h1>
         </motion.div>
       </div>
 
@@ -750,45 +802,19 @@ if (workflow === "sales_rep") {
             onSubmit={handleSubmit(onSubmit)}
             className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-soft sm:rounded-2xl sm:p-5 md:p-8 space-y-5 md:space-y-6"
           >
-            <div>
-              <h2 className="font-display font-bold text-xl">Your details</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {workflow === "sales_rep"
-                  ? "Capture orders for route customers in the field."
-                  : "No account needed — just fill in your details below."}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-border bg-secondary/40 p-3 text-sm">
-              {workflow === "sales_rep" ? (
-                <p>
-                  Authenticated sales rep checkout is active for{" "}
-                  <span className="font-semibold">{repDisplayName}</span>.
-                </p>
-              ) : (
-                <p>Customer self-service checkout is active.</p>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-display font-bold text-xl">
+                {workflow === "sales_rep" ? "Customer & route" : "Delivery details"}
+              </h2>
+              {workflow === "sales_rep" && (
+                <span className="max-w-[55%] truncate rounded-full bg-secondary px-3 py-1 text-xs font-semibold">
+                  {repDisplayName}
+                </span>
               )}
-            </div>
-
-            {workflow === "sales_rep" && (
+            </div>            {workflow === "sales_rep" && (
               <>
                 <div className="rounded-xl border border-border bg-secondary/30 p-3 sm:p-4 space-y-4">
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <p className="text-sm font-semibold">Route capture portal</p>
-                    <p className="text-xs text-muted-foreground">
-                      Select the route region first, then search customers registered in that region.
-                    </p>
-                  </div>
-                  <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                    <Input value={repDisplayName} readOnly aria-label="Sales rep name" className="h-11 min-w-0" />
-                    <Input
-                      value={repPhone}
-                      onChange={(e) => setRepPhone(e.target.value)}
-                      placeholder="Rep phone"
-                      className="h-11 min-w-0"
-                    />
-                  </div>
-                  <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <p className="text-sm font-semibold">Route</p>                  <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                     <div className="min-w-0 space-y-1.5">
                       <Label htmlFor="route-region" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Current region
@@ -841,23 +867,10 @@ if (workflow === "sales_rep") {
                     <p className="font-semibold text-destructive">Rep order capture is blocked</p>
                     <p className="text-muted-foreground">{repOperationsBlockedReason}</p>
                     <div className="flex flex-wrap gap-2">
-                      {mustChangePassword ? (
-                        <Button type="button" asChild size="sm">
-                          <Link to="/sales-rep/change-password">Change password</Link>
-                        </Button>
-                      ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => {
-                            requestLocationPermission().catch(() => undefined);
-                          }}
-                        >
-                          Enable location
-                        </Button>
-                      )}
-                      <Button type="button" size="sm" variant="outline" asChild>
-                        <Link to="/sales-rep/location-access">Open location setup</Link>
+                      <Button type="button" size="sm" asChild>
+                        <Link to={mustChangePassword ? "/sales-rep/change-password" : "/sales-rep/location-access"}>
+                          {mustChangePassword ? "Change password" : "Open location setup"}
+                        </Link>
                       </Button>
                     </div>
                   </div>
@@ -873,7 +886,7 @@ if (workflow === "sales_rep") {
                     </p>
                   </div>
                   {loadingRouteCustomers && (
-                    <p className="text-xs text-muted-foreground">Syncing route customers from backend...</p>
+                    <p className="text-xs text-muted-foreground">Loading customers...</p>
                   )}
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -917,7 +930,7 @@ if (workflow === "sales_rep") {
                   </div>
                   {selectedRegionId && routeCustomerSearch && filteredRouteCustomers.length === 0 && (
                     <p className="text-xs text-muted-foreground">
-                      No matching route customer found. Add the customer below and it will be saved for the route.
+                      No matching customer found.
                     </p>
                   )}
 
@@ -1170,6 +1183,28 @@ if (workflow === "sales_rep") {
               )}
             </motion.div>
 
+            {workflow === "sales_rep" && routeCreditIssue && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950/20">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-bold text-foreground">Credit limit approval</p>
+                  <span className="rounded-full bg-background px-2.5 py-1 text-xs font-bold">Short by {formatPrice(routeCreditIssue.shortfall)}</span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-lg bg-background p-2.5"><span className="block text-muted-foreground">Current limit</span><strong>{formatPrice(routeCreditIssue.currentLimit)}</strong></div>
+                  <div className="rounded-lg bg-background p-2.5"><span className="block text-muted-foreground">Required limit</span><strong>{formatPrice(routeCreditIssue.minimumRequired)}</strong></div>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="requested-credit-limit">Temporary limit</Label>
+                    <Input id="requested-credit-limit" type="number" inputMode="decimal" min={Math.ceil(routeCreditIssue.minimumRequired)} value={requestedCreditLimit} onChange={(event) => setRequestedCreditLimit(event.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="credit-request-reason">Reason</Label>
+                    <Input id="credit-request-reason" value={creditRequestReason} onChange={(event) => setCreditRequestReason(event.target.value)} />
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Notes */}
             <motion.div custom={4} variants={fieldVariants} initial="hidden" animate="visible" className="space-y-1.5">
               <Label htmlFor="notes">
@@ -1202,13 +1237,13 @@ if (workflow === "sales_rep") {
                 ) : repOperationsBlocked ? (
                   "Enable location to capture route order"
                 ) : (
-                  `${workflow === "sales_rep" ? "Capture route order" : "Place order"} — ${formatPrice(workflow === "self_service" ? checkoutTotal : totalAmount)}`
+                  `${workflow === "sales_rep" ? (routeCreditIssue ? "Request increase & capture" : "Capture route order") : "Place order"} — ${formatPrice(workflow === "self_service" ? checkoutTotal : totalAmount)}`
                 )}
               </Button>
             </motion.div>
             {workflow === "sales_rep" && selectedRouteCustomer && (
               <p className="text-xs text-muted-foreground">
-                This order will be submitted on behalf of <span className="font-semibold text-foreground">{selectedRouteCustomer.name}</span>.
+                <span className="font-semibold text-foreground">{selectedRouteCustomer.name}</span> selected.
               </p>
             )}
           </form>

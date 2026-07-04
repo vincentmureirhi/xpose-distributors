@@ -4,26 +4,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice, useCart } from "@/context/CartContext";
-import {
-  getCartPricingMessage,
-  isRuleType,
-  isWholesaleEligible,
-} from "@/lib/pricingMessaging";
+import { isWholesaleEligible } from "@/lib/pricingMessaging";
 
 function toMoneyNumber(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function normalizeLabel(value?: string | null) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function getQuantityMeta(item: {
-  min_order_qty?: number;
-  order_qty_step?: number;
-  selling_unit_label?: string;
-}) {
+function getQuantityMeta(item: { min_order_qty?: number; order_qty_step?: number; selling_unit_label?: string }) {
   return {
     minQty: Math.max(1, Number(item.min_order_qty || 1)),
     step: Math.max(1, Number(item.order_qty_step || 1)),
@@ -32,15 +20,7 @@ function getQuantityMeta(item: {
 }
 
 export default function Cart() {
-  const {
-    cartItems,
-    updateQuantity,
-    removeFromCart,
-    totalAmount,
-    clearCart,
-    evaluations,
-    pricingLoading,
-  } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, totalAmount, clearCart, evaluations } = useCart();
 
   useEffect(() => {
     document.title = "Cart - XPOSE";
@@ -48,220 +28,93 @@ export default function Cart() {
 
   if (cartItems.length === 0) {
     return (
-      <div className="container py-32 text-center">
-        <div className="h-20 w-20 rounded-full bg-secondary grid place-items-center mx-auto mb-5">
-          <ShoppingBag className="h-8 w-8 text-muted-foreground" />
+      <div className="container px-4 py-24 text-center">
+        <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-secondary">
+          <ShoppingBag className="h-7 w-7 text-muted-foreground" />
         </div>
-        <h1 className="font-display font-bold text-3xl">Your cart is empty</h1>
-        <p className="text-muted-foreground mt-2">
-          Start exploring products you will love.
-        </p>
-        <Button asChild className="mt-6">
-          <Link to="/products">Browse products</Link>
-        </Button>
+        <h1 className="font-display text-3xl font-bold">Your cart is empty</h1>
+        <Button asChild className="mt-6"><Link to="/products">Shop products</Link></Button>
       </div>
     );
   }
 
   return (
-    <div className="container py-10 md:py-14">
-      <h1 className="font-display font-bold text-4xl md:text-5xl mb-8 tracking-tight">
-        Cart
-      </h1>
+    <div className="container px-4 py-6 sm:py-10 md:py-14">
+      <div className="mb-5 flex items-end justify-between gap-4 sm:mb-8">
+        <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Cart</h1>
+        <button type="button" onClick={clearCart} className="text-sm font-semibold text-muted-foreground hover:text-destructive">Clear</button>
+      </div>
 
-      <div className="grid lg:grid-cols-[1fr_400px] gap-8">
-        <ul className="space-y-3">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8">
+        <ul className="min-w-0 space-y-3">
           <AnimatePresence>
             {cartItems.map((item) => {
-              const ev = evaluations[item.id];
-              const unitPrice = toMoneyNumber(ev?.unit_price ?? item.price);
-              const lineTotal = toMoneyNumber(ev?.line_total ?? unitPrice * item.quantity);
-              const pricingLabel = ev?.pricing_label;
-              const pricingLabelKey = normalizeLabel(pricingLabel);
-              const wholesaleEligible = isWholesaleEligible(ev);
-              const flashSaleApplied = Boolean(
-                ev?.flash_sale_id || pricingLabelKey === "flash sale"
-              );
-              const pricingMessage = getCartPricingMessage(ev, item.quantity);
+              const evaluation = evaluations[item.id];
+              const unitPrice = toMoneyNumber(evaluation?.unit_price ?? item.price);
+              const lineTotal = toMoneyNumber(evaluation?.line_total ?? unitPrice * item.quantity);
+              const wholesale = isWholesaleEligible(evaluation);
+              const flash = Boolean(evaluation?.flash_sale_id || String(evaluation?.pricing_label || "").toLowerCase() === "flash sale");
               const { minQty, step, sellingUnit } = getQuantityMeta(item);
-              const ruleMeta = [
-                ev?.rule_name ? `Rule: ${ev.rule_name}` : null,
-                ev?.pricing_group_name ? `Group: ${ev.pricing_group_name}` : null,
-              ]
-                .filter(Boolean)
-                .join(" | ");
-              const isGroupThreshold =
-                !wholesaleEligible &&
-                ev?.threshold_quantity != null &&
-                isRuleType(ev?.rule_type, "GROUP_THRESHOLD");
 
               return (
                 <motion.li
                   key={item.id}
                   layout
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: 50 }}
-                  className="flex gap-4 p-4 rounded-2xl bg-card border border-border"
+                  exit={{ opacity: 0, x: 30 }}
+                  className="grid min-w-0 grid-cols-[76px_minmax(0,1fr)] gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-[104px_minmax(0,1fr)] sm:gap-4 sm:p-4"
                 >
-                  <Link
-                    to={`/products/${item.id}`}
-                    className="h-24 w-24 md:h-28 md:w-28 rounded-xl overflow-hidden bg-secondary flex-shrink-0"
-                  >
+                  <Link to={`/products/${item.id}`} className="h-[76px] w-[76px] overflow-hidden rounded-lg bg-white sm:h-[104px] sm:w-[104px]">
                     {item.image_url ? (
-                      <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="h-full w-full object-contain bg-white p-2"
-                        loading="lazy"
-                      />
+                      <img src={item.image_url} alt={item.name} className="h-full w-full object-contain p-1.5 sm:p-2" loading="lazy" />
                     ) : (
-                      <div className="h-full w-full grid place-items-center text-muted-foreground">
-                        <ShoppingBag className="h-6 w-6" />
-                      </div>
+                      <div className="grid h-full w-full place-items-center text-muted-foreground"><ShoppingBag className="h-6 w-6" /></div>
                     )}
                   </Link>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start gap-3">
-                      <Link to={`/products/${item.id}`} className="flex-1">
-                        <h3 className="font-medium hover:text-accent transition-colors line-clamp-2">
-                          {item.name}
-                        </h3>
+                  <div className="min-w-0">
+                    <div className="flex items-start gap-2">
+                      <Link to={`/products/${item.id}`} className="min-w-0 flex-1">
+                        <h3 className="line-clamp-2 text-sm font-semibold leading-snug sm:text-base">{item.name}</h3>
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => removeFromCart(item.id)}
-                        className="text-muted-foreground hover:text-destructive p-1"
-                        aria-label={`Remove ${item.name}`}
-                      >
+                      <button type="button" onClick={() => removeFromCart(item.id)} className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-destructive" aria-label={`Remove ${item.name}`}>
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <p className="text-sm text-muted-foreground">
-                        {formatPrice(unitPrice)} each
-                      </p>
-                      {pricingLabel && (
-                        <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
-                            wholesaleEligible || flashSaleApplied
-                              ? "bg-accent/15 text-accent"
-                              : "bg-secondary text-muted-foreground"
-                          }`}
-                        >
-                          {pricingLabel}
-                        </span>
+                    <div className="mt-1 flex min-w-0 items-center gap-2">
+                      <span className="text-sm font-semibold">{formatPrice(unitPrice)}</span>
+                      {(flash || wholesale) && (
+                        <span className="truncate rounded-full bg-accent/12 px-2 py-0.5 text-[10px] font-bold uppercase text-accent">{flash ? "Flash" : "Wholesale"}</span>
                       )}
                     </div>
+                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{sellingUnit}{minQty > 1 || step > 1 ? ` · min ${minQty} · +${step}` : ""}</p>
 
-                    {isGroupThreshold && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Group threshold uses combined quantities from qualifying products.
-                      </p>
-                    )}
-
-                    {pricingMessage && (
-                      <p
-                        className={`text-xs mt-1 ${
-                          wholesaleEligible || flashSaleApplied
-                            ? "text-accent"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        {pricingMessage}
-                      </p>
-                    )}
-
-                    {ruleMeta && (
-                      <p className="text-[11px] text-muted-foreground mt-1">{ruleMeta}</p>
-                    )}
-
-                    {(minQty > 1 || step > 1) && (
-                      <p className="text-[11px] text-muted-foreground mt-1">
-                        Sold as {sellingUnit}; minimum {minQty}, step {step}.
-                      </p>
-                    )}
-
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-1 bg-secondary rounded-full p-0.5">
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(item.id, item.quantity - step)}
-                          disabled={item.quantity <= minQty}
-                          className="h-8 w-8 rounded-full grid place-items-center hover:bg-background transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                          aria-label={`Decrease ${item.name} quantity`}
-                        >
-                          <Minus className="h-3.5 w-3.5" />
-                        </button>
-                        <motion.span
-                          key={item.quantity}
-                          initial={{ scale: 0.7 }}
-                          animate={{ scale: 1 }}
-                          className="w-10 text-center text-sm font-semibold tabular-nums"
-                        >
-                          {item.quantity}
-                        </motion.span>
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(item.id, item.quantity + step)}
-                          className="h-8 w-8 rounded-full grid place-items-center hover:bg-background transition-colors"
-                          aria-label={`Increase ${item.name} quantity`}
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex h-9 items-center rounded-lg border border-border bg-secondary/40">
+                        <button type="button" onClick={() => updateQuantity(item.id, item.quantity - step)} disabled={item.quantity <= minQty} className="grid h-9 w-9 place-items-center disabled:opacity-35" aria-label={`Decrease ${item.name} quantity`}><Minus className="h-3.5 w-3.5" /></button>
+                        <motion.span key={item.quantity} initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="w-10 text-center text-sm font-bold tabular-nums">{item.quantity}</motion.span>
+                        <button type="button" onClick={() => updateQuantity(item.id, item.quantity + step)} className="grid h-9 w-9 place-items-center" aria-label={`Increase ${item.name} quantity`}><Plus className="h-3.5 w-3.5" /></button>
                       </div>
-
-                      <p className="font-display font-bold">{formatPrice(lineTotal)}</p>
+                      <span className="whitespace-nowrap font-display text-base font-bold">{formatPrice(lineTotal)}</span>
                     </div>
                   </div>
                 </motion.li>
               );
             })}
           </AnimatePresence>
-
-          <div className="pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={clearCart}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              Clear cart
-            </Button>
-          </div>
         </ul>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
-            <h2 className="font-display font-bold text-xl">Order summary</h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-muted-foreground">
-                <span>Subtotal</span>
-                <span>{formatPrice(totalAmount)}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Shipping</span>
-                <span>At checkout</span>
-              </div>
-              <div className="flex justify-between font-display font-bold text-2xl pt-3 border-t border-border">
-                <span>Total</span>
-                <span>{formatPrice(totalAmount)}</span>
-              </div>
+          <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+            <h2 className="font-display text-lg font-bold">Order summary</h2>
+            <div className="mt-4 flex items-end justify-between border-t border-border pt-4">
+              <span className="text-sm text-muted-foreground">Subtotal</span>
+              <span className="font-display text-2xl font-bold">{formatPrice(totalAmount)}</span>
             </div>
-
-            <Button
-              asChild
-              size="lg"
-              className="w-full bg-gradient-accent text-accent-foreground border-0 shadow-glow hover:opacity-95"
-            >
-              <Link to="/checkout">Proceed to checkout</Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link to="/products">Continue shopping</Link>
-            </Button>
+            <Button asChild size="lg" className="mt-5 w-full"><Link to="/checkout">Proceed to checkout</Link></Button>
+            <Button asChild variant="outline" className="mt-2 w-full"><Link to="/products">Continue shopping</Link></Button>
           </div>
         </aside>
       </div>

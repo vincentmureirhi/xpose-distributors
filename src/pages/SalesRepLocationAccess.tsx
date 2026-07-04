@@ -10,6 +10,8 @@ export default function SalesRepLocationAccess() {
     status,
     isSalesRepAuthenticated,
     locationPermission,
+    lastLocationSync,
+    repOperationalReady,
     requestLocationPermission,
     salesRep,
     logout,
@@ -22,10 +24,7 @@ export default function SalesRepLocationAccess() {
       navigate("/sales-rep/login", { replace: true });
       return;
     }
-    if (locationPermission === "granted") {
-      navigate("/checkout", { replace: true });
-    }
-  }, [isSalesRepAuthenticated, locationPermission, navigate, status]);
+  }, [isSalesRepAuthenticated, navigate, status]);
 
   const enableLocation = async () => {
     setRequesting(true);
@@ -37,6 +36,13 @@ export default function SalesRepLocationAccess() {
   };
 
   const denied = locationPermission === "denied";
+  const synced = lastLocationSync.status === "synced";
+  const syncTone =
+    lastLocationSync.status === "synced"
+      ? "border-success/30 bg-success/5"
+      : lastLocationSync.status === "failed"
+        ? "border-destructive/40 bg-destructive/10"
+        : "border-border bg-secondary/40";
 
   return (
     <div className="container py-16 md:py-24">
@@ -65,15 +71,46 @@ export default function SalesRepLocationAccess() {
           </div>
         )}
 
+        <div className={`rounded-xl border p-4 text-sm ${syncTone}`}>
+          <p className="font-semibold flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            {synced ? "Location synced" : "Location sync status"}
+          </p>
+          <p className="text-muted-foreground mt-1">{lastLocationSync.message}</p>
+          <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+            <span>Permission: {locationPermission}</span>
+            <span>
+              Accuracy: {lastLocationSync.accuracyMeters != null ? `${lastLocationSync.accuracyMeters}m` : "waiting"}
+            </span>
+            <span>
+              Last sync:{" "}
+              {lastLocationSync.lastUploadedAt
+                ? new Date(lastLocationSync.lastUploadedAt).toLocaleTimeString()
+                : "not yet"}
+            </span>
+          </div>
+        </div>
+
         <div className="flex flex-wrap gap-3">
-          <Button onClick={enableLocation} disabled={requesting} className="bg-gradient-accent text-accent-foreground border-0 shadow-glow">
-            {requesting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Requesting location...
-              </>
-            ) : (
-              "Enable location"
-            )}
+          {locationPermission !== "granted" && (
+            <Button onClick={enableLocation} disabled={requesting} className="bg-gradient-accent text-accent-foreground border-0 shadow-glow">
+              {requesting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Requesting location...
+                </>
+              ) : (
+                "Enable location"
+              )}
+            </Button>
+          )}
+          <Button
+            type="button"
+            disabled={!repOperationalReady}
+            onClick={() => {
+              if (repOperationalReady) navigate("/checkout");
+            }}
+          >
+            Continue to route checkout
           </Button>
           <Button variant="outline" asChild>
             <Link to="/products">Continue browsing products</Link>
