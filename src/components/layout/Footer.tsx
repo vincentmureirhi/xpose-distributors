@@ -3,9 +3,9 @@ import {
   ArrowRight,
   BadgeCheck,
   ExternalLink,
+  Mail,
   MessageCircle,
   Music2,
-  PhoneCall,
   ShieldCheck,
   Store,
   Truck,
@@ -14,7 +14,7 @@ import Wordmark from "@/components/brand/Wordmark";
 
 const TIKTOK_URL = "https://www.tiktok.com/@xposebeautyshopvo?is_from_webapp=1&sender_device=pc";
 const WHATSAPP_URL = "https://wa.me/254701377869";
-const DEVELOPER_PHONE = "0701377869";
+const DEVELOPER_EMAIL = "vinwambug@gmail.com";
 
 const shopLinks = [
   ["All products", "/products"],
@@ -39,9 +39,9 @@ export default function Footer() {
         <div className="container relative py-12 md:py-16">
           <div className="mb-10 grid gap-3 md:grid-cols-3">
             {[
-              [ShieldCheck, "Secure checkout", "Private tracking and verified order flow."],
-              [Truck, "Route-ready delivery", "Built for shops, salons, homes, and sales reps."],
-              [BadgeCheck, "Verified marketplace", "Vendor stores are reviewed before products go live."],
+              [ShieldCheck, "Secure checkout", "Protected orders and private tracking."],
+              [Truck, "Flexible delivery", "Standard and route delivery options."],
+              [BadgeCheck, "Verified vendors", "Shop approved marketplace sellers."],
             ].map(([Icon, title, text]) => {
               const RealIcon = Icon as typeof ShieldCheck;
               return (
@@ -59,19 +59,17 @@ export default function Footer() {
               <Link to="/" className="inline-flex rounded-xl bg-white px-3 py-2">
                 <Wordmark size="md" />
               </Link>
-              <p className="mt-5 max-w-sm text-sm leading-7 text-white/65">
-                XPOSE Distributors connects retail speed with wholesale discipline: live stock, flash deals, route orders, and verified stores in one catalogue.
+              <p className="mt-5 max-w-sm text-sm font-semibold leading-7 text-white/65">
+                Better prices for daily shopping, salon restocks and wholesale orders.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <a
                   href={TIKTOK_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-white text-sm font-black text-slate-950 px-4 transition-transform hover:-translate-y-0.5"
+                  className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-white px-4 text-sm font-black text-slate-950 transition-transform hover:-translate-y-0.5"
                 >
-                  <Music2 className="h-4 w-4 text-accent" />
-                  TikTok
-                  <ExternalLink className="h-3.5 w-3.5" />
+                  <Music2 className="h-4 w-4 text-accent" /> TikTok <ExternalLink className="h-3.5 w-3.5" />
                 </a>
                 <a
                   href={WHATSAPP_URL}
@@ -79,8 +77,7 @@ export default function Footer() {
                   rel="noopener noreferrer"
                   className="inline-flex h-11 items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/12 px-4 text-sm font-black text-emerald-200 transition-transform hover:-translate-y-0.5"
                 >
-                  <MessageCircle className="h-4 w-4" />
-                  WhatsApp
+                  <MessageCircle className="h-4 w-4" /> WhatsApp
                 </a>
               </div>
             </div>
@@ -89,9 +86,7 @@ export default function Footer() {
               <h4 className="mb-4 text-sm font-black uppercase tracking-wider text-white/90">Shop</h4>
               <ul className="space-y-3 text-sm text-white/62">
                 {shopLinks.map(([label, to]) => (
-                  <li key={to}>
-                    <Link to={to} className="transition-colors hover:text-accent">{label}</Link>
-                  </li>
+                  <li key={to}><Link to={to} className="transition-colors hover:text-accent">{label}</Link></li>
                 ))}
               </ul>
             </div>
@@ -100,42 +95,27 @@ export default function Footer() {
               <h4 className="mb-4 text-sm font-black uppercase tracking-wider text-white/90">Support</h4>
               <ul className="space-y-3 text-sm text-white/62">
                 {supportLinks.map(([label, to]) => (
-                  <li key={to}>
-                    <Link to={to} className="transition-colors hover:text-accent">{label}</Link>
-                  </li>
+                  <li key={to}><Link to={to} className="transition-colors hover:text-accent">{label}</Link></li>
                 ))}
                 <li>
-                  <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-accent">
-                    Contact support
-                  </a>
+                  <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-accent">Contact support</a>
                 </li>
               </ul>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.055] p-5">
               <div className="flex items-start gap-3">
-                <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
-                  <Store className="h-5 w-5" />
-                </div>
+                <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground"><Store className="h-5 w-5" /></div>
                 <div>
-                  <h4 className="font-black">Sell through XPOSE</h4>
-                  <p className="mt-2 text-sm leading-6 text-white/62">
-                    Vendors apply, get reviewed, choose a monthly plan, and pay commission on confirmed marketplace sales.
-                  </p>
+                  <h4 className="font-black">Grow your store</h4>
+                  <p className="mt-2 text-sm leading-6 text-white/62">Reach retail and wholesale buyers across XPOSE.</p>
                 </div>
               </div>
               <div className="mt-5 flex flex-wrap gap-2">
-                <Link
-                  to="/sell-on-xpose"
-                  className="inline-flex h-10 items-center gap-2 rounded-full bg-accent px-4 text-sm font-black text-accent-foreground hover:bg-accent/90"
-                >
-                  Vendor application
-                  <ArrowRight className="h-4 w-4" />
+                <Link to="/sell-on-xpose" className="inline-flex h-10 items-center gap-2 rounded-full bg-accent px-4 text-sm font-black text-accent-foreground hover:bg-accent/90">
+                  Start selling <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link
-                  to="/vendor/login"
-                  className="inline-flex h-10 items-center rounded-full border border-white/15 px-4 text-sm font-black text-white hover:border-accent/70 hover:text-accent"
-                >
+                <Link to="/vendor/login" className="inline-flex h-10 items-center rounded-full border border-white/15 px-4 text-sm font-black text-white hover:border-accent/70 hover:text-accent">
                   Vendor login
                 </Link>
               </div>
@@ -148,15 +128,12 @@ export default function Footer() {
         <div className="container grid gap-3 py-5 text-xs text-white/55 md:grid-cols-3 md:items-center">
           <p className="md:text-left">Copyright {new Date().getFullYear()} XPOSE Distributors. Registered business: XPOSE Beauty Shop.</p>
           <p className="text-center font-semibold text-white/65">
-            Developed by Dreams &amp; Visions. Contact developer:{" "}
-            <a href="tel:+254701377869" className="inline-flex items-center gap-1 hover:text-accent">
-              <PhoneCall className="h-3.5 w-3.5" />
-              {DEVELOPER_PHONE}
+            Developed by Dreams &amp; Visions ·{" "}
+            <a href={`mailto:${DEVELOPER_EMAIL}`} className="inline-flex items-center gap-1 hover:text-accent">
+              <Mail className="h-3.5 w-3.5" /> {DEVELOPER_EMAIL}
             </a>
           </p>
-          <div className="flex flex-wrap gap-x-4 gap-y-2 md:justify-end">
-            <span>M-Pesa Till 711714</span>
-          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-2 md:justify-end"><span>M-Pesa Till 711714</span></div>
         </div>
       </div>
     </footer>

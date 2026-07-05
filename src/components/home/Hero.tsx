@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, BadgePercent, Search } from "lucide-react";
+import { ArrowRight, BadgePercent, Search, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/context/CartContext";
 import type { Product } from "@/types/shop";
@@ -14,8 +14,15 @@ function isProductAvailable(product: Product) {
   const status = String(product.stock_status_override || product.stock_status || "").toLowerCase();
   const stockValue = product.current_stock ?? product.stock;
   const stockQty = Number(stockValue);
-  const hasStockQty = stockValue !== undefined && stockValue !== null && stockValue !== "" && Number.isFinite(stockQty);
-  return status !== "out_of_stock" && status !== "sold_out" && status !== "unavailable" && (!hasStockQty || stockQty > 0);
+  const tracksStock = stockValue !== undefined && stockValue !== null && stockValue !== "" && Number.isFinite(stockQty);
+  return !["out_of_stock", "sold_out", "unavailable"].includes(status) && (!tracksStock || stockQty > 0);
+}
+
+function circularOffset(index: number, activeIndex: number, total: number) {
+  let offset = index - activeIndex;
+  if (offset > total / 2) offset -= total;
+  if (offset < -total / 2) offset += total;
+  return offset;
 }
 
 interface HeroProps {
@@ -28,16 +35,15 @@ export default function Hero({ products = [] }: HeroProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
   const heroProducts = useMemo(
-    () => products.filter((item) => (item.image_url || item.name) && isProductAvailable(item)).slice(0, 5),
+    () => products.filter((item) => item.image_url && isProductAvailable(item)).slice(0, 7),
     [products]
   );
-  const activeProduct = heroProducts[activeIndex % Math.max(heroProducts.length, 1)];
 
   useEffect(() => {
     if (heroProducts.length <= 1) return undefined;
     const timer = window.setInterval(() => {
       setActiveIndex((index) => (index + 1) % heroProducts.length);
-    }, 4600);
+    }, 3600);
     return () => window.clearInterval(timer);
   }, [heroProducts.length]);
 
@@ -52,171 +58,151 @@ export default function Hero({ products = [] }: HeroProps) {
   };
 
   return (
-    <section className="relative overflow-hidden bg-[#0b0f14] text-white">
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:52px_52px]" />
-      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(11,15,20,0.99),rgba(11,15,20,0.84)_54%,rgba(16,24,32,0.97))]" />
+    <section className="relative overflow-hidden bg-[#080b10] text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_30%,rgba(255,91,46,0.24),transparent_28%),radial-gradient(circle_at_72%_75%,rgba(16,185,129,0.15),transparent_26%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:48px_48px]" />
 
-      <div className="container relative grid items-center gap-7 py-8 sm:py-10 md:min-h-[520px] md:grid-cols-[minmax(0,1.12fr)_minmax(280px,0.58fr)] md:gap-10 md:py-10">
-        <div className="max-w-3xl">
-
+      <div className="container relative grid items-center gap-4 py-8 sm:py-10 lg:min-h-[590px] lg:grid-cols-[minmax(0,0.92fr)_minmax(460px,1.08fr)] lg:gap-6 lg:py-12">
+        <div className="relative z-20 max-w-2xl">
+          <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-3 text-xs font-black uppercase tracking-[0.22em] text-accent">
+            Retail to wholesale
+          </motion.p>
           <motion.h1
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.05 }}
-            className="max-w-3xl font-display text-4xl font-black leading-[1.02] text-balance sm:text-5xl md:text-5xl lg:text-6xl"
+            transition={{ duration: 0.55 }}
+            className="font-display text-4xl font-black leading-[0.98] text-balance sm:text-5xl lg:text-6xl xl:text-7xl"
           >
-            Wholesale &amp; retail
-            <span className="block text-accent">essentials.</span>
+            Stock up.
+            <span className="block text-accent">Spend less.</span>
           </motion.h1>
-
           <motion.p
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.14 }}
-            className="mt-4 max-w-2xl text-sm leading-6 text-white/70 sm:text-base md:text-lg"
+            transition={{ delay: 0.12 }}
+            className="mt-4 max-w-xl text-base font-medium leading-7 text-white/72 sm:text-lg"
           >
-            Single items, trade packs and cartons from XPOSE Distributors, with live prices and stock.
+            Beauty, hair and household essentials at prices made for every cart size.
           </motion.p>
 
           <motion.form
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.21 }}
+            transition={{ delay: 0.2 }}
             onSubmit={submitSearch}
-            className="mt-5 flex max-w-xl items-center gap-2 rounded-lg border border-white/15 bg-white p-1 shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
+            className="mt-6 flex max-w-xl items-center gap-2 rounded-xl bg-white p-1.5 shadow-[0_24px_70px_rgba(0,0,0,0.36)]"
           >
             <Search className="ml-3 h-4 w-4 flex-shrink-0 text-slate-500" />
             <input
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search the catalogue"
-              className="h-10 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-slate-950 outline-none placeholder:text-slate-500 sm:text-base"
-              aria-label="Search the XPOSE catalogue"
+              placeholder="What are you buying today?"
+              className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm font-semibold text-slate-950 outline-none placeholder:font-normal placeholder:text-slate-500 sm:text-base"
+              aria-label="Search products"
             />
-            <Button type="submit" className="h-10 rounded-md bg-accent px-4 text-accent-foreground hover:bg-accent/90">
-              <span className="hidden sm:inline">Search</span>
-              <ArrowRight className="h-4 w-4" />
+            <Button type="submit" className="h-11 rounded-lg bg-accent px-4 text-accent-foreground hover:bg-accent/90">
+              Search <ArrowRight className="h-4 w-4" />
             </Button>
           </motion.form>
 
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.28 }}
+            transition={{ delay: 0.28 }}
             className="mt-4 flex flex-wrap gap-2"
           >
-            <Button asChild className="h-10 rounded-md bg-accent px-5 text-accent-foreground shadow-glow hover:bg-accent/90">
-              <Link to="/products">Shop products <ArrowRight className="h-4 w-4" /></Link>
+            <Button asChild className="h-11 rounded-lg bg-white px-5 font-black text-slate-950 hover:bg-white/90">
+              <Link to="/products"><ShoppingBag className="h-4 w-4" /> Shop products</Link>
             </Button>
-            <Button asChild variant="outline" className="h-10 rounded-md border-white/25 bg-white/5 px-5 text-white hover:bg-white/10 hover:text-white">
+            <Button asChild variant="outline" className="h-11 rounded-lg border-white/25 bg-white/5 px-5 font-black text-white hover:bg-white/10 hover:text-white">
               <Link to="/flash-sale"><BadgePercent className="h-4 w-4" /> Flash deals</Link>
             </Button>
           </motion.div>
         </div>
 
-        {activeProduct ? (
-          <div className="relative">
-            <Link
-              to={`/products/${activeProduct.id}`}
-              className="flex items-center gap-3 rounded-lg border border-white/12 bg-white/8 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.22)] md:hidden"
-            >
-              <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-white p-2">
-                {activeProduct.image_url ? (
-                  <img src={activeProduct.image_url} alt={activeProduct.name} className="h-full w-full object-contain" />
-                ) : (
-                  <div className="grid h-full w-full place-items-center text-xl font-black text-accent">{activeProduct.name.charAt(0)}</div>
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Live shelf</p>
-                <p className="mt-1 line-clamp-1 text-sm font-black text-white">{activeProduct.name}</p>
-                {getDisplayPrice(activeProduct) > 0 && <p className="mt-1 text-xs font-semibold text-white/75">{formatPrice(getDisplayPrice(activeProduct))}</p>}
-              </div>
-              <ArrowRight className="ml-auto h-4 w-4 flex-shrink-0 text-accent" />
-            </Link>
+        <div className="relative z-10 h-[370px] sm:h-[430px] lg:h-[500px]">
+          {heroProducts.length > 0 ? (
+            <>
+              <div className="absolute inset-0 flex items-center justify-center" style={{ perspective: "1200px", transformStyle: "preserve-3d" }}>
+                {heroProducts.map((product, index) => {
+                  const offset = circularOffset(index, activeIndex, heroProducts.length);
+                  const distance = Math.abs(offset);
+                  const visible = distance <= 2;
+                  const active = offset === 0;
+                  const price = getDisplayPrice(product);
+                  const originalPrice = Number(product.retail_price || product.price || 0);
+                  const hasDiscount = Number(product.discounted_price || 0) > 0 && Number(product.discounted_price) < originalPrice;
 
-            <div className="relative hidden h-[360px] items-center justify-center overflow-hidden md:flex">
-              <motion.div
-                aria-hidden="true"
-                className="absolute h-[276px] w-[218px] rounded-lg border border-white/10 bg-white/[0.025]"
-                animate={{ y: [4, -7, 4], rotate: [-7, -4, -7] }}
-                transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-              />
-              <motion.div
-                aria-hidden="true"
-                className="absolute h-[248px] w-[270px] rounded-lg border border-accent/20"
-                animate={{ y: [-4, 7, -4], rotate: [6, 3, 6] }}
-                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-              />
-              <motion.div
-                aria-hidden="true"
-                className="absolute left-1/2 top-8 h-px w-[300px] -translate-x-1/2 bg-accent/55"
-                animate={{ y: [0, 280, 0], opacity: [0, 0.7, 0] }}
-                transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut" }}
-              />
-
-              <div className="absolute left-1/2 top-0 z-20 inline-flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-[#111820] px-3 py-1.5 text-xs font-semibold text-white/85">
-                <motion.span
-                  className="h-2 w-2 rounded-full bg-emerald-400"
-                  animate={{ opacity: [0.4, 1, 0.4], scale: [0.85, 1.15, 0.85] }}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-                />
-                Live shelf
-              </div>
-
-              <motion.div
-                key={activeProduct.id}
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, y: [0, -8, 0], rotate: [-1, 1, -1] }}
-                transition={{
-                  opacity: { duration: 0.35 },
-                  y: { duration: 5.2, repeat: Infinity, ease: "easeInOut" },
-                  rotate: { duration: 5.2, repeat: Infinity, ease: "easeInOut" },
-                }}
-                className="relative z-10 w-full max-w-[250px]"
-              >
-                <Link to={`/products/${activeProduct.id}`} className="group block overflow-hidden rounded-lg border border-white/15 bg-white p-3 shadow-[0_28px_80px_rgba(0,0,0,0.34)]">
-                  <div className="flex h-52 items-center justify-center overflow-hidden rounded-md bg-slate-50">
-                    {activeProduct.image_url ? (
-                      <img src={activeProduct.image_url} alt={activeProduct.name} className="h-full w-full object-contain p-3 transition-transform duration-500 group-hover:scale-105" />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center text-5xl font-black text-accent">{activeProduct.name.charAt(0)}</div>
-                    )}
-                  </div>
-                  <div className="mt-3">
-                    <p className="line-clamp-2 text-base font-black leading-tight text-slate-950">{activeProduct.name}</p>
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-slate-500">{activeProduct.selling_unit_label || "piece"}</span>
-                      {getDisplayPrice(activeProduct) > 0 && <span className="text-base font-black text-slate-950">{formatPrice(getDisplayPrice(activeProduct))}</span>}
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-
-              {heroProducts.length > 1 && (
-                <div className="absolute bottom-0 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-                  {heroProducts.map((product, index) => (
-                    <button
+                  return (
+                    <motion.div
                       key={product.id}
-                      type="button"
-                      aria-label={`Show ${product.name}`}
-                      onClick={() => setActiveIndex(index)}
-                      className={`h-2 rounded-full transition-all ${index === activeIndex ? "w-7 bg-accent" : "w-2 bg-white/35"}`}
-                    />
-                  ))}
-                </div>
-              )}
+                      animate={{
+                        x: offset * 118,
+                        z: active ? 95 : -distance * 125,
+                        rotateY: offset * -24,
+                        rotateZ: offset * 2.5,
+                        scale: active ? 1 : 0.82 - distance * 0.05,
+                        opacity: visible ? (active ? 1 : 0.62 - distance * 0.16) : 0,
+                      }}
+                      transition={{ type: "spring", stiffness: 105, damping: 18, mass: 0.9 }}
+                      className={`absolute w-[210px] sm:w-[245px] ${visible ? "pointer-events-auto" : "pointer-events-none"}`}
+                      style={{ transformStyle: "preserve-3d", zIndex: 20 - distance }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => active ? navigate(`/products/${product.id}`) : setActiveIndex(index)}
+                        className={`group w-full overflow-hidden rounded-[28px] border text-left shadow-[0_30px_80px_rgba(0,0,0,0.46)] transition-colors ${active ? "border-accent/65 bg-white" : "border-white/15 bg-white/90"}`}
+                        aria-label={active ? `Shop ${product.name}` : `Show ${product.name}`}
+                      >
+                        <div className="relative h-[230px] overflow-hidden bg-gradient-to-b from-slate-50 to-white p-5 sm:h-[285px]">
+                          {hasDiscount && (
+                            <span className="absolute left-3 top-3 z-10 rounded-full bg-accent px-3 py-1 text-[10px] font-black uppercase tracking-wider text-accent-foreground">Deal</span>
+                          )}
+                          <motion.img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="h-full w-full object-contain drop-shadow-[0_22px_18px_rgba(15,23,42,0.22)]"
+                            animate={active ? { y: [0, -9, 0], rotateY: [-3, 4, -3] } : { y: 0 }}
+                            transition={active ? { duration: 4, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
+                          />
+                        </div>
+                        <div className="p-4 text-slate-950">
+                          <p className="line-clamp-2 min-h-[40px] text-sm font-black leading-5 sm:text-base">{product.name}</p>
+                          <div className="mt-3 flex items-end justify-between gap-2">
+                            <div>
+                              {hasDiscount && <p className="text-[11px] font-semibold text-slate-400 line-through">{formatPrice(originalPrice)}</p>}
+                              <p className="text-lg font-black text-accent">{formatPrice(price)}</p>
+                            </div>
+                            <span className="grid h-9 w-9 place-items-center rounded-full bg-slate-950 text-white transition-transform group-hover:translate-x-0.5">
+                              <ArrowRight className="h-4 w-4" />
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              <div className="absolute bottom-1 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-black/35 px-3 py-2 backdrop-blur-md">
+                {heroProducts.map((product, index) => (
+                  <button
+                    key={product.id}
+                    type="button"
+                    aria-label={`Show ${product.name}`}
+                    onClick={() => setActiveIndex(index)}
+                    className={`h-2 rounded-full transition-all ${index === activeIndex ? "w-8 bg-accent" : "w-2 bg-white/35 hover:bg-white/65"}`}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="absolute inset-8 grid place-items-center rounded-[28px] border border-white/10 bg-white/5">
+              <ShoppingBag className="h-12 w-12 text-accent" />
             </div>
-          </div>
-        ) : (
-          <div className="hidden h-[300px] place-items-center rounded-lg border border-white/10 bg-white/5 text-center md:grid">
-            <div>
-              <Search className="mx-auto h-8 w-8 text-accent" />
-              <p className="mt-3 text-lg font-black">Search the catalogue</p>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </section>
   );

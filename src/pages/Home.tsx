@@ -7,11 +7,13 @@ import CategoryRail from "@/components/home/CategoryRail";
 import FeaturedGrid from "@/components/home/FeaturedGrid";
 import SmartProductRail from "@/components/home/SmartProductRail";
 import CampaignSpotlight from "@/components/home/CampaignSpotlight";
+import TopVendors from "@/components/home/TopVendors";
 import BlogPreview from "@/components/home/BlogPreview";
 import { listFeaturedStorefrontProducts } from "@/lib/api/products";
 import { listStorefrontCategories } from "@/lib/api/categories";
 import { getActiveFlashSales } from "@/lib/api/flash-sales";
 import { listPublicCampaigns, type PublicCampaign } from "@/lib/api/marketing";
+import { listPublicVendorStores, type VendorStore } from "@/lib/api/vendor-portal";
 import type { Product, Category } from "@/types/shop";
 
 interface ActiveSale {
@@ -30,20 +32,23 @@ export default function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeSale, setActiveSale] = useState<ActiveSale | null>(null);
   const [campaigns, setCampaigns] = useState<PublicCampaign[]>([]);
+  const [vendors, setVendors] = useState<VendorStore[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "XPOSE Distributors | Beauty, Hair and Household Supplies";
+    document.title = "XPOSE Distributors | Shop Beauty, Hair and Household Supplies";
 
     Promise.all([
       listFeaturedStorefrontProducts(20),
       listStorefrontCategories(),
       getActiveFlashSales(),
       listPublicCampaigns(8).catch(() => []),
+      listPublicVendorStores().catch(() => []),
     ])
-      .then(([featuredProducts, categoryRows, flashSales, activeCampaigns]) => {
+      .then(([featuredProducts, categoryRows, flashSales, activeCampaigns, vendorRows]) => {
         setCategories(categoryRows);
         setCampaigns(activeCampaigns);
+        setVendors(vendorRows);
 
         if (flashSales.length > 0) {
           const sale = flashSales[0] as unknown as ActiveSale;
@@ -79,6 +84,10 @@ export default function Home() {
       <Hero products={products} />
       <Marquee />
 
+      {activeSale?.end_date && flashProducts.length > 0 && (
+        <FlashSale products={flashProducts} endDate={activeSale.end_date} saleName={activeSale.name} />
+      )}
+
       {loading ? (
         <section className="container py-10 md:py-14">
           <div className="mb-6 h-8 w-48 animate-pulse rounded bg-muted" />
@@ -92,17 +101,15 @@ export default function Home() {
         <CategoryRail categories={categories} />
       )}
 
-      <CampaignSpotlight campaigns={campaigns} />
+      {!loading && <SmartProductRail products={products} />}
 
-      {activeSale?.end_date && flashProducts.length > 0 && (
-        <FlashSale products={flashProducts} endDate={activeSale.end_date} saleName={activeSale.name} />
-      )}
+      <CampaignSpotlight campaigns={campaigns} />
+      <TopVendors vendors={vendors} />
 
       {!loading && (
         <>
-          <SmartProductRail products={products} />
+          <FeaturedGrid products={products.slice(0, 8)} title="Popular picks" eyebrow="Add to cart" />
           <ValueProps />
-          <FeaturedGrid products={products.slice(0, 8)} />
         </>
       )}
 
