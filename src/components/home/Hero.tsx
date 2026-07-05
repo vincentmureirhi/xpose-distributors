@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, BadgePercent, Search, ShoppingBag } from "lucide-react";
+import { ArrowRight, MessageCircle, Search, ShoppingBag, Tags } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/context/CartContext";
 import type { Product } from "@/types/shop";
@@ -62,19 +62,19 @@ export default function Hero({ products = [] }: HeroProps) {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_30%,rgba(255,91,46,0.24),transparent_28%),radial-gradient(circle_at_72%_75%,rgba(16,185,129,0.15),transparent_26%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:48px_48px]" />
 
-      <div className="container relative grid items-center gap-4 py-8 sm:py-10 lg:min-h-[590px] lg:grid-cols-[minmax(0,0.92fr)_minmax(460px,1.08fr)] lg:gap-6 lg:py-12">
+      <div className="container relative grid items-center gap-4 py-7 sm:py-8 lg:min-h-[500px] lg:grid-cols-[minmax(0,1fr)_minmax(430px,1fr)] lg:gap-5 lg:py-9">
         <div className="relative z-20 max-w-2xl">
           <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-3 text-xs font-black uppercase tracking-[0.22em] text-accent">
-            Retail to wholesale
+            Retail, wholesale and route supply
           </motion.p>
           <motion.h1
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55 }}
-            className="font-display text-4xl font-black leading-[0.98] text-balance sm:text-5xl lg:text-6xl xl:text-7xl"
+            className="font-display text-4xl font-black leading-[0.98] text-balance sm:text-5xl lg:text-[3.45rem] xl:text-6xl"
           >
-            Stock up.
-            <span className="block text-accent">Spend less.</span>
+            Beauty, Hair, Baby Care
+            <span className="block text-accent">&amp; Household Supplies</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 12 }}
@@ -82,7 +82,7 @@ export default function Hero({ products = [] }: HeroProps) {
             transition={{ delay: 0.12 }}
             className="mt-4 max-w-xl text-base font-medium leading-7 text-white/72 sm:text-lg"
           >
-            Beauty, hair and household essentials at prices made for every cart size.
+            Live-stock essentials for personal shoppers, resellers and route customers.
           </motion.p>
 
           <motion.form
@@ -113,15 +113,18 @@ export default function Hero({ products = [] }: HeroProps) {
             className="mt-4 flex flex-wrap gap-2"
           >
             <Button asChild className="h-11 rounded-lg bg-white px-5 font-black text-slate-950 hover:bg-white/90">
-              <Link to="/products"><ShoppingBag className="h-4 w-4" /> Shop products</Link>
+              <Link to="/deals"><ShoppingBag className="h-4 w-4" /> Shop deals</Link>
             </Button>
             <Button asChild variant="outline" className="h-11 rounded-lg border-white/25 bg-white/5 px-5 font-black text-white hover:bg-white/10 hover:text-white">
-              <Link to="/flash-sale"><BadgePercent className="h-4 w-4" /> Flash deals</Link>
+              <Link to="/categories"><Tags className="h-4 w-4" /> Browse categories</Link>
+            </Button>
+            <Button asChild variant="outline" size="icon" className="h-11 w-11 rounded-lg border-[#25D366]/50 bg-[#25D366]/10 text-[#5ee787] hover:bg-[#25D366]/20 hover:text-[#75f097]">
+              <a href="https://wa.me/254701377869?text=Hello%20XPOSE%2C%20I%20need%20help%20shopping." target="_blank" rel="noopener noreferrer" aria-label="Shop with XPOSE on WhatsApp"><MessageCircle className="h-5 w-5" /></a>
             </Button>
           </motion.div>
         </div>
 
-        <div className="relative z-10 h-[370px] sm:h-[430px] lg:h-[500px]">
+        <div className="relative z-10 h-[350px] sm:h-[400px] lg:h-[440px]">
           {heroProducts.length > 0 ? (
             <>
               <div className="absolute inset-0 flex items-center justify-center" style={{ perspective: "1200px", transformStyle: "preserve-3d" }}>

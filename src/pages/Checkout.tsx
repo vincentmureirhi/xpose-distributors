@@ -698,6 +698,9 @@ if (workflow === "sales_rep") {
             ? deliveryLocation || selectedRouteCustomer?.location || selectedLocation?.name || selectedRegion?.name || ""
             : `${deliveryLocation} - ${transportCompany}`,
         notes: orderNotes,
+        ...(workflow === "self_service" && {
+          marketing_campaign_id: Number(window.sessionStorage.getItem("xposeCampaignId") || 0) || undefined,
+        }),
         ...(workflow === "sales_rep" &&
           selectedRouteCustomer && {
             order_type: "route",

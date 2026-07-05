@@ -17,6 +17,7 @@ export interface GuestCheckoutPayload {
   requested_credit_limit?: number;
   credit_limit_request_reason?: string;
   coupon_code?: string;
+  marketing_campaign_id?: number;
   items: { product_id: string | number; quantity: number; unit_price?: number }[];
 }
 

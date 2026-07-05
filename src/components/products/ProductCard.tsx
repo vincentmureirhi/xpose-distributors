@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { BadgeCheck, ShoppingBag, Flame } from "lucide-react";
+import { BadgeCheck, ShoppingBag, Flame, MessageCircle } from "lucide-react";
 import { useRef } from "react";
 import type { Product } from "@/types/shop";
 import { useCart, formatPrice } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { getPriceTiers } from "@/lib/pricing";
+import { trackProductEvent } from "@/lib/api/collections";
 
 interface Props {
   product: Product;
@@ -93,6 +94,10 @@ export default function ProductCard({ product, index = 0 }: Props) {
   const baseTierLabel = formatPrimaryPriceLabel(baseTier, sellingUnit);
   const tierLabel = (tier: typeof baseTier) => formatTierLabel(tier, sellingUnit);
   const vendorVerified = Boolean(product.vendor_verified || product.vendor_verification_status === "verified");
+  const productUrl = typeof window === "undefined" ? `/products/${product.id}` : `${window.location.origin}/products/${product.id}`;
+  const enquiryText = `Hello XPOSE, I am interested in ${product.name} at ${formatPrice(displayPrice)}. ${productUrl}`;
+  const whatsappHref = `https://wa.me/254701377869?text=${encodeURIComponent(enquiryText)}`;
+
 
   const runFlyToCart = () => {
     if (typeof window === "undefined" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -253,7 +258,17 @@ export default function ProductCard({ product, index = 0 }: Props) {
             </p>
           </div>
 
-          <div className="flex items-center justify-end pt-2">
+          <div className="flex items-center gap-2 pt-2">
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(event) => event.stopPropagation()}
+              className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-emerald-500/35 text-emerald-600 transition-colors hover:bg-emerald-500 hover:text-white"
+              aria-label={`Ask about ${product.name} on WhatsApp`}
+            >
+              <MessageCircle className="h-4 w-4" />
+            </a>
             <Button
               size="sm"
               onClick={(e) => {
@@ -261,10 +276,11 @@ export default function ProductCard({ product, index = 0 }: Props) {
                 if (!cannotOrder) {
                   runFlyToCart();
                   addToCart(product, addQuantity, displayPrice);
+                  void trackProductEvent(product.id, "add_to_cart");
                 }
               }}
               disabled={cannotOrder}
-              className="h-9 rounded-full bg-foreground text-background hover:bg-accent hover:text-accent-foreground transition-all shadow-soft hover:shadow-glow gap-2"
+              className="h-9 flex-1 rounded-full bg-foreground text-background hover:bg-accent hover:text-accent-foreground transition-all shadow-soft hover:shadow-glow gap-2"
               aria-label={cannotOrder ? "Product unavailable" : "Add to cart"}
             >
               <ShoppingBag className="h-4 w-4" />

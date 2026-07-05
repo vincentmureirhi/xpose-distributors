@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
 import Hero from "@/components/home/Hero";
 import Marquee from "@/components/home/Marquee";
-import ValueProps from "@/components/home/ValueProps";
 import FlashSale from "@/components/home/FlashSale";
 import CategoryRail from "@/components/home/CategoryRail";
-import FeaturedGrid from "@/components/home/FeaturedGrid";
-import SmartProductRail from "@/components/home/SmartProductRail";
 import CampaignSpotlight from "@/components/home/CampaignSpotlight";
+import MerchandisingShelves from "@/components/home/MerchandisingShelves";
 import TopVendors from "@/components/home/TopVendors";
 import BlogPreview from "@/components/home/BlogPreview";
 import { listFeaturedStorefrontProducts } from "@/lib/api/products";
@@ -100,18 +98,9 @@ export default function Home() {
       ) : (
         <CategoryRail categories={categories} />
       )}
-
-      {!loading && <SmartProductRail products={products} />}
-
       <CampaignSpotlight campaigns={campaigns} />
+      <MerchandisingShelves />
       <TopVendors vendors={vendors} />
-
-      {!loading && (
-        <>
-          <FeaturedGrid products={products.slice(0, 8)} title="Popular picks" eyebrow="Add to cart" />
-          <ValueProps />
-        </>
-      )}
 
       <BlogPreview />
     </>

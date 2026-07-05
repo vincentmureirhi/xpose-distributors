@@ -15,12 +15,22 @@ import AnimatedPrice from "@/components/AnimatedPrice";
 import ProductCard from "@/components/products/ProductCard";
 import { Button } from "@/components/ui/button";
 import { formatPrice, useCart } from "@/context/CartContext";
+import { trackProductEvent } from "@/lib/api/collections";
 import { getProductById, listStorefrontProducts } from "@/lib/api/products";
 import { getPriceTiers } from "@/lib/pricing";
 import { getProductPricingMessages, isRuleDrivenType } from "@/lib/pricingMessaging";
 import type { PriceTier, Product } from "@/types/shop";
 
 const DEFAULT_DESCRIPTION = "A carefully selected product from XPOSE Distributors.";
+function upsertMetaDescription(content: string) {
+  let element = document.head.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+  if (!element) {
+    element = document.createElement("meta");
+    element.name = "description";
+    document.head.appendChild(element);
+  }
+  element.content = content;
+}
 
 function numberOrZero(value: unknown) {
   const parsed = Number(value);
@@ -156,7 +166,9 @@ export default function ProductDetails() {
         setProduct(productResult);
 
         if (productResult) {
-          document.title = `${productResult.name} - XPOSE`;
+          void trackProductEvent(productResult.id, "view");
+          document.title = productResult.name + " - XPOSE";
+          upsertMetaDescription(productResult.description || "Buy " + productResult.name + " from XPOSE Distributors. Live price and stock availability.");
           setQty(getMinimumOrderQty(productResult));
           const relatedResult = await listStorefrontProducts({
             category: productResult.category_id || "all",
@@ -274,6 +286,25 @@ export default function ProductDetails() {
   const isRuleDriven = isRuleDrivenType(product.pricing_rule_type) && !hasFlashDeal;
   const productImage = getProductImage(product);
 
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description || DEFAULT_DESCRIPTION,
+    image: productImage ? [productImage] : undefined,
+    sku: product.sku || undefined,
+    offers: {
+      "@type": "Offer",
+      url: typeof window === "undefined" ? undefined : window.location.href,
+      priceCurrency: "KES",
+      price: effectiveUnitPrice.toFixed(2),
+      availability: cannotOrder
+        ? "https://schema.org/OutOfStock"
+        : "https://schema.org/InStock",
+      itemCondition: "https://schema.org/NewCondition",
+    },
+  };
+
   const decreaseQty = () => {
     setQty((current) => Math.max(minOrderQty, current - orderStep));
   };
@@ -353,10 +384,13 @@ export default function ProductDetails() {
     if (cannotOrder) return;
     runFlyToCart();
     addToCart(product, qty, isRuleDriven ? undefined : effectiveUnitPrice);
+    void trackProductEvent(product.id, "add_to_cart");
   };
 
   return (
-    <div className="container py-10 md:py-14">
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
+      <div className="container py-10 md:py-14">
       <nav className="flex items-center gap-1 text-xs text-muted-foreground mb-6">
         <Link to="/" className="hover:text-foreground">
           Home
@@ -689,6 +723,7 @@ export default function ProductDetails() {
           </div>
         </section>
       )}
-    </div>
+      </div>
+    </>
   );
 }
