@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Loader2, MapPin, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSalesRepSession } from "@/context/SalesRepSessionContext";
+import { getSalesRepLocationQuality } from "@/lib/salesRepLocationQuality";
 
 export default function SalesRepLocationAccess() {
   const navigate = useNavigate();
@@ -37,6 +38,7 @@ export default function SalesRepLocationAccess() {
 
   const denied = locationPermission === "denied";
   const synced = lastLocationSync.status === "synced";
+  const accuracyQuality = getSalesRepLocationQuality(lastLocationSync.accuracyMeters);
   const syncTone =
     lastLocationSync.status === "synced"
       ? "border-success/30 bg-success/5"
@@ -77,11 +79,12 @@ export default function SalesRepLocationAccess() {
             {synced ? "Location synced" : "Location sync status"}
           </p>
           <p className="text-muted-foreground mt-1">{lastLocationSync.message}</p>
-          <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+          <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-4">
             <span>Permission: {locationPermission}</span>
             <span>
               Accuracy: {lastLocationSync.accuracyMeters != null ? `${lastLocationSync.accuracyMeters}m` : "waiting"}
             </span>
+            <span>Quality: {accuracyQuality.label}</span>
             <span>
               Last sync:{" "}
               {lastLocationSync.lastUploadedAt
@@ -89,6 +92,11 @@ export default function SalesRepLocationAccess() {
                 : "not yet"}
             </span>
           </div>
+          {synced && lastLocationSync.accuracyMeters != null && lastLocationSync.accuracyMeters > 250 && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              This approximate point is saved and visible to Admin. Keep location enabled; the pin will tighten automatically when the device gets a stronger signal.
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-3">

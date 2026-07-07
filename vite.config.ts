@@ -33,4 +33,19 @@ export default defineConfig(() => ({
       "@tanstack/query-core",
     ],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("react-dom") || id.includes("react-router") || id.includes("/react/")) return "react-vendor";
+          if (id.includes("framer-motion")) return "motion-vendor";
+          if (id.includes("@tanstack")) return "query-vendor";
+          if (id.includes("@radix-ui")) return "radix-vendor";
+          if (id.includes("lucide-react")) return "icons-vendor";
+          return undefined;
+        },
+      },
+    },
+  },
 }));

@@ -18,14 +18,16 @@ import {
 } from "@/lib/api/sales-rep-auth";
 import { setSalesRepAuthToken } from "@/lib/api/client";
 import { resolveSessionActor, type SessionActor } from "@/lib/salesRepSession";
+import {
+  getSalesRepLocationQuality,
+  MAX_ACCEPTABLE_LOCATION_ACCURACY_METERS,
+} from "@/lib/salesRepLocationQuality";
 
 const SALES_REP_TOKEN_KEY = "salesRepAuthToken";
 const GEOLOCATION_PERMISSION_DENIED = 1;
 
-const PREFERRED_GPS_ACCURACY_METERS = 50;
-const MAX_UPLOAD_GPS_ACCURACY_METERS = 250;
 const LOCATION_UPLOAD_INTERVAL_MS = 5_000;
-const LOCATION_STATIONARY_HEARTBEAT_MS = 30_000;
+const LOCATION_STATIONARY_HEARTBEAT_MS = 60_000;
 const MINIMUM_MOVEMENT_DISTANCE_METERS = 5;
 const MAX_POSITION_AGE_MS = 10 * 60_000;
 const MAX_FUTURE_POSITION_DRIFT_MS = 2 * 60_000;
@@ -135,7 +137,7 @@ function getGpsPositionProblem(position: GeolocationPosition) {
   const accuracy = Number(position.coords.accuracy);
   const ageMs = Date.now() - position.timestamp;
 
-  if (!Number.isFinite(accuracy) || accuracy > MAX_UPLOAD_GPS_ACCURACY_METERS) {
+  if (!Number.isFinite(accuracy) || accuracy > MAX_ACCEPTABLE_LOCATION_ACCURACY_METERS) {
     return `Waiting for a usable GPS signal. Current accuracy is ${Number.isFinite(accuracy) ? Math.round(accuracy) : "unknown"}m.`;
   }
 
@@ -169,11 +171,8 @@ function getGpsPositionProblem(position: GeolocationPosition) {
 }
 
 function getLocationSyncSuccessMessage(accuracy: number) {
-  if (Number.isFinite(accuracy) && accuracy > PREFERRED_GPS_ACCURACY_METERS) {
-    return `Location synced to live map. Accuracy is ${Math.round(accuracy)}m; step outside for a tighter pin.`;
-  }
-
-  return "Location synced to live map.";
+  const quality = getSalesRepLocationQuality(accuracy);
+  return `Location synced: ${quality.label.toLowerCase()} (${Math.round(accuracy)}m). ${quality.guidance}`;
 }
 
 function getOptionalSpeedKph(position: GeolocationPosition) {
@@ -191,7 +190,7 @@ function getOptionalHeading(position: GeolocationPosition) {
 export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
   const restoredOnceRef = useRef(false);
   const lastUploadTimeRef = useRef(0);
-  const lastPositionRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const lastPositionRef = useRef<{ latitude: number; longitude: number; accuracy: number } | null>(null);
   const locationRequestRef = useRef<Promise<boolean> | null>(null);
 
   const [status, setStatus] = useState<SessionStatus>("restoring");
@@ -337,7 +336,11 @@ export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
           lng
         );
 
-        if (distanceMeters < MINIMUM_MOVEMENT_DISTANCE_METERS && !heartbeatDue) return false;
+        const movementThresholdMeters = Math.max(
+          MINIMUM_MOVEMENT_DISTANCE_METERS,
+          Math.min(100, Math.max(accuracy, last.accuracy) * 0.1)
+        );
+        if (distanceMeters < movementThresholdMeters && !heartbeatDue) return false;
       }
 
       try {
@@ -352,7 +355,7 @@ export function SalesRepSessionProvider({ children }: { children: ReactNode }) {
         });
 
         lastUploadTimeRef.current = now;
-        lastPositionRef.current = { latitude: lat, longitude: lng };
+        lastPositionRef.current = { latitude: lat, longitude: lng, accuracy };
         setLastLocationSync({
           status: "synced",
           message: getLocationSyncSuccessMessage(accuracy),
