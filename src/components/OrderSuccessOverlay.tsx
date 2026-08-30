@@ -5,7 +5,7 @@ import { CheckCircle2, Copy, CreditCard, Link2, Loader2, Package, ShieldCheck, T
 import { toast } from "sonner";
 import { getMpesaPaymentStatus, initiateMpesaStk } from "@/lib/api/mpesa";
 
-const TILL_NUMBER = "711714";
+const TILL_NUMBER = import.meta.env.VITE_MPESA_REAL_TILL_NUMBER || "3398071";
 const POLL_MS = 2000;
 const MAX_POLLS = 30;
 const REDIRECT_SECONDS = 12;
