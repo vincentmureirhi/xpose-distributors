@@ -27,4 +27,12 @@ window.addEventListener("error", (event) => {
   recoverFromStaleChunk(String(event.message || ""));
 });
 
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((error) => {
+      console.warn("XPOSE service worker registration failed:", error);
+    });
+  });
+}
+
 createRoot(document.getElementById("root")!).render(<App />);
