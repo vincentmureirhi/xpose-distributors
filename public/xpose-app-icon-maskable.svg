@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="XPOSE Distributors">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6f29e8"/>
+      <stop offset="0.5" stop-color="#351064"/>
+      <stop offset="1" stop-color="#140421"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff1a5"/>
+      <stop offset="0.35" stop-color="#ffd45a"/>
+      <stop offset="0.7" stop-color="#f7ae1b"/>
+      <stop offset="1" stop-color="#b96b00"/>
+    </linearGradient>
+    <linearGradient id="white" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#ece7f8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="12%" r="70%">
+      <stop offset="0" stop-color="#d3a4ff" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#d3a4ff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000000" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+
+  <g filter="url(#shadow)">
+    <path d="M112 173h43l27 137c4 20 20 34 40 34h118c24 0 45-15 52-38l18-58H188" fill="none" stroke="url(#gold)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M176 187h108c8 0 14-7 12-15l-8-38c-2-9-10-15-19-15h-67c-14 0-26 9-30 22l-8 29c-3 9 4 17 14 17z" fill="url(#white)"/>
+    <circle cx="230" cy="371" r="18" fill="url(#gold)"/>
+    <circle cx="351" cy="371" r="18" fill="url(#gold)"/>
+  </g>
+
+  <path d="M379 132h47M361 159h65M386 186h43" stroke="url(#gold)" stroke-width="11" stroke-linecap="round"/>
+  <text x="256" y="432" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="62" font-weight="800" letter-spacing="2" fill="url(#white)">XPOSE</text>
+  <circle cx="256" cy="412" r="7" fill="#f7ae1b"/>
+</svg>
