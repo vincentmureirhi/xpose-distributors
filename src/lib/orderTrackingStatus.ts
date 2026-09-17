@@ -14,11 +14,11 @@ interface CustomerOrderStageInfo {
 const CUSTOMER_ORDER_STAGE_INFO: Record<CustomerOrderStageKey, Omit<CustomerOrderStageInfo, "key">> = {
   pending: {
     label: "Order received",
-    description: "We have your order and are preparing it for processing.",
+    description: "We have your order and are waiting for payment confirmation before processing it.",
   },
   processing: {
-    label: "Preparing order",
-    description: "Our team is packing your items.",
+    label: "Payment confirmed • Preparing order",
+    description: "Your payment has been confirmed. Our team is now packing your items.",
   },
   dispatched: {
     label: "On the way",
