@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="XPOSE Distributors app icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8a3cff"/>
+      <stop offset="0.38" stop-color="#4b168d"/>
+      <stop offset="1" stop-color="#160526"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff4b7"/>
+      <stop offset="0.2" stop-color="#ffe66b"/>
+      <stop offset="0.48" stop-color="#ffc52f"/>
+      <stop offset="0.78" stop-color="#ee9d11"/>
+      <stop offset="1" stop-color="#a45c00"/>
+    </linearGradient>
+    <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf6"/>
+      <stop offset="0.56" stop-color="#f6f0e8"/>
+      <stop offset="1" stop-color="#d9d0c6"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="26%" cy="12%" r="90%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="0.36" stop-color="#d9b6ff" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#d9b6ff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-35%" y="-35%" width="170%" height="180%">
+      <feDropShadow dx="0" dy="9" stdDeviation="9" flood-color="#000000" flood-opacity="0.38"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#shine)"/>
+  <path d="M26 91C58 38 106 20 178 15" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="7" stroke-linecap="round"/>
+
+  <g filter="url(#shadow)">
+    <path d="M102 149H146L171 285C174 302 189 314 207 314H331C354 314 373 300 380 279L394 232H173" fill="none" stroke="url(#gold)" stroke-width="29" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M178 220L189 175C192 163 203 155 216 155H286C300 155 311 165 314 179L322 221C324 230 317 239 307 239H193C182 239 175 230 178 220Z" fill="url(#gold)"/>
+    <path d="M186 176C192 163 202 155 216 155H286C299 155 310 164 313 179L317 201H181Z" fill="#fff7d8" opacity="0.9"/>
+    <path d="M219 151V136C219 118 232 105 250 105H263C281 105 294 118 294 136V151" fill="none" stroke="url(#cream)" stroke-width="13" stroke-linecap="round"/>
+    <path d="M173 256H380" fill="none" stroke="#ffe67a" stroke-opacity="0.55" stroke-width="4"/>
+    <circle cx="215" cy="355" r="24" fill="url(#gold)"/>
+    <circle cx="340" cy="355" r="24" fill="url(#gold)"/>
+  </g>
+
+  <g stroke="url(#gold)" stroke-linecap="round">
+    <path d="M382 117H432" stroke-width="13"/>
+    <path d="M361 146H438" stroke-width="13"/>
+    <path d="M387 175H431" stroke-width="13"/>
+  </g>
+
+  <text x="256" y="429" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="61" font-weight="900" letter-spacing="1.5" fill="url(#cream)">XPOSE</text>
+  <circle cx="256" cy="407" r="7" fill="#ffc52f"/>
+  <path d="M102 456H143M369 456H410" stroke="#ffd83e" stroke-width="3" stroke-linecap="round"/>
+  <text x="256" y="465" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" letter-spacing="5.2" fill="#ffd83e">SHOP SMARTER</text>
+</svg>
