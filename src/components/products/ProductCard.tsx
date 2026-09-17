@@ -56,9 +56,7 @@ export default function ProductCard({ product, index = 0 }: Props) {
   const hasFlashDeal = !!(product.discounted_price && product.discounted_price < (product.retail_price || product.price || Infinity));
   const localBasePrice = baseTier?.price ?? Number(product.retail_price || product.price || 0);
   const minOrderQty = Math.max(1, Number(product.min_order_qty || baseTier?.min_qty || 1));
-  const orderStep = Math.max(1, Number(product.order_qty_step || 1));
   const sellingUnit = cleanUnit(product.selling_unit_label);
-  const usesSharedPool = String(product.stock_source || "").toLowerCase() === "pool";
   const rawStockQty = product.current_stock ?? product.stock;
   const stockQty = Number(rawStockQty);
   const hasStockQty = rawStockQty !== undefined && rawStockQty !== null && rawStockQty !== "" && Number.isFinite(stockQty);
@@ -72,22 +70,14 @@ export default function ProductCard({ product, index = 0 }: Props) {
       normalizedStockStatus === "low_stock" ||
       (hasStockQty && stockQty > 0 && stockQty <= Math.max(minOrderQty, 10)));
   const stockLabel = isOutOfStock
-    ? usesSharedPool
-      ? "Shared stock sold out"
-      : "Out of stock"
+    ? "Sold out"
     : cannotMeetMinimum
-      ? usesSharedPool
-        ? `Shared stock below minimum ${minOrderQty}`
-        : `Out of stock for minimum ${minOrderQty}`
+      ? "Below minimum"
       : isLimitedStock
-        ? usesSharedPool
-          ? "Hurry, limited assorted stock"
-          : hasStockQty
-          ? `Limited stock - ${stockQty} left`
-          : "Limited stock"
-        : usesSharedPool
-          ? `Available from ${product.stock_pool_name || "assorted stock"}`
-          : "In stock";
+        ? hasStockQty
+          ? `${stockQty} left`
+          : "Few left"
+        : "";
   const addQuantity = Math.max(minOrderQty, Number(baseTier?.min_qty || 1));
   const displayPrice = hasFlashDeal ? product.discounted_price! : localBasePrice;
   const originalPrice = hasFlashDeal ? (localBasePrice || product.retail_price || 0) : null;
@@ -97,7 +87,6 @@ export default function ProductCard({ product, index = 0 }: Props) {
   const productUrl = typeof window === "undefined" ? `/products/${product.id}` : `${window.location.origin}/products/${product.id}`;
   const enquiryText = `Hello XPOSE, I am interested in ${product.name} at ${formatPrice(displayPrice)}. ${productUrl}`;
   const whatsappHref = `https://wa.me/254701377869?text=${encodeURIComponent(enquiryText)}`;
-
 
   const runFlyToCart = () => {
     if (typeof window === "undefined" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -190,15 +179,19 @@ export default function ProductCard({ product, index = 0 }: Props) {
             {product.is_sponsored && (
               <span className="px-2.5 py-1 rounded-full bg-background/90 backdrop-blur text-foreground text-[10px] font-semibold uppercase tracking-wider">Sponsored</span>
             )}
-            {cannotOrder && (
-              <span className="px-2.5 py-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold uppercase tracking-wider">
-                {isOutOfStock ? "Sold out" : "Below min"}
+            {stockLabel && (
+              <span
+                className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${
+                  cannotOrder ? "bg-destructive text-destructive-foreground" : "bg-amber-500 text-white"
+                }`}
+              >
+                {stockLabel}
               </span>
             )}
           </div>
         </Link>
 
-        <div className="space-y-2 p-3 sm:p-4">
+        <div className="space-y-1.5 p-2.5 sm:space-y-2 sm:p-4">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span className="truncate">{product.category_name}</span>
           </div>
@@ -213,16 +206,16 @@ export default function ProductCard({ product, index = 0 }: Props) {
             </Link>
           )}
           <Link to={`/products/${product.id}`}>
-            <h3 className="font-medium text-sm leading-snug line-clamp-2 hover:text-accent transition-colors min-h-[2.5rem]">{product.name}</h3>
+            <h3 className="min-h-[2.35rem] font-medium text-sm leading-snug line-clamp-2 hover:text-accent transition-colors sm:min-h-[2.5rem]">{product.name}</h3>
           </Link>
 
-          <div className="pt-1 space-y-1">
+          <div className="space-y-1 pt-0.5">
             {hasFlashDeal ? (
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
-                <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider text-accent">Flash price</span>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-1.5 sm:gap-2">
+                <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wider text-accent sm:text-[11px]">Flash price</span>
                 <div className="min-w-0 text-right">
                   {originalPrice && (
-                    <span className="mr-1 text-[11px] text-muted-foreground line-through">{formatPrice(originalPrice)}</span>
+                    <span className="mr-1 text-[10px] text-muted-foreground line-through sm:text-[11px]">{formatPrice(originalPrice)}</span>
                   )}
                   <span className="whitespace-nowrap font-display text-sm font-bold leading-none text-accent sm:text-base">{formatPrice(displayPrice)}</span>
                 </div>
@@ -230,14 +223,14 @@ export default function ProductCard({ product, index = 0 }: Props) {
             ) : (
               <>
                 {baseTier && (
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
-                    <span className="min-w-0 truncate text-[11px] uppercase tracking-wider text-muted-foreground">{baseTierLabel}</span>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-1.5 sm:gap-2">
+                    <span className="min-w-0 truncate text-[10px] uppercase tracking-wider text-muted-foreground sm:text-[11px]">{baseTierLabel}</span>
                     <span className="whitespace-nowrap font-display text-sm font-bold leading-none sm:text-base">{formatPrice(baseTier.price)}</span>
                   </div>
                 )}
                 {secondaryTiers.map((t) => (
-                  <div key={t.unit} className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
-                    <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider text-accent">
+                  <div key={t.unit} className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-1.5 sm:gap-2">
+                    <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wider text-accent sm:text-[11px]">
                       {tierLabel(t)}
                     </span>
                     <span className="whitespace-nowrap font-display text-sm font-semibold leading-none">{formatPrice(t.price)}</span>
@@ -247,18 +240,7 @@ export default function ProductCard({ product, index = 0 }: Props) {
             )}
           </div>
 
-          <div className="space-y-0.5 text-[11px] text-muted-foreground">
-            <p>
-              Sold by {sellingUnit}
-              {minOrderQty > 1 ? ` - min ${minOrderQty}` : ""}
-              {orderStep > 1 ? ` - step ${orderStep}` : ""}
-            </p>
-            <p className={cannotOrder ? "font-semibold text-destructive" : isLimitedStock ? "font-semibold text-amber-600" : "font-semibold text-emerald-700"}>
-              {stockLabel}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 pt-2">
+          <div className="flex items-center gap-1.5 pt-1.5 sm:gap-2 sm:pt-2">
             <a
               href={whatsappHref}
               target="_blank"
@@ -280,10 +262,10 @@ export default function ProductCard({ product, index = 0 }: Props) {
                 }
               }}
               disabled={cannotOrder}
-              className="h-9 flex-1 rounded-full bg-foreground text-background hover:bg-accent hover:text-accent-foreground transition-all shadow-soft hover:shadow-glow gap-2"
+              className="h-9 min-w-0 flex-1 whitespace-nowrap rounded-full bg-foreground px-2 text-[10px] font-bold text-background shadow-soft transition-all hover:bg-accent hover:text-accent-foreground hover:shadow-glow sm:px-3 sm:text-sm"
               aria-label={cannotOrder ? "Product unavailable" : "Add to cart"}
             >
-              <ShoppingBag className="h-4 w-4" />
+              {!cannotOrder && <ShoppingBag className="h-4 w-4 flex-shrink-0" />}
               {cannotOrder ? "Unavailable" : "Add"}
             </Button>
           </div>
