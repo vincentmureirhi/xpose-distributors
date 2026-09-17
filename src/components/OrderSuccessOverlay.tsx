@@ -9,6 +9,7 @@ const TILL_NUMBER = import.meta.env.VITE_MPESA_REAL_TILL_NUMBER || "3398071";
 const POLL_MS = 2000;
 const MAX_POLLS = 30;
 const REDIRECT_SECONDS = 12;
+const RETRY_COOLDOWN_SECONDS = 30;
 
 interface Props {
   show: boolean;
@@ -40,6 +41,7 @@ function toLocalTrackingPath(trackingUrl?: string, fallbackId?: string) {
 
 export default function OrderSuccessOverlay({ show, orderId, trackingUrl, amountDue = 0, paymentMode = "mpesa", onDone }: Props) {
   const [countdown, setCountdown] = useState(REDIRECT_SECONDS);
+  const [retryCooldown, setRetryCooldown] = useState(0);
   const [copied, setCopied] = useState(false);
   const [paymentState, setPaymentState] = useState<"idle" | "starting" | "pending" | "paid" | "failed">("idle");
   const [paymentMessage, setPaymentMessage] = useState("");
@@ -63,11 +65,12 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, amount
   };
 
   const startPayment = async () => {
-    if (!orderId || !amountDue || isRouteCredit) return;
+    if (!orderId || !amountDue || isRouteCredit || retryCooldown > 0 || paymentState === "starting" || paymentState === "pending") return;
     const attempt = ++paymentAttempt.current;
     setPaymentState("starting");
     setPaymentMessage("Contacting M-Pesa…");
     setReceipt("");
+    setCheckoutRequestId("");
     pollCount.current = 0;
 
     try {
@@ -83,12 +86,14 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, amount
       const err = error as { response?: { data?: { message?: string; errorMessage?: string } }; message?: string };
       setPaymentState("failed");
       setPaymentMessage(err.response?.data?.message || err.response?.data?.errorMessage || err.message || "M-Pesa STK Push could not be started.");
+      setRetryCooldown(RETRY_COOLDOWN_SECONDS);
     }
   };
 
   useEffect(() => {
     if (!show || isRouteCredit) return;
     setPaymentState("idle");
+    setRetryCooldown(0);
     setCheckoutRequestId("");
     setPaymentMessage("");
     setReceipt("");
@@ -97,6 +102,14 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, amount
       paymentAttempt.current += 1;
     };
   }, [show, isRouteCredit, orderId, amountDue]);
+
+  useEffect(() => {
+    if (retryCooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setRetryCooldown((value) => Math.max(0, value - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [retryCooldown]);
 
   useEffect(() => {
     if (!show || isRouteCredit || paymentState !== "pending" || !checkoutRequestId) return;
@@ -121,6 +134,7 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, amount
           active = false;
           setPaymentState("failed");
           setPaymentMessage(status.result_desc || "The M-Pesa payment was not completed.");
+          setRetryCooldown(RETRY_COOLDOWN_SECONDS);
           window.clearInterval(timer);
           return;
         }
@@ -128,6 +142,7 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, amount
           active = false;
           setPaymentState("failed");
           setPaymentMessage("We could not confirm the payment yet. You can retry the STK Push or use manual payment details below.");
+          setRetryCooldown(RETRY_COOLDOWN_SECONDS);
           window.clearInterval(timer);
         }
       } catch {
@@ -135,6 +150,7 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, amount
           active = false;
           setPaymentState("failed");
           setPaymentMessage("Payment confirmation timed out. Retry the STK Push or use the manual payment option.");
+          setRetryCooldown(RETRY_COOLDOWN_SECONDS);
           window.clearInterval(timer);
         }
       }
@@ -217,7 +233,7 @@ export default function OrderSuccessOverlay({ show, orderId, trackingUrl, amount
                     <div className="flex items-start gap-3 text-success"><CheckCircle2 className="mt-0.5 h-5 w-5" /><div><p className="font-bold">Payment confirmed</p><p className="mt-1 text-xs">{paymentMessage}{receipt ? ` Receipt: ${receipt}` : ""}</p></div></div>
                   )}
                   {paymentState === "failed" && (
-                    <div><div className="flex items-start gap-3 text-destructive"><XCircle className="mt-0.5 h-5 w-5" /><div><p className="font-bold">M-Pesa not confirmed</p><p className="mt-1 text-xs text-muted-foreground">{paymentMessage}</p></div></div><button type="button" onClick={startPayment} className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold text-primary-foreground">Retry STK Push</button></div>
+                    <div><div className="flex items-start gap-3 text-destructive"><XCircle className="mt-0.5 h-5 w-5" /><div><p className="font-bold">M-Pesa not confirmed</p><p className="mt-1 text-xs text-muted-foreground">{paymentMessage}</p></div></div><button type="button" onClick={startPayment} disabled={retryCooldown > 0} className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{retryCooldown > 0 ? `Retry available in ${retryCooldown}s` : "Retry STK Push"}</button></div>
                   )}
                   {paymentState === "idle" && <p className="text-xs text-muted-foreground">Preparing secure payment…</p>}
                 </div>
