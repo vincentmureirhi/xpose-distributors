@@ -1,9 +1,9 @@
-const CACHE_NAME = "xpose-shell-v1";
+const CACHE_NAME = "xpose-shell-v2";
 const SHELL = [
   "/",
   "/manifest.webmanifest",
-  "/xpose-app-icon.svg",
-  "/xpose-app-icon-maskable.svg",
+  "/xpose-app-icon-v2.svg",
+  "/xpose-app-icon-maskable-v2.svg",
   "/xpose-favicon.svg"
 ];
 
