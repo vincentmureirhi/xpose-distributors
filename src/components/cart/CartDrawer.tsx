@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ShoppingBag, X } from "lucide-react";
+import { Minus, Plus, ShoppingBag, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { formatPrice, useCart } from "@/context/CartContext";
 import { isWholesaleEligible } from "@/lib/pricingMessaging";
-import QuantityControl from "@/components/cart/QuantityControl";
 
 function toMoneyNumber(value: unknown) {
   const parsed = Number(value);
@@ -133,14 +132,37 @@ export default function CartDrawer() {
                         </p>
 
                         <div className="mt-2 flex items-center justify-between gap-2">
-                          <QuantityControl
-                            itemId={item.id}
-                            quantity={item.quantity}
-                            minQty={minQty}
-                            step={step}
-                            updateQuantity={updateQuantity}
-                            compact
-                          />
+                          <div className="flex h-8 items-center rounded-lg border border-border bg-background">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.id, item.quantity - step)}
+                              disabled={item.quantity <= minQty}
+                              className="grid h-8 w-8 place-items-center disabled:opacity-35"
+                              aria-label={`Decrease ${item.name} quantity`}
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={item.quantity}
+                              onChange={(event) => {
+                                const value = event.target.value.replace(/\D/g, "");
+                                if (value) updateQuantity(item.id, Number(value));
+                              }}
+                              className="h-full w-10 border-0 bg-transparent p-0 text-center text-sm font-bold tabular-nums outline-none focus:ring-0"
+                              aria-label={`Quantity for ${item.name}`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.id, item.quantity + step)}
+                              className="grid h-8 w-8 place-items-center"
+                              aria-label={`Increase ${item.name} quantity`}
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                           <span className="whitespace-nowrap font-display text-sm font-bold">{formatPrice(lineTotal)}</span>
                         </div>
                       </div>
