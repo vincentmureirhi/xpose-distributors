@@ -10,11 +10,11 @@ const MOCK_TERMS = `
 
 **Last updated: April 2026**
 
-Welcome to XPOSE Distributors. By using our platform, you agree to the following terms and conditions.
+Welcome to XPOSE Beauty Shop Limited. By using our platform, you agree to the following terms and conditions.
 
 ### 1. General
 
-XPOSE Distributors is a hybrid wholesale and retail marketplace operating in Kenya. We offer products at both wholesale and retail pricing.
+XPOSE Beauty Shop Limited is a hybrid wholesale and retail marketplace operating in Kenya. We offer products at both wholesale and retail pricing.
 
 ### 2. Orders & Payment
 
@@ -32,7 +32,7 @@ XPOSE Distributors is a hybrid wholesale and retail marketplace operating in Ken
 
 ### 4. Product Quality
 
-- All products sold on XPOSE Distributors are authentic and sourced directly from manufacturers or verified suppliers.
+- All products sold on XPOSE Beauty Shop Limited are authentic and sourced directly from manufacturers or verified suppliers.
 - We do not sell counterfeit goods.
 - Product images may differ slightly from actual products due to photography conditions.
 
@@ -57,7 +57,7 @@ XPOSE Distributors is a hybrid wholesale and retail marketplace operating in Ken
 
 ### 8. Limitation of Liability
 
-XPOSE Distributors shall not be liable for any indirect, incidental, or consequential damages arising from the use of our platform or products purchased.
+XPOSE Beauty Shop Limited shall not be liable for any indirect, incidental, or consequential damages arising from the use of our platform or products purchased.
 
 ### 9. Changes to Terms
 
@@ -69,7 +69,7 @@ For any questions regarding these terms, contact us at:
 - WhatsApp: 0701377869
 - Till Number: 711714
 
-*XPOSE Distributors — A Hybrid Company. Everyday Feels Like BLACK FRIDAY.*
+*XPOSE Beauty Shop Limited — A Hybrid Company. Everyday Feels Like BLACK FRIDAY.*
 `;
 
 export async function getTerms(): Promise<TermsContent> {
