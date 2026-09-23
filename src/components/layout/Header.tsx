@@ -68,7 +68,7 @@ export default function Header() {
         </div>
       </div>
       <div className="container flex h-16 items-center justify-between gap-4 md:h-[72px]">
-        <Link to="/" className="flex items-center" aria-label="XPOSE Distributors home">
+        <Link to="/" className="flex items-center" aria-label="XPOSE Beauty Shop Limited home">
           <Wordmark size="md" />
         </Link>
 
