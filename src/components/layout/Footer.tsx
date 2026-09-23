@@ -126,7 +126,7 @@ export default function Footer() {
 
       <div className="border-t border-white/10 bg-black/20">
         <div className="container grid gap-3 py-5 text-xs text-white/55 md:grid-cols-3 md:items-center">
-          <p className="md:text-left">Copyright {new Date().getFullYear()} XPOSE Beauty Shop Limited. Registered business: XPOSE Beauty Shop.</p>
+          <p className="md:text-left">Copyright {new Date().getFullYear()} XPOSE Beauty Shop Limited. Registered business: XPOSE BEAUTY SHOP LIMITED.</p>
           <p className="text-center font-semibold text-white/65">
             Developed by Dreams &amp; Visions ·{" "}
             <a href={`mailto:${DEVELOPER_EMAIL}`} className="inline-flex items-center gap-1 hover:text-accent">
