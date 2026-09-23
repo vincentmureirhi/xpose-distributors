@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Minus, Plus, ShoppingBag, X } from "lucide-react";
+import { ShoppingBag, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { formatPrice, useCart } from "@/context/CartContext";
 import { isWholesaleEligible } from "@/lib/pricingMessaging";
+import QuantityControl from "@/components/cart/QuantityControl";
 
 function toMoneyNumber(value: unknown) {
   const parsed = Number(value);
@@ -132,28 +133,14 @@ export default function CartDrawer() {
                         </p>
 
                         <div className="mt-2 flex items-center justify-between gap-2">
-                          <div className="flex h-8 items-center rounded-lg border border-border bg-background">
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(item.id, item.quantity - step)}
-                              disabled={item.quantity <= minQty}
-                              className="grid h-8 w-8 place-items-center disabled:opacity-35"
-                              aria-label={`Decrease ${item.name} quantity`}
-                            >
-                              <Minus className="h-3.5 w-3.5" />
-                            </button>
-                            <motion.span key={item.quantity} initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="w-9 text-center text-sm font-bold tabular-nums">
-                              {item.quantity}
-                            </motion.span>
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(item.id, item.quantity + step)}
-                              className="grid h-8 w-8 place-items-center"
-                              aria-label={`Increase ${item.name} quantity`}
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
+                          <QuantityControl
+                            itemId={item.id}
+                            quantity={item.quantity}
+                            minQty={minQty}
+                            step={step}
+                            updateQuantity={updateQuantity}
+                            compact
+                          />
                           <span className="whitespace-nowrap font-display text-sm font-bold">{formatPrice(lineTotal)}</span>
                         </div>
                       </div>
