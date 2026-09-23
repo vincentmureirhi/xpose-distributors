@@ -82,14 +82,13 @@ export default function Hero({ products = [] }: HeroProps) {
       <div className="container relative grid items-center gap-6 py-6 sm:py-8 lg:min-h-[500px] lg:grid-cols-[minmax(0,1fr)_minmax(430px,1fr)] lg:gap-5 lg:py-9">
         <div className="relative z-20 max-w-2xl">
           <p className="mb-2 text-[11px] font-black uppercase tracking-[0.2em] text-accent sm:mb-3 sm:text-xs">
-            Retail, wholesale and route supply
+            Your one-stop beauty & lifestyle store
           </p>
           <h1 className="font-display text-[2rem] font-black leading-[1.02] text-balance sm:text-5xl lg:text-[3.45rem] xl:text-6xl">
-            Beauty, Hair, Baby Care
-            <span className="block text-accent">&amp; Household Supplies</span>
+            Where Retail\n            <span className=\"block text-accent\">Meets Wholesale</span>
           </h1>
           <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-white/72 sm:mt-4 sm:text-lg sm:leading-7">
-            Live-stock essentials for personal shoppers, resellers and route customers.
+            Quality everyday essentials for personal shoppers, resellers and businesses — from single purchases to bulk orders.
           </p>
 
           <form onSubmit={submitSearch} className="mt-4 flex max-w-xl items-center gap-1.5 rounded-xl bg-white p-1.5 shadow-[0_24px_70px_rgba(0,0,0,0.36)] sm:mt-6 sm:gap-2">
