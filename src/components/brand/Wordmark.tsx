@@ -16,7 +16,7 @@ const sizeMap = {
 };
 
 /**
- * XPOSE DISTRIBUTORS — custom wordmark
+ * XPOSE BEAUTY SHOP LIMITED — custom wordmark
  * - Sliced "X" monogram with diagonal accent bar
  * - Stacked typographic lockup: bold display "XPOSE" with thin spaced "DISTRIBUTORS" underline
  * - Animated shine sweep on hover
