@@ -21,7 +21,7 @@ import { getPriceTiers } from "@/lib/pricing";
 import { getProductPricingMessages, isRuleDrivenType } from "@/lib/pricingMessaging";
 import type { PriceTier, Product } from "@/types/shop";
 
-const DEFAULT_DESCRIPTION = "A carefully selected product from XPOSE Distributors.";
+const DEFAULT_DESCRIPTION = "A carefully selected product from XPOSE Beauty Shop Limited.";
 function upsertMetaDescription(content: string) {
   let element = document.head.querySelector('meta[name="description"]') as HTMLMetaElement | null;
   if (!element) {
@@ -168,7 +168,7 @@ export default function ProductDetails() {
         if (productResult) {
           void trackProductEvent(productResult.id, "view");
           document.title = productResult.name + " - XPOSE";
-          upsertMetaDescription(productResult.description || "Buy " + productResult.name + " from XPOSE Distributors. Live price and stock availability.");
+          upsertMetaDescription(productResult.description || "Buy " + productResult.name + " from XPOSE Beauty Shop Limited. Live price and stock availability.");
           setQty(getMinimumOrderQty(productResult));
           const relatedResult = await listStorefrontProducts({
             category: productResult.category_id || "all",
