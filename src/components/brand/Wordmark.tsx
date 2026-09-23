@@ -18,7 +18,7 @@ const sizeMap = {
 /**
  * XPOSE BEAUTY SHOP LIMITED — custom wordmark
  * - Sliced "X" monogram with diagonal accent bar
- * - Stacked typographic lockup: bold display "XPOSE" with thin spaced "DISTRIBUTORS" underline
+ * - Stacked typographic lockup: bold display "XPOSE" with thin spaced \"BEAUTY SHOP LIMITED\" underline
  * - Animated shine sweep on hover
  */
 export default function Wordmark({
@@ -74,7 +74,7 @@ export default function Wordmark({
             style={{ letterSpacing: "0.42em" }}
           >
             <span className="h-px w-3 bg-accent inline-block" />
-            Distributors
+            Beauty Shop Limited
             <span className="h-px flex-1 bg-border inline-block min-w-3" />
           </div>
         </div>
