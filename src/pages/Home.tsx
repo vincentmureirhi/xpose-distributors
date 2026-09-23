@@ -34,7 +34,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "XPOSE Distributors | Shop Beauty, Hair and Household Supplies";
+    document.title = "XPOSE Beauty Shop Limited | Shop Beauty, Hair and Household Supplies";
 
     Promise.all([
       listFeaturedStorefrontProducts(20),
