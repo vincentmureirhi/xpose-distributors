@@ -57,7 +57,7 @@ export default function Terms() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "Terms & Conditions — XPOSE Distributors";
+    document.title = "Terms & Conditions — XPOSE Beauty Shop Limited";
     getTerms()
       .then((t) => {
         setContent(t.content || "");
