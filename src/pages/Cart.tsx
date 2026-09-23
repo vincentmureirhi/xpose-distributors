@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { ShoppingBag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice, useCart } from "@/context/CartContext";
 import { isWholesaleEligible } from "@/lib/pricingMessaging";
+import QuantityControl from "@/components/cart/QuantityControl";
 
 function toMoneyNumber(value: unknown) {
   const parsed = Number(value);
@@ -92,11 +93,13 @@ export default function Cart() {
                     <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{sellingUnit}{minQty > 1 || step > 1 ? ` · min ${minQty} · +${step}` : ""}</p>
 
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex h-9 items-center rounded-lg border border-border bg-secondary/40">
-                        <button type="button" onClick={() => updateQuantity(item.id, item.quantity - step)} disabled={item.quantity <= minQty} className="grid h-9 w-9 place-items-center disabled:opacity-35" aria-label={`Decrease ${item.name} quantity`}><Minus className="h-3.5 w-3.5" /></button>
-                        <motion.span key={item.quantity} initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="w-10 text-center text-sm font-bold tabular-nums">{item.quantity}</motion.span>
-                        <button type="button" onClick={() => updateQuantity(item.id, item.quantity + step)} className="grid h-9 w-9 place-items-center" aria-label={`Increase ${item.name} quantity`}><Plus className="h-3.5 w-3.5" /></button>
-                      </div>
+                      <QuantityControl
+                        itemId={item.id}
+                        quantity={item.quantity}
+                        minQty={minQty}
+                        step={step}
+                        updateQuantity={updateQuantity}
+                      />
                       <span className="whitespace-nowrap font-display text-base font-bold">{formatPrice(lineTotal)}</span>
                     </div>
                   </div>
