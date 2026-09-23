@@ -85,7 +85,8 @@ export default function Hero({ products = [] }: HeroProps) {
             Your one-stop beauty & lifestyle store
           </p>
           <h1 className="font-display text-[2rem] font-black leading-[1.02] text-balance sm:text-5xl lg:text-[3.45rem] xl:text-6xl">
-            Where Retail\n            <span className=\"block text-accent\">Meets Wholesale</span>
+            Where Retail
+            <span className="block text-accent">Meets Wholesale</span>
           </h1>
           <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-white/72 sm:mt-4 sm:text-lg sm:leading-7">
             Quality everyday essentials for personal shoppers, resellers and businesses — from single purchases to bulk orders.
