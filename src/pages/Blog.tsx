@@ -14,7 +14,7 @@ export default function Blog() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "Blog — XPOSE Distributors";
+    document.title = "Blog — XPOSE Beauty Shop Limited";
     listBlogPosts()
       .then(setPosts)
       .finally(() => setLoading(false));
@@ -35,7 +35,7 @@ export default function Blog() {
           Tips, Guides &amp; Deals
         </h1>
         <p className="text-muted-foreground mt-4 max-w-xl mx-auto">
-          Product guides, wholesale tips, and the latest deals from XPOSE Distributors.
+          Product guides, wholesale tips, and the latest deals from XPOSE Beauty Shop Limited.
         </p>
       </motion.div>
 
