@@ -1,4 +1,4 @@
-const CACHE_NAME = "xpose-shell-v3";
+const CACHE_NAME = "xpose-shell-v4";
 const SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -36,9 +36,17 @@ self.addEventListener("fetch", (event) => {
 
   if (request.method !== "GET") return;
 
-  // Let cross-origin requests behave normally. The storefront SW only
-  // needs to control the XPOSE storefront itself.
-  if (new URL(request.url).origin !== self.location.origin) return;
+  const url = new URL(request.url);
+
+  // Never intercept bundled JS/CSS/assets. Vite's modulepreload resources
+  // must be fetched by the page directly; caching them through the SW can
+  // cause Chrome "cross-world service worker resource mismatch" warnings.
+  if (
+    url.origin !== self.location.origin ||
+    url.pathname.startsWith("/assets/")
+  ) {
+    return;
+  }
 
   if (request.mode === "navigate") {
     event.respondWith(
@@ -46,7 +54,9 @@ self.addEventListener("fetch", (event) => {
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put("/", copy)).catch(() => {});
+            caches.open(CACHE_NAME)
+              .then((cache) => cache.put("/", copy))
+              .catch(() => {});
           }
           return response;
         })
@@ -70,8 +80,7 @@ self.addEventListener("fetch", (event) => {
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();
-            caches
-              .open(CACHE_NAME)
+            caches.open(CACHE_NAME)
               .then((cache) => cache.put(request, copy))
               .catch(() => {});
           }
