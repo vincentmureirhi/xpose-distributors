@@ -38,16 +38,40 @@ export default function Home() {
 
     // Flash Sale is time-sensitive and independent of the other homepage
     // requests. It is fetched immediately instead of waiting for them.
-    getActiveFlashSaleSummary()
-      .then((flashSales) => {
+    let mounted = true;
+    let refreshInFlight = false;
+    let refreshTimer: number | undefined;
+
+    const refreshFlashSale = async () => {
+      if (!mounted || refreshInFlight) return;
+      refreshInFlight = true;
+
+      try {
+        const flashSales = await getActiveFlashSaleSummary();
+        if (!mounted) return;
+
         const sale = flashSales[0] as ActiveSale | undefined;
         if (sale?.end_date && Array.isArray(sale.products) && sale.products.length > 0) {
           setActiveSale(sale);
+          if (refreshTimer !== undefined) {
+            window.clearInterval(refreshTimer);
+            refreshTimer = undefined;
+          }
+        } else {
+          setActiveSale(null);
         }
-      })
-      .catch(() => {
-        // getActiveFlashSales already fails closed; keep homepage rendering.
-      });
+      } finally {
+        refreshInFlight = false;
+      }
+    };
+
+    void refreshFlashSale();
+
+    // If the homepage was already open when Admin activates a sale, check
+    // briefly until it appears. Once found, stop polling completely.
+    refreshTimer = window.setInterval(() => {
+      if (document.visibilityState !== "hidden") void refreshFlashSale();
+    }, 5000);
 
     Promise.all([
       listFeaturedStorefrontProducts(20),
@@ -65,6 +89,11 @@ export default function Home() {
         if (import.meta.env.DEV) console.error("Failed loading homepage data:", error);
       })
       .finally(() => setLoading(false));
+
+    return () => {
+      mounted = false;
+      if (refreshTimer !== undefined) window.clearInterval(refreshTimer);
+    };
   }, []);
 
   useEffect(() => {
