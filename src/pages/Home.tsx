@@ -9,26 +9,15 @@ import TopVendors from "@/components/home/TopVendors";
 import BlogPreview from "@/components/home/BlogPreview";
 import { listFeaturedStorefrontProducts } from "@/lib/api/products";
 import { listStorefrontCategories } from "@/lib/api/categories";
-import { getActiveFlashSaleSummary } from "@/lib/api/flash-sales";
+import { getFlashSaleFeed, type FlashSaleData } from "@/lib/api/flash-sales";
 import { listPublicCampaigns, type PublicCampaign } from "@/lib/api/marketing";
 import { listPublicVendorStores, type VendorStore } from "@/lib/api/vendor-portal";
 import type { Product, Category } from "@/types/shop";
 
-interface ActiveSale {
-  id: number;
-  name: string;
-  end_date: string;
-  products: Array<{
-    id: number | string;
-    discounted_price?: number | null;
-    [key: string]: unknown;
-  }>;
-}
-
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [activeSale, setActiveSale] = useState<ActiveSale | null>(null);
+  const [activeSale, setActiveSale] = useState<FlashSaleData | null>(null);
   const [campaigns, setCampaigns] = useState<PublicCampaign[]>([]);
   const [vendors, setVendors] = useState<VendorStore[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,29 +25,47 @@ export default function Home() {
   useEffect(() => {
     document.title = "XPOSE Beauty Shop Limited | Shop Beauty, Hair and Household Supplies";
 
-    // Flash Sale is time-sensitive and independent of the other homepage
-    // requests. It is fetched immediately instead of waiting for them.
     let mounted = true;
     let refreshInFlight = false;
     let refreshTimer: number | undefined;
+    let scheduledStartTimer: number | undefined;
+
+    const scheduleNextStart = (sale: FlashSaleData | undefined) => {
+      if (scheduledStartTimer !== undefined) {
+        window.clearTimeout(scheduledStartTimer);
+        scheduledStartTimer = undefined;
+      }
+
+      if (!sale?.start_date) return;
+
+      const delay = Math.max(0, new Date(sale.start_date).getTime() - Date.now());
+
+      // The timer is based on the sale's actual start timestamp, so an
+      // already-open storefront does not have to wait for a polling cycle.
+      scheduledStartTimer = window.setTimeout(() => {
+        if (mounted) void refreshFlashSale();
+      }, Math.min(delay + 250, 2_147_483_647));
+    };
 
     const refreshFlashSale = async () => {
       if (!mounted || refreshInFlight) return;
       refreshInFlight = true;
 
       try {
-        const flashSales = await getActiveFlashSaleSummary();
+        const feed = await getFlashSaleFeed();
         if (!mounted) return;
 
-        const sale = flashSales[0] as ActiveSale | undefined;
-        if (sale?.end_date && Array.isArray(sale.products) && sale.products.length > 0) {
+        const sale = feed.active[0];
+
+        if (sale?.end_date && sale.products.length > 0) {
           setActiveSale(sale);
-          if (refreshTimer !== undefined) {
-            window.clearInterval(refreshTimer);
-            refreshTimer = undefined;
+          if (scheduledStartTimer !== undefined) {
+            window.clearTimeout(scheduledStartTimer);
+            scheduledStartTimer = undefined;
           }
         } else {
           setActiveSale(null);
+          scheduleNextStart(feed.upcoming[0]);
         }
       } finally {
         refreshInFlight = false;
@@ -67,8 +74,7 @@ export default function Home() {
 
     void refreshFlashSale();
 
-    // If the homepage was already open when Admin activates a sale, check
-    // briefly until it appears. Once found, stop polling completely.
+    // Safety net for missed timers, sleeping tabs, and clock drift.
     refreshTimer = window.setInterval(() => {
       if (document.visibilityState !== "hidden") void refreshFlashSale();
     }, 5000);
@@ -93,34 +99,11 @@ export default function Home() {
     return () => {
       mounted = false;
       if (refreshTimer !== undefined) window.clearInterval(refreshTimer);
+      if (scheduledStartTimer !== undefined) window.clearTimeout(scheduledStartTimer);
     };
   }, []);
 
-  useEffect(() => {
-    if (!activeSale || !products.length) return;
-
-    const flashMap = new Map<number | string, number>();
-    activeSale.products.forEach((product) => {
-      if (product.discounted_price != null) {
-        flashMap.set(product.id, product.discounted_price);
-      }
-    });
-
-    if (!flashMap.size) return;
-
-    setProducts((currentProducts) =>
-      currentProducts.map((product) => {
-        const discountedPrice = flashMap.get(product.id);
-        return discountedPrice == null
-          ? { ...product, is_flash: false }
-          : { ...product, discounted_price: discountedPrice, is_flash: true };
-      })
-    );
-  }, [activeSale, products.length]);
-
-  const flashProducts = activeSale
-    ? products.filter((product) => product.is_flash === true)
-    : [];
+  const flashProducts = activeSale?.products ?? [];
 
   return (
     <>
@@ -128,7 +111,11 @@ export default function Home() {
       <Marquee />
 
       {activeSale?.end_date && flashProducts.length > 0 && (
-        <FlashSale products={flashProducts} endDate={activeSale.end_date} saleName={activeSale.name} />
+        <FlashSale
+          products={flashProducts}
+          endDate={activeSale.end_date}
+          saleName={activeSale.name}
+        />
       )}
 
       {loading ? (
@@ -136,7 +123,7 @@ export default function Home() {
           <div className="mb-6 h-8 w-48 animate-pulse rounded bg-muted" />
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {Array.from({ length: 8 }).map((_, index) => (
-              <div key={index} className="aspect-[4/5] animate-pulse rounded-lg bg-muted md:aspect-square" />
+              <div key={index} className="aspect-[4/5] animate-pulse rounded bg-muted md:aspect-square" />
             ))}
           </div>
         </section>
