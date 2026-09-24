@@ -148,9 +148,9 @@ function UpcomingDeal({ sale }: { sale: FlashSaleData }) {
         </div>
         <div className="text-right text-xs text-muted-foreground">
           Starts in
-          <div className="mt-1 font-display text-lg font-black text-foreground">
+          <div className="mt-1 font-display text-lg font-black tabular-nums text-foreground">
             {starts.d > 0 ? `${starts.d}d ` : ""}
-            {String(starts.h).padStart(2, "0")}h {String(starts.m).padStart(2, "0")}m
+            {String(starts.h).padStart(2, "0")}h {String(starts.m).padStart(2, "0")}m {String(starts.s).padStart(2, "0")}s
           </div>
         </div>
       </div>
