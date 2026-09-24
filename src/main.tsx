@@ -7,7 +7,7 @@ const CHUNK_RECOVERY_WINDOW_MS = 15000;
 const SW_CLEANUP_KEY = "xpose_sw_cleanup_v1";
 
 function recoverFromStaleChunk(message: string) {
-  if (!/dynamically imported module|importing a module script failed|failed to fetch dynamically imported module|mime type of "text\\/html"/i.test(message)) return;
+  if (!/dynamically imported module|importing a module script failed|failed to fetch dynamically imported module|mime type of "text\/html"/i.test(message)) return;
   try {
     const previous = Number(sessionStorage.getItem(CHUNK_RECOVERY_KEY) || 0);
     const now = Date.now();
