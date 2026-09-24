@@ -25,38 +25,6 @@ interface ActiveSale {
   }>;
 }
 
-function applyFlashSale(featuredProducts: Product[], flashSales: Awaited<ReturnType<typeof getActiveFlashSales>>): {
-  products: Product[];
-  activeSale: ActiveSale | null;
-} {
-  if (!flashSales.length) {
-    return { products: featuredProducts, activeSale: null };
-  }
-
-  const sale = flashSales[0] as unknown as ActiveSale;
-  const flashMap = new Map<number | string, number>();
-
-  (Array.isArray(sale.products) ? sale.products : []).forEach((product) => {
-    if (product.discounted_price != null) {
-      flashMap.set(product.id, product.discounted_price);
-    }
-  });
-
-  if (!flashMap.size || !sale.end_date) {
-    return { products: featuredProducts, activeSale: null };
-  }
-
-  return {
-    activeSale: sale,
-    products: featuredProducts.map((product) => {
-      const discountedPrice = flashMap.get(product.id);
-      return discountedPrice == null
-        ? product
-        : { ...product, discounted_price: discountedPrice, is_flash: true };
-    }),
-  };
-}
-
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -68,14 +36,13 @@ export default function Home() {
   useEffect(() => {
     document.title = "XPOSE Beauty Shop Limited | Shop Beauty, Hair and Household Supplies";
 
-    // Flash Sale is time-sensitive and must not wait for unrelated homepage
-    // requests. It gets its own request so an active deal can appear as soon
-    // as the public flash-sale endpoint responds.
+    // Flash Sale is time-sensitive and independent of the other homepage
+    // requests. It is fetched immediately instead of waiting for them.
     getActiveFlashSales()
       .then((flashSales) => {
-        const result = applyFlashSale(products, flashSales);
-        if (result.activeSale) {
-          setActiveSale(result.activeSale);
+        const sale = flashSales[0] as unknown as ActiveSale | undefined;
+        if (sale?.end_date && Array.isArray(sale.products) && sale.products.length > 0) {
+          setActiveSale(sale);
         }
       })
       .catch(() => {
@@ -101,10 +68,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!activeSale) return;
+    if (!activeSale || !products.length) return;
 
     const flashMap = new Map<number | string, number>();
-    (Array.isArray(activeSale.products) ? activeSale.products : []).forEach((product) => {
+    activeSale.products.forEach((product) => {
       if (product.discounted_price != null) {
         flashMap.set(product.id, product.discounted_price);
       }
@@ -120,7 +87,7 @@ export default function Home() {
           : { ...product, discounted_price: discountedPrice, is_flash: true };
       })
     );
-  }, [activeSale]);
+  }, [activeSale, products.length]);
 
   const flashProducts = activeSale
     ? products.filter((product) => product.is_flash === true || product.discounted_price != null)
