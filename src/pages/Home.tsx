@@ -25,6 +25,38 @@ interface ActiveSale {
   }>;
 }
 
+function applyFlashSale(featuredProducts: Product[], flashSales: Awaited<ReturnType<typeof getActiveFlashSales>>): {
+  products: Product[];
+  activeSale: ActiveSale | null;
+} {
+  if (!flashSales.length) {
+    return { products: featuredProducts, activeSale: null };
+  }
+
+  const sale = flashSales[0] as unknown as ActiveSale;
+  const flashMap = new Map<number | string, number>();
+
+  (Array.isArray(sale.products) ? sale.products : []).forEach((product) => {
+    if (product.discounted_price != null) {
+      flashMap.set(product.id, product.discounted_price);
+    }
+  });
+
+  if (!flashMap.size || !sale.end_date) {
+    return { products: featuredProducts, activeSale: null };
+  }
+
+  return {
+    activeSale: sale,
+    products: featuredProducts.map((product) => {
+      const discountedPrice = flashMap.get(product.id);
+      return discountedPrice == null
+        ? product
+        : { ...product, discounted_price: discountedPrice, is_flash: true };
+    }),
+  };
+}
+
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -36,35 +68,30 @@ export default function Home() {
   useEffect(() => {
     document.title = "XPOSE Beauty Shop Limited | Shop Beauty, Hair and Household Supplies";
 
+    // Flash Sale is time-sensitive and must not wait for unrelated homepage
+    // requests. It gets its own request so an active deal can appear as soon
+    // as the public flash-sale endpoint responds.
+    getActiveFlashSales()
+      .then((flashSales) => {
+        const result = applyFlashSale(products, flashSales);
+        if (result.activeSale) {
+          setActiveSale(result.activeSale);
+        }
+      })
+      .catch(() => {
+        // getActiveFlashSales already fails closed; keep homepage rendering.
+      });
+
     Promise.all([
       listFeaturedStorefrontProducts(20),
       listStorefrontCategories(),
-      getActiveFlashSales(),
       listPublicCampaigns(8).catch(() => []),
       listPublicVendorStores().catch(() => []),
     ])
-      .then(([featuredProducts, categoryRows, flashSales, activeCampaigns, vendorRows]) => {
+      .then(([featuredProducts, categoryRows, activeCampaigns, vendorRows]) => {
         setCategories(categoryRows);
         setCampaigns(activeCampaigns);
         setVendors(vendorRows);
-
-        if (flashSales.length > 0) {
-          const sale = flashSales[0] as unknown as ActiveSale;
-          const flashMap = new Map<number | string, number>();
-          (Array.isArray(sale.products) ? sale.products : []).forEach((product) => {
-            if (product.discounted_price != null) flashMap.set(product.id, product.discounted_price);
-          });
-
-          if (flashMap.size > 0 && sale.end_date) {
-            setActiveSale(sale);
-            setProducts(featuredProducts.map((product) => {
-              const discountedPrice = flashMap.get(product.id);
-              return discountedPrice == null ? product : { ...product, discounted_price: discountedPrice, is_flash: true };
-            }));
-            return;
-          }
-        }
-
         setProducts(featuredProducts);
       })
       .catch((error) => {
@@ -72,6 +99,28 @@ export default function Home() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!activeSale) return;
+
+    const flashMap = new Map<number | string, number>();
+    (Array.isArray(activeSale.products) ? activeSale.products : []).forEach((product) => {
+      if (product.discounted_price != null) {
+        flashMap.set(product.id, product.discounted_price);
+      }
+    });
+
+    if (!flashMap.size) return;
+
+    setProducts((currentProducts) =>
+      currentProducts.map((product) => {
+        const discountedPrice = flashMap.get(product.id);
+        return discountedPrice == null
+          ? product
+          : { ...product, discounted_price: discountedPrice, is_flash: true };
+      })
+    );
+  }, [activeSale]);
 
   const flashProducts = activeSale
     ? products.filter((product) => product.is_flash === true || product.discounted_price != null)
@@ -101,7 +150,6 @@ export default function Home() {
       <CampaignSpotlight campaigns={campaigns} />
       <MerchandisingShelves />
       <TopVendors vendors={vendors} />
-
       <BlogPreview />
     </>
   );
