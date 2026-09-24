@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, CalendarClock, Flame, TimerReset } from "lucide-react";
@@ -189,20 +189,66 @@ function LoadingState() {
   );
 }
 
+const EMPTY_FLASH_REFRESH_MS = 5000;
+const EMPTY_FLASH_REFRESH_LIMIT_MS = 2 * 60 * 1000;
+
 export default function FlashSalePage() {
   const [activeSales, setActiveSales] = useState<FlashSaleData[]>([]);
   const [upcomingSales, setUpcomingSales] = useState<FlashSaleData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshFeed = useCallback(async (options: { initial?: boolean } = {}) => {
+    if (options.initial) setLoading(true);
+    else setRefreshing(true);
+
+    try {
+      const feed = await getFlashSaleFeed();
+      setActiveSales(feed.active);
+      setUpcomingSales(feed.upcoming);
+    } finally {
+      if (options.initial) setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     document.title = "Flash Sale - XPOSE";
-    getFlashSaleFeed()
-      .then((feed) => {
-        setActiveSales(feed.active);
-        setUpcomingSales(feed.upcoming);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    void refreshFeed({ initial: true });
+  }, [refreshFeed]);
+
+  useEffect(() => {
+    if (loading || activeSales.length > 0) return;
+
+    const startedAt = Date.now();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+
+      if (Date.now() - startedAt > EMPTY_FLASH_REFRESH_LIMIT_MS) {
+        window.clearInterval(interval);
+        return;
+      }
+
+      void refreshFeed();
+    }, EMPTY_FLASH_REFRESH_MS);
+
+    return () => window.clearInterval(interval);
+  }, [activeSales.length, loading, refreshFeed]);
+
+  useEffect(() => {
+    const refreshOnFocus = () => void refreshFeed();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshFeed();
+    };
+
+    window.addEventListener("focus", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.removeEventListener("focus", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [refreshFeed]);
 
   const activeSale = useMemo(
     () => activeSales.find((sale) => sale.products.length > 0) || activeSales[0] || null,
@@ -219,7 +265,9 @@ export default function FlashSalePage() {
           <Flame className="h-8 w-8 text-muted-foreground" />
         </div>
         <h1 className="font-display text-4xl font-black tracking-tight">No flash sale is live.</h1>
-        <p className="mx-auto mt-3 max-w-md text-muted-foreground">No live deal right now. Check back for the next drop.</p>
+        <p className="mx-auto mt-3 max-w-md text-muted-foreground">
+          {refreshing ? "Checking for a newly activated deal..." : "No live deal right now. Check back for the next drop."}
+        </p>
         <Button asChild className="mt-7">
           <Link to="/products">Browse products</Link>
         </Button>
