@@ -27,6 +27,10 @@ export interface FlashSaleFeed {
 
 const ENABLE_PUBLIC_FLASH_FEED = import.meta.env.VITE_FLASH_SALE_PUBLIC_FEED === "true";
 
+function freshFlashSaleParams() {
+  return { _fresh: Date.now().toString() };
+}
+
 function normalizeSaleRows(rows: unknown): FlashSaleData[] {
   if (!Array.isArray(rows)) return [];
   return (rows as FlashSaleData[]).map((sale) => ({
@@ -37,7 +41,7 @@ function normalizeSaleRows(rows: unknown): FlashSaleData[] {
 
 export async function getActiveFlashSaleSummary(): Promise<FlashSaleSummary[]> {
   try {
-    const { data } = await apiClient.get("/flash-sales/active-summary");
+    const { data } = await apiClient.get("/flash-sales/active-summary", { params: freshFlashSaleParams() });
     return (data?.data ?? data ?? []) as FlashSaleSummary[];
   } catch {
     return [];
@@ -46,7 +50,7 @@ export async function getActiveFlashSaleSummary(): Promise<FlashSaleSummary[]> {
 
 export async function getActiveFlashSales(): Promise<FlashSaleData[]> {
   try {
-    const { data } = await apiClient.get("/flash-sales/active");
+    const { data } = await apiClient.get("/flash-sales/active", { params: freshFlashSaleParams() });
     return normalizeSaleRows(data?.data ?? data ?? []);
   } catch {
     return [];
@@ -61,7 +65,7 @@ export async function getFlashSaleFeed(): Promise<FlashSaleFeed> {
   }
 
   try {
-    const { data } = await apiClient.get("/flash-sales/public");
+    const { data } = await apiClient.get("/flash-sales/public", { params: freshFlashSaleParams() });
     const payload = data?.data ?? data ?? {};
     return {
       active: normalizeSaleRows(payload.active),
