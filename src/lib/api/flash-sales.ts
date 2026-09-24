@@ -16,6 +16,10 @@ export interface FlashSaleData {
   products: Product[];
 }
 
+export interface FlashSaleSummary extends Omit<FlashSaleData, "products"> {
+  products: Array<{ id: number | string; discounted_price?: number | null }>;
+}
+
 export interface FlashSaleFeed {
   active: FlashSaleData[];
   upcoming: FlashSaleData[];
@@ -29,6 +33,15 @@ function normalizeSaleRows(rows: unknown): FlashSaleData[] {
     ...sale,
     products: Array.isArray(sale.products) ? sale.products.map(normalizeProduct) : [],
   }));
+}
+
+export async function getActiveFlashSaleSummary(): Promise<FlashSaleSummary[]> {
+  try {
+    const { data } = await apiClient.get("/flash-sales/active-summary");
+    return (data?.data ?? data ?? []) as FlashSaleSummary[];
+  } catch {
+    return [];
+  }
 }
 
 export async function getActiveFlashSales(): Promise<FlashSaleData[]> {
