@@ -25,8 +25,6 @@ export interface FlashSaleFeed {
   upcoming: FlashSaleData[];
 }
 
-const ENABLE_PUBLIC_FLASH_FEED = import.meta.env.VITE_FLASH_SALE_PUBLIC_FEED === "true";
-
 function freshFlashSaleParams() {
   return { _fresh: Date.now().toString() };
 }
@@ -58,20 +56,17 @@ export async function getActiveFlashSales(): Promise<FlashSaleData[]> {
 }
 
 export async function getFlashSaleFeed(): Promise<FlashSaleFeed> {
-  const active = await getActiveFlashSales();
-
-  if (!ENABLE_PUBLIC_FLASH_FEED) {
-    return { active, upcoming: [] };
-  }
-
   try {
-    const { data } = await apiClient.get("/flash-sales/public", { params: freshFlashSaleParams() });
+    const { data } = await apiClient.get("/flash-sales/public", {
+      params: freshFlashSaleParams(),
+    });
     const payload = data?.data ?? data ?? {};
     return {
       active: normalizeSaleRows(payload.active),
       upcoming: normalizeSaleRows(payload.upcoming),
     };
   } catch {
+    const active = await getActiveFlashSales();
     return { active, upcoming: [] };
   }
 }
