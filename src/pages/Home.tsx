@@ -9,7 +9,7 @@ import TopVendors from "@/components/home/TopVendors";
 import BlogPreview from "@/components/home/BlogPreview";
 import { listFeaturedStorefrontProducts } from "@/lib/api/products";
 import { listStorefrontCategories } from "@/lib/api/categories";
-import { getActiveFlashSales } from "@/lib/api/flash-sales";
+import { getActiveFlashSaleSummary } from "@/lib/api/flash-sales";
 import { listPublicCampaigns, type PublicCampaign } from "@/lib/api/marketing";
 import { listPublicVendorStores, type VendorStore } from "@/lib/api/vendor-portal";
 import type { Product, Category } from "@/types/shop";
@@ -38,9 +38,9 @@ export default function Home() {
 
     // Flash Sale is time-sensitive and independent of the other homepage
     // requests. It is fetched immediately instead of waiting for them.
-    getActiveFlashSales()
+    getActiveFlashSaleSummary()
       .then((flashSales) => {
-        const sale = flashSales[0] as unknown as ActiveSale | undefined;
+        const sale = flashSales[0] as ActiveSale | undefined;
         if (sale?.end_date && Array.isArray(sale.products) && sale.products.length > 0) {
           setActiveSale(sale);
         }
@@ -83,14 +83,14 @@ export default function Home() {
       currentProducts.map((product) => {
         const discountedPrice = flashMap.get(product.id);
         return discountedPrice == null
-          ? product
+          ? { ...product, is_flash: false }
           : { ...product, discounted_price: discountedPrice, is_flash: true };
       })
     );
   }, [activeSale, products.length]);
 
   const flashProducts = activeSale
-    ? products.filter((product) => product.is_flash === true || product.discounted_price != null)
+    ? products.filter((product) => product.is_flash === true)
     : [];
 
   return (
