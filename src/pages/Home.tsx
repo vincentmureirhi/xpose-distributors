@@ -79,15 +79,30 @@ export default function Home() {
       if (document.visibilityState !== "hidden") void refreshFlashSale();
     }, 5000);
 
+    let campaignRefreshTimer: number | undefined;
+
+    const refreshCampaigns = async () => {
+      try {
+        const activeCampaigns = await listPublicCampaigns(8);
+        if (mounted) setCampaigns(activeCampaigns);
+      } catch {
+        // Campaign refresh must never interrupt the storefront.
+      }
+    };
+
+    void refreshCampaigns();
+
+    campaignRefreshTimer = window.setInterval(() => {
+      if (document.visibilityState !== "hidden") void refreshCampaigns();
+    }, 5000);
+
     Promise.all([
       listFeaturedStorefrontProducts(20),
       listStorefrontCategories(),
-      listPublicCampaigns(8).catch(() => []),
       listPublicVendorStores().catch(() => []),
     ])
-      .then(([featuredProducts, categoryRows, activeCampaigns, vendorRows]) => {
+      .then(([featuredProducts, categoryRows, vendorRows]) => {
         setCategories(categoryRows);
-        setCampaigns(activeCampaigns);
         setVendors(vendorRows);
         setProducts(featuredProducts);
       })
@@ -99,6 +114,7 @@ export default function Home() {
     return () => {
       mounted = false;
       if (refreshTimer !== undefined) window.clearInterval(refreshTimer);
+      if (campaignRefreshTimer !== undefined) window.clearInterval(campaignRefreshTimer);
       if (scheduledStartTimer !== undefined) window.clearTimeout(scheduledStartTimer);
     };
   }, []);
