@@ -85,7 +85,7 @@ export async function validateCoupon(payload: CouponValidationPayload): Promise<
 }
 
 export async function listPublicCampaigns(limit = 8): Promise<PublicCampaign[]> {
-  const { data } = await apiClient.get("/marketing/campaigns/public", { params: { limit } });
+  const { data } = await apiClient.get("/marketing/campaigns/public", { params: { limit, _fresh: Date.now() } });
   const payload = data?.data || data;
   return Array.isArray(payload) ? payload : [];
 }
